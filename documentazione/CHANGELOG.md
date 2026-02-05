@@ -1,5 +1,28 @@
 # CHANGELOG - Aggiornamenti Recenti
 
+## 2026-02-05 - Integrazione GitHub
+
+### Repository GitHub
+- Creato repository: https://github.com/micheleperani76/BRIA
+- Configurato `.gitignore` per escludere: db, clienti, credenziali, log, allegati, audio, backup
+- Primo push: 243 file di codice, template, documentazione e configurazione
+- Cartella `account_esterni/` creata e esclusa da git
+
+### raccolta_file_ia.sh v4.0
+- Nuova funzione `sync_github()`: git add + commit interattivo + push
+- Nuove opzioni: `--no-git`, `--solo-git`, `--solo-backup`
+- Backup ZIP aggiornato: esclude anche `.git/`, `clienti/`, `db/`, `account_esterni/`
+- Raccolta file IA: aggiunta cartella `app/connettori_notifiche/`
+- Tree: esclusa cartella `.git` dall'output
+
+### Documentazione aggiornata
+- `INIZIO_SESSIONE.md` - Aggiunta sezione fonte file GitHub e sync fine sessione
+- `REGOLE_CLAUDE.md` v6.0 - Checklist aggiornata con sync GitHub, struttura progetto completa
+- `README.md` - Aggiunta sezione repository e flusso sync Claude
+- `CHANGELOG.md` - Questa voce
+
+---
+
 ## 2026-02-04 - Sistema Notifiche Fase 1
 
 ### Sistema Notifiche - Fondamenta Complete

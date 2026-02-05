@@ -1,8 +1,8 @@
 # REGOLE CLAUDE - Gestione Flotta
 ## Documento di riferimento per modifiche al codice
 
-**Versione**: 5.0
-**Ultimo aggiornamento**: 2026-01-30
+**Versione**: 6.0
+**Ultimo aggiornamento**: 2026-02-05
 **Progetto**: gestione_flotta (BR CAR SERVICE)
 
 ---
@@ -17,9 +17,15 @@ Questo documento e' scritto DA CLAUDE PER CLAUDE. Contiene le regole, metodologi
 
 ### Prima domanda da fare SEMPRE:
 ```
-"I file allegati al progetto sono aggiornati? 
+"Hai sincronizzato il repo GitHub nel progetto Claude?
 Hai modificato qualcosa dall'ultima sessione?"
 ```
+
+### FONTE DEI FILE
+I file del progetto sono sincronizzati tramite GitHub:
+- **Repository**: https://github.com/micheleperani76/BRIA
+- I file in `/mnt/project/` provengono dal sync GitHub
+- Se sembrano datati, chiedere all'utente di cliccare "Sync" nel Project Knowledge
 
 ### Se la sessione e' lunga o stiamo modificando file complessi:
 ```
@@ -309,10 +315,36 @@ mv ~/gestione_flotta/Scaricati/web_server.py ~/gestione_flotta/app/
 
 ---
 
-## STRUTTURA PROGETTO (Aggiornata 2026-01-30)
+## STRUTTURA PROGETTO (Aggiornata 2026-02-05)
 
+### Repository GitHub
+- **URL**: https://github.com/micheleperani76/BRIA
+- **Branch**: master
+- **Sync Claude**: Project Knowledge collegato al repo
+- **Sync script**: `raccolta_file_ia.sh --solo-git` (commit + push)
+
+### .gitignore (file esclusi da GitHub)
+```
+db/                     # Database SQLite
+clienti/                # Dati clienti (privacy)
+import_dati/            # CSV/XML import Creditsafe
+account_esterni/        # Credenziali servizi esterni
+allegati_note/          # Allegati note clienti
+audio_trascrizioni/     # File audio
+trascrizione/consumo/   # Testi trascrizioni
+logs/                   # Log applicazione
+backup/                 # Backup file
+Scaricati/              # File temporanei
+file_per_ia/            # Raccolta per IA
+*.zip *.bak *.pyc       # File temporanei
+impostazioni/google_calendar/*.json  # Credenziali Google
+```
+
+### Cartelle
 ```
 gestione_flotta/
+    .git/                         # Repository Git
+    .gitignore                    # Esclusioni GitHub
     app/                          # Moduli Python
         config.py                 # Configurazione
         database.py               # Gestione DB
@@ -322,21 +354,29 @@ gestione_flotta/
         routes_auth.py            # Blueprint auth
         routes_admin_utenti.py    # Blueprint admin
         routes_flotta_commerciali.py  # Blueprint commerciali v2.3.0
+        motore_notifiche.py       # Hub centrale notifiche
+        routes_notifiche.py       # Blueprint notifiche
+        connettori_notifiche/     # Connettori notifiche modulari
         web_server.py             # Server Flask (senza route commerciali)
         ...
     templates/
         admin/                    # Template amministrazione
         dettaglio/                # Componenti modulari dettaglio
         documenti_cliente/        # Sezione documenti
-        flotta_commerciale.html   # Report gerarchico
-        flotta_gestione_commerciali.html  # Gestione assegnazioni
+        notifiche/                # Widget campanella
+        top_prospect/             # Griglia top prospect
+        trattative/               # Gestione trattative
+        trascrizione/             # Trascrizione audio
         ...
-    db/
-        gestionale.db             # Database SQLite unico
+    db/                           # Database SQLite (escluso da git)
+        gestionale.db
+    account_esterni/              # Credenziali (escluso da git)
     backup/                       # Backup file con naming strutturato
     Scaricati/                    # File temporanei da deployare
     scripts/                      # Script migrazione/manutenzione
     documentazione/               # File .md documentazione
+    impostazioni/                 # Config Excel + .conf
+    raccolta_file_ia.sh           # Script fine sessione (v4.0)
     ...
 ```
 
@@ -386,6 +426,7 @@ gestione_flotta/
 | 2025-01-21 | 3.0 | Aggiunta Regola #6 (limite 1000 righe) e #7 (convenzioni ID) |
 | 2025-01-21 | 4.0 | Aggiunta Regola #8 (commerciali e blueprint) |
 | 2026-01-30 | 5.0 | Aggiunta Regola #9 (convenzione backup e deploy) |
+| 2026-02-05 | 6.0 | Integrazione GitHub: repo BRIA, sync Claude, script v4.0 |
 
 ---
 

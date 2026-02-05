@@ -2,6 +2,20 @@
 
 Sistema integrato per la gestione clienti, veicoli e dati Creditsafe.
 
+**Repository GitHub**: https://github.com/micheleperani76/BRIA
+
+## Sync con Claude AI
+
+Il progetto e' collegato a un Claude Project tramite GitHub Integration.
+
+**Flusso di lavoro:**
+1. Modifiche al codice sul server BRserver
+2. Sync su GitHub: `./raccolta_file_ia.sh --solo-git`
+3. Su Claude: cliccare "Sync" nel Project Knowledge
+
+**File esclusi da GitHub** (vedi `.gitignore`):
+database, dati clienti, credenziali, log, allegati, audio, backup
+
 ## 📁 Struttura Cartelle
 
 ```
