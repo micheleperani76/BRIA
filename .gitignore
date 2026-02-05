@@ -1,4 +1,4 @@
-# Database - tutta la cartella
+# Database
 db/
 
 # Cache Python
@@ -8,13 +8,16 @@ __pycache__/
 # Log
 logs/
 
-# File temporanei
+# File temporanei e backup
 *.bak
 *.bak_*
+*.bak.*
 file_per_ia/
 
-# Cartella clienti (allegati, note, file pesanti)
+# Dati clienti e privacy
 clienti/
+import_dati/
+trascrizione/consumo/
 
 # Allegati e PDF
 allegati_note/
@@ -32,3 +35,9 @@ Scaricati/
 
 # Audio trascrizioni
 audio_trascrizioni/
+
+# File pesanti
+*.zip
+
+# Account esterni
+account_esterni/
