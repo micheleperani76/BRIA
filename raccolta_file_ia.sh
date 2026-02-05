@@ -130,21 +130,7 @@ crea_backup_zip() {
 
     # Crea ZIP escludendo file non necessari
     cd "$HOME"
-    zip -r "$PERCORSO_ZIP" gestione_flotta/ \
-        -x "gestione_flotta/file_per_ia/*" \
-        -x "gestione_flotta/backup/*" \
-        -x "gestione_flotta/__pycache__/*" \
-        -x "gestione_flotta/app/__pycache__/*" \
-        -x "gestione_flotta/logs/*" \
-        -x "gestione_flotta/Scaricati/*" \
-        -x "gestione_flotta/.git/*" \
-        -x "gestione_flotta/clienti/*" \
-        -x "gestione_flotta/db/*" \
-        -x "gestione_flotta/account_esterni/*" \
-        -x "*.pyc" \
-        -x "*.bak" \
-        -x "*.bak_*" \
-        > /dev/null 2>&1
+    zip -r "$PERCORSO_ZIP" gestione_flotta/ > /dev/null 2>&1
 
     if [[ $? -eq 0 ]]; then
         local DIMENSIONE=$(du -h "$PERCORSO_ZIP" | cut -f1)

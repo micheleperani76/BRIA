@@ -1,6 +1,6 @@
 # TODO - Gestione Flotta
 
-Ultimo aggiornamento: 04 Febbraio 2026
+Ultimo aggiornamento: 05 Febbraio 2026
 
 ---
 
@@ -24,10 +24,7 @@ Ultimo aggiornamento: 04 Febbraio 2026
 - [ ] Interfaccia gestione task
 - [ ] Integrazione campanella con notifiche task
 
-### Sistema Notifiche - Fase 3: Connettori Progressivi Moduli Esistenti
-- [ ] Connettore TRATTATIVE (nuova trattativa, avanzamento, chiusura)
-- [ ] Connettore TOP_PROSPECT (nuovo candidato, conferma, promemoria appuntamento)
-- [ ] Connettore TRASCRIZIONE (trascrizione completata, errore)
+### Sistema Notifiche - Fase 3: Connettori Rimanenti
 - [ ] Connettore SCADENZA_CONTRATTO (veicoli in scadenza)
 - [ ] Connettore CLIENTE (nuovo cliente importato, modifica dati)
 - [ ] Connettore ASSEGNAZIONE (cambio commerciale)
@@ -92,6 +89,23 @@ Ultimo aggiornamento: 04 Febbraio 2026
 
 ---
 
+## COMPLETATI (Sessione 05/02/2026)
+
+### Sistema Notifiche - Primi Connettori (Fase 3 parziale)
+- [x] Connettore TRASCRIZIONE (completata + 5 scenari errore nel worker)
+- [x] Connettore TOP_PROSPECT (nuovi candidati + conferma)
+- [x] Connettore TRATTATIVE (nuova trattativa + avanzamento stato)
+- [x] Patch motore_trattative.py (import + chiamate notifica)
+- [x] Patch motore_top_prospect.py (import + chiamata notifica candidati)
+- [x] Patch routes_top_prospect.py (import + chiamata notifica conferma)
+- [x] Logica destinatari gerarchica: risalita catena supervisori per trattative
+- [x] Script spazzino file orfani trascrizione
+- [x] Rimozione messaggio "Benvenuto" dal login (sostituito da campanella)
+- [x] Fix campanella corrotta da sed (ripristino + patch Python)
+- [x] Aggiunta riga messaggio nel dropdown notifiche (notifica-messaggio)
+
+---
+
 ## COMPLETATI (Sessione 04/02/2026 - Pomeriggio)
 
 ### Sistema Notifiche - Fase 1 (Fondamenta Complete)
@@ -127,78 +141,14 @@ Ultimo aggiornamento: 04 Febbraio 2026
 - [x] Recovery job bloccati all'avvio (rimette in coda con priorita' 2)
 - [x] Graceful shutdown con check stato 'eliminato'
 - [x] Check pre-elaborazione: salta job eliminati nel frattempo
-- [x] Protezione orario: calcola se job puo' completarsi prima dello stop (4:00)
-- [x] Scorre candidati in ordine, prova job piu' corti se il primo non ci sta
-- [x] Se nessun job entra in orario, attende il giorno dopo
-- [x] Priorita' corretta: 2=recovery/massima, 1=normale, 0=bassa
-
-### Miglioramenti Coda
-- [x] Upload sempre consentito (rimosso blocco orario accettazione)
-- [x] Stima tempo coda cumulativa (somma job davanti + in lavorazione)
-- [x] Formato tempo leggibile (~X minuti / ~Xh Xmin / ~Xg Xh)
-- [x] Bottone elimina job in coda (proprio o admin tutti)
-- [x] Route elimina-coda con controllo permessi
+- [x] Protezione orario: verifica tempo stimato vs ore rimaste
+- [x] Scorrimento candidati: se job troppo lungo, prova il prossimo piu' corto
+- [x] Attesa automatica giorno dopo se nessun job ci sta
+- [x] Stima tempo cumulativa coda (somma job precedenti + corrente)
 
 ---
 
-## COMPLETATI (Sessioni 30/01 - 03/02/2026)
-
-### Export e Stampa
-- [x] Export Top Prospect confermati in Excel/CSV
-- [x] Export Trattative con filtri (stato, tipo, noleggiatore, commerciale, date)
-- [x] Interfaccia 3 tab (Clienti, Top Prospect, Trattative)
-- [x] Anteprima dati prima dell'export
-- [x] Fix nomi tabelle/colonne DB per export trattative
-- [x] Filtro date nel tab trattative
-- [x] Badge NS circolare nel riquadro documenti
-
-### Sistema Trascrizione Audio - Fase 1 (Backend)
-- [x] File configurazione: impostazioni/trascrizione.conf
-- [x] Config reader: app/config_trascrizione.py
-- [x] Tabella DB: coda_trascrizioni con indici
-- [x] Worker background: scripts/worker_trascrizione.py
-- [x] Servizio systemd: trascrizione-worker.service (enabled)
-- [x] Conversione audio automatica con ffmpeg (AAC, MP3, WAV, OGG, ecc.)
-- [x] Trascrizione con faster-whisper (modelli large-v3 / large-v3-turbo)
-- [x] VAD filter per rimozione silenzio
-- [x] Coda condivisa con priorita' (file >150MB = bassa)
-- [x] Orari operativi: accettazione 07:00-19:00, elaborazione 07:00-04:00
-- [x] Retention automatica: audio cliente 180gg, testo consumo 21gg
-- [x] Pulizia retention giornaliera automatica
-- [x] Shutdown graceful (SIGTERM rimette job in coda)
-
-### Sistema Trascrizione Audio - Fase 2 (API Flask)
-- [x] Blueprint routes_trascrizione.py con tutte le route
-- [x] Upload audio con validazione formato/dimensione (max 500MB)
-- [x] Calcolo durata con ffprobe
-- [x] Scelta modello automatica (turbo se coda lunga)
-- [x] API stato coda (privacy: solo nome utente, no dettagli file)
-- [x] API "Le mie trascrizioni" (private per utente)
-- [x] Spostamento trascrizione da consumo a cliente (ricerca fuzzy)
-- [x] Rinomina trascrizioni
-- [x] Eliminazione trascrizioni consumo
-- [x] Scarica testo trascrizione
-
-### Sistema Trascrizione Audio - Fase 3 (Frontend)
-- [x] Pagina /trascrizione con layout 2 colonne
-- [x] Upload drag & drop con progress bar XHR
-- [x] Lista "Le Mie Trascrizioni" con auto-refresh
-- [x] Badge stato (completato/lavorazione/attesa/errore)
-- [x] Modal coda (job in lavorazione + attesa, privacy)
-- [x] Modal spostamento su cliente con ricerca fuzzy
-- [x] Modal anteprima testo con copia/download
-- [x] Widget FAB flottante (visibile solo se job in corso, pulsazione)
-- [x] Link nel menu sidebar
-- [x] Avviso retention (audio non conservato, testo 21gg)
-
-### Sistema Trascrizione Audio - Performance
-- [x] Fix CPUQuota systemd: 80% -> 600% (6 core su 12)
-- [x] Rimosso LD_PRELOAD dal servizio (rallentava caricamento modello)
-- [x] Modello default: large-v3-turbo (6x piu' veloce, -1% accuratezza)
-- [x] NUM_THREADS=10 per parallelismo CPU
-- [x] Taratura stime tempo: fattore turbo 0.5x, large-v3 1.5x
-- [x] Risultato: 54 min audio -> 22 min elaborazione (~0.42x realtime)
-- [x] Fix bug "COMPLETATO in -1 minuti" nel log
+## COMPLETATI (Sessione 03/02/2026)
 
 ### Trascrizioni nella Scheda Cliente
 - [x] 6o riquadro "Trascrizioni" nella riga documenti cliente
@@ -208,6 +158,23 @@ Ultimo aggiornamento: 04 Febbraio 2026
 - [x] Eliminazione trascrizioni
 - [x] Badge conteggio automatico
 - [x] 5 route API: lista, conta, testo, scarica, elimina
+
+### Documentazione
+- [x] CHANGELOG.md aggiornato (entry Febbraio 2026)
+- [x] MANUALE_TECNICO.md aggiornato (trascrizione + notifiche)
+- [x] MANUALE_UTENTE.md aggiornato (guida trascrizione)
+- [x] README.md aggiornato
+
+---
+
+## COMPLETATI (Sessione 30/01/2026)
+
+### Pulizia Documentazione
+- [x] Riduzione da 70 a 11 file (-84%)
+- [x] MANUALE_UTENTE.md completo
+- [x] MANUALE_TECNICO.md completo (35 tabelle, 170+ API)
+- [x] Regola Aurea #9 (convenzione backup/deploy)
+- [x] raccolta_file_ia.sh v3.0 (backup ZIP automatico)
 
 ---
 
@@ -269,43 +236,6 @@ gestione_flotta/
     attesa/                  <- coda condivisa
     lavorazione/             <- 1 file alla volta
     consumo/
-      {codice_utente}/       <- es. 000001 (Paolo)
-        {gg-mm-aaaa}/        <- organizzato per data
-          file.txt           <- retention 21 giorni
-  impostazioni/
-    trascrizione.conf        <- config trascrizione
-    notifiche.conf           <- config hub notifiche
-    categorie_notifiche.xlsx <- 13 categorie + 4 livelli
+      {codice_utente}/       <- es. 000002/
+        *.txt                <- retention 21gg
 ```
-
-### Google Calendar
-- Service Account: gestione-flotta-calendar@br-car-service-flotta.iam.gserviceaccount.com
-- Calendario: "Top Prospect BR Car Service"
-- Colori commerciali nel DB (tabella utenti.colore_calendario)
-
-### Worker Trascrizione
-- Servizio: trascrizione-worker.service
-- Modello default: large-v3-turbo (CPU, int8, 10 thread)
-- CPUQuota: 600% (6 core su 12)
-- Performance: ~0.42x realtime (54 min audio -> 22 min)
-- Log: logs/trascrizione.log
-- Recovery automatico job bloccati all'avvio
-- Protezione orario: posticipa job troppo lunghi, prova piu' corti
-- Check job eliminati: non elabora e non ripristina job cancellati
-- Upload sempre consentito (elaborazione gestita automaticamente)
-- Priorita': 2=recovery, 1=normale, 0=bassa (file grande)
-
-### Sistema Notifiche
-- Hub: motore_notifiche.py con pubblica_notifica()
-- Deduplicazione via codice_evento (finestra 24h)
-- Routing destinatari via regole DB (TUTTI, RUOLO:xxx, PROPRIETARIO, SUPERVISORE)
-- Campanella: polling 30s, visibile solo con notifiche, drag nei 4 angoli
-- Connettori: ogni modulo ha il suo in app/connettori_notifiche/
-- Admin: id=0 (destinatario di default per notifiche SISTEMA)
-- Canali futuri predisposti: email SMTP, Telegram
-
-### Database
-- SQLite: db/gestionale.db
-- Tabella: coda_trascrizioni (trascrizioni audio)
-- Tabelle notifiche: notifiche, notifiche_destinatari, notifiche_preferenze, notifiche_regole
-- Tabella: top_prospect_note.allegati (JSON)
