@@ -1,0 +1,278 @@
+<!-- ============================================================
+     TOP PROSPECT - Stili CSS
+     Versione: 1.0.0
+     Data: 2026-01-29
+     ============================================================ -->
+<style>
+/* === ICONE PRIORIT&Agrave; === */
+.priorita-1 { color: #dc3545; } /* Massima - Rosso */
+.priorita-2 { color: #fd7e14; } /* Alta - Arancione */
+.priorita-3 { color: #ffc107; } /* Media - Giallo */
+.priorita-4 { color: #0d6efd; } /* Normale - Blu */
+.priorita-5 { color: #6c757d; } /* Bassa - Grigio */
+
+/* === RIGA ESPANDIBILE === */
+.tp-row {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+.tp-row:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+.tp-row.expanded {
+    background-color: rgba(255, 193, 7, 0.15);
+}
+
+/* === DETTAGLIO ESPANSO === */
+.tp-detail-row {
+    background-color: #f8f9fa;
+}
+.tp-detail-row td {
+    padding: 0 !important;
+}
+.tp-detail-content {
+    padding: 1rem;
+    border-top: 2px solid #ffc107;
+}
+
+/* === BADGE CAR POLICY === */
+.badge-cp {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+}
+
+/* === FILTRO PRIORIT&Agrave; === */
+.filtro-priorita {
+    transition: all 0.2s;
+}
+.filtro-priorita.active {
+    font-weight: bold;
+    box-shadow: 0 0 0 2px currentColor;
+}
+.filtro-priorita:hover:not(.active) {
+    transform: translateY(-1px);
+}
+
+/* === GRIGLIA === */
+.table-top-prospect th {
+    background-color: #f8f9fa;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+.table-top-prospect td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+/* === COLONNA PRIORIT&Agrave; === */
+.col-priorita {
+    width: 40px;
+    text-align: center;
+}
+.col-priorita i {
+    font-size: 1.1rem;
+}
+
+/* === COLONNA AZIONI === */
+.col-azioni {
+    width: 120px;
+    text-align: right;
+}
+
+/* === LINK AZIENDA === */
+.link-azienda {
+    color: inherit;
+    text-decoration: none;
+}
+.link-azienda:hover {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+.link-azienda.disabled {
+    color: #6c757d;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* === STORICO ATTIVIT&Agrave; === */
+.timeline-item {
+    position: relative;
+    padding-left: 20px;
+    padding-bottom: 15px;
+    border-left: 2px solid #dee2e6;
+}
+.timeline-item:last-child {
+    border-left: 2px solid transparent;
+    padding-bottom: 0;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ffc107;
+}
+.timeline-item.candidatura::before { background-color: #6c757d; }
+.timeline-item.conferma::before { background-color: #28a745; }
+.timeline-item.archiviazione::before { background-color: #dc3545; }
+.timeline-item.ripristino::before { background-color: #17a2b8; }
+.timeline-item.nota_creata::before { background-color: #007bff; }
+.timeline-item.appuntamento_creato::before { background-color: #fd7e14; }
+
+/* === NOTE === */
+.nota-card {
+    border-left: 3px solid #ffc107;
+    margin-bottom: 0.5rem;
+}
+.nota-card.fissata {
+    border-left-color: #dc3545;
+    background-color: #fff3cd;
+}
+
+/* === APPUNTAMENTI === */
+.app-card {
+    border-left: 3px solid #0d6efd;
+    margin-bottom: 0.5rem;
+}
+.app-card.completato {
+    border-left-color: #28a745;
+    opacity: 0.7;
+}
+.app-card.passato:not(.completato) {
+    border-left-color: #dc3545;
+}
+
+/* === TOGGLE COLLAPSE === */
+.card-header .toggle-icon {
+    transition: transform 0.3s;
+}
+.card-header.collapsed .toggle-icon,
+.card-header[aria-expanded="false"] .toggle-icon {
+    transform: rotate(180deg);
+}
+
+/* === VARIAZIONI PERCENTUALI === */
+.var-positiva { color: #28a745; }
+.var-negativa { color: #dc3545; }
+.var-neutra { color: #6c757d; }
+
+/* === TABELLA CANDIDATI === */
+.table-candidati th {
+    background-color: #e9ecef;
+}
+
+/* === MODAL NOTE RIDIMENSIONABILE === */
+.modal-nota-resizable {
+    position: relative;
+    min-width: 450px;
+    min-height: 400px;
+    width: 650px;
+    height: 550px;
+    max-width: 95vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-nota-resizable .modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;  /* Permetti scroll se necessario */
+    padding: 1rem;
+    min-height: 0;  /* Importante per flexbox */
+}
+
+.modal-nota-resizable .nota-testo-container {
+    flex: 1 1 auto;  /* Può crescere e restringersi */
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;  /* Altezza minima garantita per textarea */
+}
+
+.modal-nota-resizable .nota-testo-container textarea {
+    flex: 1;
+    min-height: 120px;
+    resize: none;
+}
+
+/* Sezione inferiore (checkbox, allegati) - può restringersi */
+.modal-nota-resizable .modal-body > div:not(.nota-testo-container):not(.mb-3:first-child) {
+    flex-shrink: 1;
+}
+
+/* Handle di resize su tutti i bordi */
+.resize-handle {
+    position: absolute;
+    z-index: 10;
+}
+.resize-handle-n {
+    top: -4px;
+    left: 10px;
+    right: 10px;
+    height: 8px;
+    cursor: ns-resize;
+}
+.resize-handle-s {
+    bottom: -4px;
+    left: 10px;
+    right: 10px;
+    height: 8px;
+    cursor: ns-resize;
+}
+.resize-handle-e {
+    right: -4px;
+    top: 10px;
+    bottom: 10px;
+    width: 8px;
+    cursor: ew-resize;
+}
+.resize-handle-w {
+    left: -4px;
+    top: 10px;
+    bottom: 10px;
+    width: 8px;
+    cursor: ew-resize;
+}
+.resize-handle-ne {
+    top: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+.resize-handle-nw {
+    top: -4px;
+    left: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
+}
+.resize-handle-se {
+    bottom: -4px;
+    right: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nwse-resize;
+}
+.resize-handle-sw {
+    bottom: -4px;
+    left: -4px;
+    width: 12px;
+    height: 12px;
+    cursor: nesw-resize;
+}
+
+/* Indicatore visivo bordi al hover */
+.modal-nota-resizable:hover .resize-handle-n,
+.modal-nota-resizable:hover .resize-handle-s {
+    background: linear-gradient(to bottom, transparent 40%, rgba(0,123,255,0.3) 50%, transparent 60%);
+}
+.modal-nota-resizable:hover .resize-handle-e,
+.modal-nota-resizable:hover .resize-handle-w {
+    background: linear-gradient(to right, transparent 40%, rgba(0,123,255,0.3) 50%, transparent 60%);
+}
+</style>

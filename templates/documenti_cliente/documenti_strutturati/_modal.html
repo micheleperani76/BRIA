@@ -1,0 +1,665 @@
+<!-- ==============================================================================
+     DOCUMENTI MODAL - Modal Gestione Documenti Strutturati
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-19
+     Descrizione: Modal principale documenti con logica per forma giuridica
+     ============================================================================== -->
+
+<!-- MODAL PRINCIPALE DOCUMENTI -->
+<div class="modal fade" id="modalDocumenti" tabindex="-1" aria-labelledby="modalDocumentiLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="modalDocumentiLabel">
+                    <i class="bi bi-folder2-open"></i> Documenti - <span id="docClienteNome"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <!-- COLONNA SINISTRA: Lista Documenti -->
+                    <div class="col-md-7 border-end">
+                        <div class="p-3">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-list-check"></i> Stato Documenti
+                                <span id="docCategoria" class="badge bg-secondary ms-2"></span>
+                            </h6>
+                            
+                            <!-- Lista documenti con stato -->
+                            <div id="listaDocumentiStrutturati">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span class="ms-2">Caricamento...</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Separatore -->
+                            <hr class="my-3">
+                            
+                            <!-- Sezione Banca/IBAN -->
+                            <div class="card mb-3">
+                                <div class="card-header py-2 bg-light">
+                                    <i class="bi bi-bank"></i> Dati Bancari
+                                    <span id="bancaIbanStatus" class="float-end"></span>
+                                </div>
+                                <div class="card-body py-2">
+                                    <div class="row g-2">
+                                        <div class="col-md-5">
+                                            <label class="form-label small mb-1">Banca</label>
+                                            <input type="text" class="form-control form-control-sm" id="inputBanca" placeholder="Nome banca">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label small mb-1">IBAN</label>
+                                            <input type="text" class="form-control form-control-sm" id="inputIban" placeholder="IT00..." maxlength="27">
+                                        </div>
+                                        <div class="col-md-2 d-flex align-items-end">
+                                            <button type="button" class="btn btn-primary btn-sm w-100" onclick="salvaBancaIban()">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Sezione Garante (testo libero) -->
+                            <div class="card mb-3">
+                                <div class="card-header py-2 bg-light">
+                                    <i class="bi bi-person-badge"></i> Garante
+                                    <small class="text-muted">(sviluppo futuro)</small>
+                                </div>
+                                <div class="card-body py-2">
+                                    <textarea class="form-control form-control-sm" id="noteGarante" rows="2" 
+                                              placeholder="Note garante..."></textarea>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="salvaNote('garante')">
+                                        Salva note
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Sezione Altri Documenti (testo libero) -->
+                            <div class="card">
+                                <div class="card-header py-2 bg-light">
+                                    <i class="bi bi-file-earmark-plus"></i> Altri Documenti / Note
+                                </div>
+                                <div class="card-body py-2">
+                                    <textarea class="form-control form-control-sm" id="noteAltri" rows="2" 
+                                              placeholder="Altri documenti o note..."></textarea>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mt-2" onclick="salvaNote('altri')">
+                                        Salva note
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- COLONNA DESTRA: Guida Documenti -->
+                    <div class="col-md-5 bg-light">
+                        <div class="p-3">
+                            <h6 class="text-muted mb-3">
+                                <i class="bi bi-info-circle"></i> Documenti Richiesti
+                            </h6>
+                            <div id="guidaDocumenti" class="small">
+                                <!-- Popolato dinamicamente in base alla forma giuridica -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SUB-MODAL: Upload Documento con Scadenza -->
+<div class="modal fade" id="modalUploadDoc" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title" id="modalUploadDocTitle">
+                    <i class="bi bi-upload"></i> Carica Documento
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formUploadDoc">
+                    <input type="hidden" id="uploadTipoDoc">
+                    
+                    <!-- Drop zone -->
+                    <div id="dropZoneDoc" class="border border-2 border-dashed rounded p-4 text-center mb-3"
+                         style="cursor: pointer; transition: all 0.3s;">
+                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                        <p class="mb-1">Trascina qui il PDF</p>
+                        <p class="small text-muted mb-0">oppure clicca per selezionare</p>
+                        <input type="file" id="inputFileDoc" accept=".pdf" class="d-none">
+                    </div>
+                    
+                    <!-- File selezionato -->
+                    <div id="fileSelezionato" class="alert alert-info py-2 d-none">
+                        <i class="bi bi-file-pdf text-danger"></i>
+                        <span id="nomeFileSelezionato"></span>
+                        <button type="button" class="btn-close btn-sm float-end" onclick="rimuoviFile()"></button>
+                    </div>
+                    
+                    <!-- Data scadenza (condizionale) -->
+                    <div id="campoDataScadenza" class="mb-3 d-none">
+                        <label class="form-label">Data Scadenza <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="inputDataScadenza">
+                        <div class="form-text" id="guidaScadenza"></div>
+                    </div>
+                    
+                    <!-- Noleggiatore (condizionale) -->
+                    <div id="campoNoleggiatore" class="mb-3 d-none">
+                        <label class="form-label">Noleggiatore <span class="text-danger">*</span></label>
+                        <select class="form-select" id="inputNoleggiatore">
+                            <option value="">-- Seleziona --</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Guida documento -->
+                    <div class="alert alert-light small" id="guidaDocumento">
+                        <!-- Popolato dinamicamente -->
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btnSalvaDoc" onclick="salvaDocumento()" disabled>
+                    <i class="bi bi-check-lg"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS Inline per il modal -->
+<style>
+#dropZoneDoc.dragover {
+    background-color: #e3f2fd;
+    border-color: #2196F3 !important;
+}
+.doc-item {
+    transition: background-color 0.2s;
+}
+.doc-item:hover {
+    background-color: #f8f9fa;
+}
+.doc-stato-ok { color: #198754; }
+.doc-stato-scadenza { color: #fd7e14; }
+.doc-stato-scaduto { color: #dc3545; }
+.doc-stato-mancante { color: #6c757d; }
+</style>
+
+<!-- JavaScript per gestione documenti -->
+<script>
+(function() {
+    // Variabili globali modulo
+    let clienteId = null;
+    let datiDocumenti = null;
+    let fileSelezionato = null;
+    
+    // Inizializza quando si apre il modal principale
+    document.getElementById('modalDocumenti')?.addEventListener('show.bs.modal', function() {
+        clienteId = this.dataset.clienteId;
+        caricaDatiDocumenti();
+    });
+    
+    // Funzione globale per aprire il modal
+    window.apriModalDocumenti = function(id) {
+        clienteId = id;
+        const modal = document.getElementById('modalDocumenti');
+        modal.dataset.clienteId = id;
+        new bootstrap.Modal(modal).show();
+    };
+    
+    // Carica dati documenti dal server
+    function caricaDatiDocumenti() {
+        if (!clienteId) return;
+        
+        fetch(`/api/cliente/${clienteId}/documenti-strutturati/info`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    datiDocumenti = data;
+                    renderDocumenti(data);
+                    renderGuida(data);
+                    popolaBancaIban(data.banca_iban);
+                    caricaNote();
+                } else {
+                    alert('Errore: ' + data.error);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Errore di connessione');
+            });
+    }
+    
+    // Render lista documenti con stato
+    function renderDocumenti(data) {
+        document.getElementById('docClienteNome').textContent = data.ragione_sociale || 'Cliente';
+        document.getElementById('docCategoria').textContent = formatCategoria(data.categoria);
+        
+        const container = document.getElementById('listaDocumentiStrutturati');
+        
+        if (!data.documenti || data.documenti.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-3">Nessun documento richiesto</div>';
+            return;
+        }
+        
+        // Separa documenti LR dagli altri
+        const docsLR = data.documenti.filter(d => ['identita_lr', 'codice_fiscale_lr', 'patente_lr'].includes(d.tipo));
+        const docsAltri = data.documenti.filter(d => !['identita_lr', 'codice_fiscale_lr', 'patente_lr'].includes(d.tipo));
+        
+        let html = '';
+        
+        // Riquadro Legale Rappresentante
+        if (docsLR.length > 0) {
+            html += `
+                <div class="card mb-3" style="border: 3px solid #0d6efd; border-radius: 8px;">
+                    <div class="card-header bg-primary text-white py-2">
+                        <i class="bi bi-person-badge-fill"></i> <strong>Documenti Legale Rappresentante</strong>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+            `;
+            docsLR.forEach(doc => {
+                html += renderDocumentoItem(doc);
+            });
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Altri documenti
+        if (docsAltri.length > 0) {
+            html += '<div class="list-group list-group-flush">';
+            docsAltri.forEach(doc => {
+                html += renderDocumentoItem(doc);
+            });
+            html += '</div>';
+        }
+        
+        container.innerHTML = html;
+    }
+    
+    // Render singolo documento
+    function renderDocumentoItem(doc) {
+        const statoClass = `doc-stato-${doc.stato}`;
+        const statoIcon = getStatoIcon(doc.stato);
+        const statoText = getStatoText(doc);
+        
+        return `
+            <div class="list-group-item doc-item d-flex justify-content-between align-items-center py-2">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center">
+                        <span class="${statoClass} me-2">${statoIcon}</span>
+                        <strong>${doc.nome}</strong>
+                    </div>
+                    <small class="text-muted">${statoText}</small>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    ${doc.caricato ? `
+                        <a href="/cliente/${clienteId}/documento-strutturato/${doc.tipo}" 
+                           target="_blank" class="btn btn-outline-primary" title="Visualizza">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <button type="button" class="btn btn-outline-warning" 
+                                onclick="apriUploadDoc('${doc.tipo}', true)" title="Sostituisci">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" 
+                                onclick="eliminaDocumento('${doc.tipo}')" title="Elimina">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    ` : `
+                        <button type="button" class="btn btn-primary" 
+                                onclick="apriUploadDoc('${doc.tipo}', false)">
+                            <i class="bi bi-upload"></i> Carica
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Render guida documenti (colonna destra)
+    function renderGuida(data) {
+        const container = document.getElementById('guidaDocumenti');
+        let html = `<p class="fw-bold mb-2">${formatCategoria(data.categoria)}</p>`;
+        
+        if (data.neo_costituita) {
+            html += '<div class="alert alert-warning py-1 small mb-2"><i class="bi bi-exclamation-triangle"></i> Azienda neo costituita (&lt;12 mesi)</div>';
+        }
+        
+        // Separa documenti LR dagli altri
+        const docsLR = data.documenti.filter(d => ['identita_lr', 'codice_fiscale_lr', 'patente_lr'].includes(d.tipo));
+        const docsAltri = data.documenti.filter(d => !['identita_lr', 'codice_fiscale_lr', 'patente_lr'].includes(d.tipo));
+        
+        // Riquadro LR
+        if (docsLR.length > 0) {
+            html += '<div class="border rounded p-2 mb-2 bg-primary bg-opacity-10">';
+            html += '<small class="fw-bold"><i class="bi bi-person-badge"></i> Legale Rappresentante</small>';
+            html += '<ul class="ps-3 mb-0 small">';
+            docsLR.forEach(doc => {
+                const icon = doc.caricato ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-circle text-muted"></i>';
+                html += `<li class="mb-0">${icon} ${doc.nome}</li>`;
+            });
+            html += '</ul></div>';
+        }
+        
+        // Altri documenti
+        if (docsAltri.length > 0) {
+            html += '<ul class="ps-3">';
+            docsAltri.forEach(doc => {
+                const icon = doc.caricato ? '<i class="bi bi-check-circle text-success"></i>' : '<i class="bi bi-circle text-muted"></i>';
+                html += `<li class="mb-1">${icon} ${doc.nome}</li>`;
+            });
+            html += '</ul>';
+        }
+        
+        html += '<hr><p class="fw-bold mb-2">Altri elementi:</p><ul class="ps-3">';
+        html += '<li><i class="bi bi-bank"></i> Banca + IBAN</li>';
+        html += '<li><i class="bi bi-person-badge"></i> Garante (se richiesto)</li>';
+        html += '</ul>';
+        
+        container.innerHTML = html;
+    }
+    
+    // Formatta categoria
+    function formatCategoria(cat) {
+        const map = {
+            'SOCIETA_CAPITALI': 'Societa di Capitali',
+            'SOCIETA_PERSONE': 'Societa di Persone',
+            'DITTA_INDIVIDUALE': 'Ditta Individuale / Professionista',
+            'PRIVATO': 'Privato'
+        };
+        return map[cat] || cat;
+    }
+    
+    // Icona stato
+    function getStatoIcon(stato) {
+        const icons = {
+            'ok': '<i class="bi bi-check-circle-fill"></i>',
+            'in_scadenza': '<i class="bi bi-exclamation-triangle-fill"></i>',
+            'scaduto': '<i class="bi bi-x-circle-fill"></i>',
+            'mancante': '<i class="bi bi-circle"></i>'
+        };
+        return icons[stato] || icons.mancante;
+    }
+    
+    // Testo stato
+    function getStatoText(doc) {
+        if (!doc.caricato) return 'Da caricare';
+        if (doc.stato === 'scaduto') return 'SCADUTO';
+        if (doc.stato === 'in_scadenza') return `Scade tra ${doc.giorni_scadenza} giorni`;
+        if (doc.stato === 'ok' && doc.giorni_scadenza !== null) return `Valido (${doc.giorni_scadenza} giorni)`;
+        return 'Caricato';
+    }
+    
+    // Popola campi banca/iban
+    function popolaBancaIban(data) {
+        document.getElementById('inputBanca').value = data.banca || '';
+        document.getElementById('inputIban').value = data.iban || '';
+        aggiornaBancaIbanStatus(data.completo);
+    }
+    
+    function aggiornaBancaIbanStatus(completo) {
+        const el = document.getElementById('bancaIbanStatus');
+        if (completo) {
+            el.innerHTML = '<span class="badge bg-success"><i class="bi bi-check"></i> OK</span>';
+        } else {
+            el.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> Incompleto</span>';
+        }
+    }
+    
+    // Salva banca/iban
+    window.salvaBancaIban = function() {
+        const banca = document.getElementById('inputBanca').value.trim();
+        const iban = document.getElementById('inputIban').value.trim().toUpperCase().replace(/\s/g, '');
+        
+        if (!banca || !iban) {
+            alert('Banca e IBAN sono entrambi obbligatori');
+            return;
+        }
+        
+        fetch(`/api/cliente/${clienteId}/banca-iban`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({banca, iban})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                aggiornaBancaIbanStatus(true);
+                alert('Dati bancari salvati');
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    };
+    
+    // Carica note (garante, altri)
+    function caricaNote() {
+        // Le note sono salvate come documenti speciali, per ora le lasciamo vuote
+        // In futuro si possono caricare dal DB
+    }
+    
+    // Salva note
+    window.salvaNote = function(campo) {
+        const textarea = document.getElementById(campo === 'garante' ? 'noteGarante' : 'noteAltri');
+        const valore = textarea.value.trim();
+        
+        fetch(`/api/cliente/${clienteId}/note-documenti`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({campo, valore})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Note salvate');
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    };
+    
+    // ============================================================
+    // SUB-MODAL UPLOAD
+    // ============================================================
+    
+    // Apri sub-modal upload
+    window.apriUploadDoc = function(tipo, sostituzione) {
+        const doc = datiDocumenti.documenti.find(d => d.tipo === tipo);
+        if (!doc) return;
+        
+        // Reset form
+        document.getElementById('uploadTipoDoc').value = tipo;
+        document.getElementById('inputFileDoc').value = '';
+        document.getElementById('inputDataScadenza').value = '';
+        document.getElementById('inputNoleggiatore').value = '';
+        document.getElementById('fileSelezionato').classList.add('d-none');
+        document.getElementById('btnSalvaDoc').disabled = true;
+        fileSelezionato = null;
+        
+        // Titolo
+        document.getElementById('modalUploadDocTitle').innerHTML = 
+            `<i class="bi bi-upload"></i> ${sostituzione ? 'Sostituisci' : 'Carica'}: ${doc.nome}`;
+        
+        // Campo data scadenza
+        const campoData = document.getElementById('campoDataScadenza');
+        if (doc.ha_scadenza) {
+            campoData.classList.remove('d-none');
+            document.getElementById('inputDataScadenza').required = true;
+        } else {
+            campoData.classList.add('d-none');
+            document.getElementById('inputDataScadenza').required = false;
+        }
+        
+        // Campo noleggiatore
+        const campoNoleg = document.getElementById('campoNoleggiatore');
+        if (doc.richiede_noleggiatore) {
+            campoNoleg.classList.remove('d-none');
+            // Popola select noleggiatori
+            const select = document.getElementById('inputNoleggiatore');
+            select.innerHTML = '<option value="">-- Seleziona --</option>';
+            datiDocumenti.noleggiatori_disponibili.forEach(n => {
+                select.innerHTML += `<option value="${n}">${n}</option>`;
+            });
+        } else {
+            campoNoleg.classList.add('d-none');
+        }
+        
+        // Guida
+        document.getElementById('guidaDocumento').innerHTML = 
+            `<i class="bi bi-info-circle"></i> ${doc.guida || 'Caricare il documento in formato PDF.'}`;
+        document.getElementById('guidaScadenza').textContent = doc.guida || '';
+        
+        // Mostra modal
+        new bootstrap.Modal(document.getElementById('modalUploadDoc')).show();
+    };
+    
+    // Setup drop zone
+    const dropZone = document.getElementById('dropZoneDoc');
+    const inputFile = document.getElementById('inputFileDoc');
+    
+    if (dropZone && inputFile) {
+        dropZone.addEventListener('click', () => inputFile.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                gestisciFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        inputFile.addEventListener('change', () => {
+            if (inputFile.files.length > 0) {
+                gestisciFile(inputFile.files[0]);
+            }
+        });
+    }
+    
+    // Gestisci file selezionato
+    function gestisciFile(file) {
+        if (!file.name.toLowerCase().endsWith('.pdf')) {
+            alert('Solo file PDF ammessi');
+            return;
+        }
+        
+        fileSelezionato = file;
+        document.getElementById('nomeFileSelezionato').textContent = file.name;
+        document.getElementById('fileSelezionato').classList.remove('d-none');
+        verificaFormCompleto();
+    }
+    
+    // Rimuovi file
+    window.rimuoviFile = function() {
+        fileSelezionato = null;
+        document.getElementById('inputFileDoc').value = '';
+        document.getElementById('fileSelezionato').classList.add('d-none');
+        verificaFormCompleto();
+    };
+    
+    // Verifica se form e' completo
+    function verificaFormCompleto() {
+        const tipo = document.getElementById('uploadTipoDoc').value;
+        const doc = datiDocumenti?.documenti.find(d => d.tipo === tipo);
+        
+        let completo = fileSelezionato !== null;
+        
+        if (doc?.ha_scadenza) {
+            const data = document.getElementById('inputDataScadenza').value;
+            completo = completo && data !== '';
+        }
+        
+        if (doc?.richiede_noleggiatore) {
+            const noleg = document.getElementById('inputNoleggiatore').value;
+            completo = completo && noleg !== '';
+        }
+        
+        document.getElementById('btnSalvaDoc').disabled = !completo;
+    }
+    
+    // Event listener per verifica form
+    document.getElementById('inputDataScadenza')?.addEventListener('change', verificaFormCompleto);
+    document.getElementById('inputNoleggiatore')?.addEventListener('change', verificaFormCompleto);
+    
+    // Salva documento
+    window.salvaDocumento = function() {
+        if (!fileSelezionato) {
+            alert('Selezionare un file');
+            return;
+        }
+        
+        const tipo = document.getElementById('uploadTipoDoc').value;
+        const dataScadenza = document.getElementById('inputDataScadenza').value;
+        const noleggiatore = document.getElementById('inputNoleggiatore').value;
+        
+        const formData = new FormData();
+        formData.append('file', fileSelezionato);
+        formData.append('tipo_documento', tipo);
+        if (dataScadenza) formData.append('data_scadenza', dataScadenza);
+        if (noleggiatore) formData.append('noleggiatore', noleggiatore);
+        
+        document.getElementById('btnSalvaDoc').disabled = true;
+        document.getElementById('btnSalvaDoc').innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        fetch(`/api/cliente/${clienteId}/documenti-strutturati/upload`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalUploadDoc')).hide();
+                caricaDatiDocumenti(); // Ricarica lista
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(err => {
+            alert('Errore di connessione');
+        })
+        .finally(() => {
+            document.getElementById('btnSalvaDoc').disabled = false;
+            document.getElementById('btnSalvaDoc').innerHTML = '<i class="bi bi-check-lg"></i> Salva';
+        });
+    };
+    
+    // Elimina documento
+    window.eliminaDocumento = function(tipo) {
+        if (!confirm('Eliminare questo documento?')) return;
+        
+        fetch(`/api/cliente/${clienteId}/documenti-strutturati/elimina`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tipo_documento: tipo})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                caricaDatiDocumenti();
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    };
+    
+})();
+</script>

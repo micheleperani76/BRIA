@@ -1,0 +1,83 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Caricamento e Filtri
+     Versione: 1.0
+     ============================================================ -->
+<script>
+// ==============================================================================
+// CARICAMENTO TRATTATIVE
+// ==============================================================================
+function caricaTrattative(offset = 0) {
+    const container = document.getElementById('tbodyTrattative');
+    container.innerHTML = '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm me-2"></div>Caricamento...</td></tr>';
+    
+    // Costruisci parametri
+    const params = new URLSearchParams();
+    
+    const stato = document.getElementById('filtroStato').value;
+    if (stato) params.append('stato', stato);
+    
+    const noleggiatore = document.getElementById('filtroNoleggiatore').value;
+    if (noleggiatore) params.append('noleggiatore', noleggiatore);
+    
+    const clienteId = document.getElementById('filtroClienteId');
+    const clienteTesto = document.getElementById('filtroCliente').value;
+    if (clienteId && clienteId.value) params.append('cliente_id', clienteId.value);
+    else if (clienteTesto) params.append('cliente_search', clienteTesto);
+    
+    const commerciale = document.getElementById('filtroCommerciale');
+    if (commerciale && commerciale.value) params.append('commerciale_id', commerciale.value);
+    
+    const dataDa = getDataDaFiltri('filtroMeseDa', 'filtroAnnoDa', false);
+    if (dataDa) params.append('data_da', dataDa);
+    
+    const dataA = getDataDaFiltri('filtroMeseA', 'filtroAnnoA', true);
+    if (dataA) params.append('data_a', dataA);
+    
+    params.append('solo_aperte', '1'); // Prima griglia sempre solo aperte
+    if (false) {
+        params.append('solo_aperte', '1');
+    }
+    
+    params.append('limite', '50');
+    params.append('offset', offset.toString());
+    
+    fetch('/trattative/api/lista?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderTrattative(data.trattative);
+                renderPaginazione(data.totale, data.limite, data.offset);
+                renderInfoRisultati(data.totale, data.limite, data.offset);
+                var counterAperte = document.getElementById('countTrattativeAperte');
+                if (counterAperte) counterAperte.textContent = data.totale || 0;
+                // Ricarica anche griglia chiuse con stessi filtri
+                if (typeof caricaTrattativeChiuse === 'function') { paginazioneChiuse.caricato = false; caricaTrattativeChiuse(true); }
+            } else {
+                mostraErrore('Errore caricamento: ' + data.error);
+            }
+        })
+        .catch(err => mostraErrore('Errore di rete: ' + err.message));
+}
+
+function resetFiltri() {
+    document.getElementById('filtroStato').value = '';
+    document.getElementById('filtroNoleggiatore').value = '';
+    document.getElementById('filtroCliente').value = '';
+    document.getElementById('filtroClienteId').value = '';
+    document.getElementById('filtroMeseDa').value = ''; document.getElementById('filtroAnnoDa').value = '';
+    document.getElementById('filtroMeseA').value = ''; document.getElementById('filtroAnnoA').value = '';
+    document.getElementById('filtroSoloAperte').checked = true;
+    
+    const filtroComm = document.getElementById('filtroCommerciale');
+    if (filtroComm) filtroComm.value = '';
+    
+    // Rimuovi parametro cliente_id dalla URL senza ricaricare
+    if (window.history.replaceState) {
+        var url = new URL(window.location);
+        url.searchParams.delete('cliente_id');
+        window.history.replaceState({}, '', url);
+    }
+    
+    caricaTrattative();
+}
+</script>

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{# ================================================
+   INDEX.HTML - LISTA CLIENTI
+   Versione: 2.0.0 (modulare)
+   
+   Struttura modulare in templates/index/:
+   - _styles.html       -> CSS
+   - _header.html       -> Titolo + Score Cards
+   - _filtri.html       -> Form filtri
+   - _toolbar.html      -> Indice A-Z + paginazione top
+   - _ricerca_smart.html-> Box "Trovato in:"
+   - _tabella.html      -> Tabella clienti
+   - _paginazione.html  -> Footer paginazione
+   - _modal_referente.html -> Modal referente
+   - _scripts.html      -> JavaScript
+   ================================================ #}
+
+{% block title %}Clienti - Gestione Flotta{% endblock %}
+
+{% block extra_css %}
+{% include "index/_styles.html" %}
+{% endblock %}
+
+{% block content %}
+{# === HEADER: Titolo + Score Cards === #}
+{% include "index/_header.html" %}
+
+{# === FILTRI: Form ricerca/score/zona/commerciale === #}
+{% include "index/_filtri.html" %}
+
+{# === CARD CONTENITORE PRINCIPALE === #}
+<div class="card">
+    <div class="card-body p-0">
+        {# === TOOLBAR: Indice A-Z + controlli === #}
+        {% include "index/_toolbar.html" %}
+        
+        {# === RICERCA SMART: Badge "Trovato in:" === #}
+        {% include "index/_ricerca_smart.html" %}
+        
+        {# === TABELLA CLIENTI === #}
+        {% include "index/_tabella.html" %}
+        
+        {# === PAGINAZIONE FOOTER === #}
+        {% include "index/_paginazione.html" %}
+    </div>
+</div>
+
+{# === MODAL REFERENTE === #}
+{% include "index/_modal_referente.html" %}
+{% endblock %}
+
+{% block extra_js %}
+{% include "index/_scripts.html" %}
+{% endblock %}

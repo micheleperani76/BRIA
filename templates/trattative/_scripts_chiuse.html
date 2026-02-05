@@ -1,0 +1,227 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Trattative Chiuse
+     Versione: 1.2
+     Data: 2026-01-28
+     Fix: Stesso stile rendering + paginazione
+     ============================================================ -->
+<script>
+// Stato paginazione chiuse
+var paginazioneChiuse = {
+    limite: 25,
+    offset: 0,
+    totale: 0,
+    caricato: false
+};
+
+// Carica trattative chiuse quando si espande la sezione
+document.addEventListener('DOMContentLoaded', function() {
+    var sezioneChiuse = document.getElementById('sezioneTrattativeChiuse');
+    if (sezioneChiuse) {
+        sezioneChiuse.addEventListener('shown.bs.collapse', function() {
+            if (!paginazioneChiuse.caricato) {
+                caricaTrattativeChiuse();
+            }
+        });
+    }
+});
+
+function caricaTrattativeChiuse(resetOffset) {
+    if (resetOffset) paginazioneChiuse.offset = 0;
+    
+    var tbody = document.getElementById('tbodyTrattativeChiuse');
+    if (!tbody) return;
+    
+    // Mostra loading
+    tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div> Caricamento...</td></tr>';
+    
+    // Costruisco URL con stessi filtri della griglia principale
+    var params = new URLSearchParams();
+    params.append('solo_chiuse', '1');
+    params.append('limite', paginazioneChiuse.limite);
+    params.append('offset', paginazioneChiuse.offset);
+    
+    // Applico stessi filtri
+    var stato = document.getElementById('filtroStato');
+    if (stato && stato.value) params.append('stato', stato.value);
+    
+    var noleggiatore = document.getElementById('filtroNoleggiatore');
+    if (noleggiatore && noleggiatore.value) params.append('noleggiatore', noleggiatore.value);
+    
+    var clienteId = document.getElementById('filtroClienteId');
+    if (clienteId && clienteId.value) params.append('cliente_id', clienteId.value);
+    
+    var commerciale = document.getElementById('filtroCommerciale');
+    if (commerciale && commerciale.value) params.append('commerciale_id', commerciale.value);
+    
+    var dataDa = typeof getDataDaFiltri === 'function' ? getDataDaFiltri('filtroMeseDa', 'filtroAnnoDa', false) : '';
+    if (dataDa) params.append('data_da', dataDa);
+    
+    var dataA = typeof getDataDaFiltri === 'function' ? getDataDaFiltri('filtroMeseA', 'filtroAnnoA', true) : '';
+    if (dataA) params.append('data_a', dataA);
+    
+    var url = '/trattative/api/lista?' + params.toString();
+    
+    fetch(url)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                paginazioneChiuse.caricato = true;
+                paginazioneChiuse.totale = data.totale || (data.trattative || []).length;
+                
+                renderTrattativeChiuse(data.trattative || []);
+                renderPaginazioneChiuse();
+                
+                // Aggiorna counter header
+                var counter = document.getElementById('countTrattativeChiuse');
+                if (counter) counter.textContent = paginazioneChiuse.totale;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-danger">Errore: ' + data.error + '</td></tr>';
+            }
+        })
+        .catch(function(err) {
+            tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-danger">Errore di rete</td></tr>';
+        });
+}
+
+function renderTrattativeChiuse(trattative) {
+    var tbody = document.getElementById('tbodyTrattativeChiuse');
+    if (!tbody) return;
+    
+    if (trattative.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-muted">Nessuna trattativa chiusa</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    trattative.forEach(function(t) {
+        var tr = document.createElement('tr');
+        tr.className = 'riga-trattativa';
+        tr.dataset.id = t.id;
+        
+        // Colore stato
+        var coloreStato = window.coloriStati ? (window.coloriStati[t.stato] || '#6c757d') : '#6c757d';
+        
+        // Percentuale
+        var percentuale = t.percentuale || 100;
+        var coloreProgressBar = percentuale >= 100 ? '#28a745' : '#007bff';
+        
+        tr.innerHTML = 
+            '<td class="text-center">' +
+                '<button class="btn btn-link btn-sm p-0 toggle-espandi" onclick="toggleEspandi(' + t.id + ')" title="Espandi timeline">' +
+                    '<i class="bi bi-chevron-right"></i>' +
+                '</button>' +
+            '</td>' +
+            '<td class="td-cliente">' +
+                '<a href="/cerca/' + (t.p_iva || t.cliente_id) + '" class="text-decoration-none fw-medium">' + 
+                    escapeHtmlChiuse(t.ragione_sociale || '-') + 
+                '</a>' +
+            '</td>' +
+            '<td class="td-noleggiatore">' + escapeHtmlChiuse(t.noleggiatore || '-') + '</td>' +
+            '<td class="td-veicolo">' +
+                '<span class="marca">' + escapeHtmlChiuse(t.marca || '') + '</span>' +
+                '<small class="text-muted descrizione d-block">' + escapeHtmlChiuse(t.descrizione_veicolo || '') + '</small>' +
+            '</td>' +
+            '<td class="td-tipologia">' + escapeHtmlChiuse(t.tipologia_veicolo || '-') + '</td>' +
+            '<td class="td-tipo">' + escapeHtmlChiuse(t.tipo_trattativa || '-') + '</td>' +
+            '<td class="td-pezzi text-center">' + (t.num_pezzi || 1) + '</td>' +
+            '<td class="td-stato">' +
+                '<span class="badge stato-badge" style="background-color: ' + coloreStato + '">' + escapeHtmlChiuse(t.stato || '-') + '</span>' +
+            '</td>' +
+            '<td class="td-percentuale text-center">' +
+                '<div class="progress" style="height: 20px; min-width: 60px;">' +
+                    '<div class="progress-bar" role="progressbar" style="width: ' + percentuale + '%; background-color: ' + coloreProgressBar + '">' + percentuale + '%</div>' +
+                '</div>' +
+            '</td>' +
+            '<td class="td-data-inizio">' + formatDataChiuse(t.data_inizio) + '</td>' +
+            '<td class="td-data-chiusura">' + formatDataChiuse(t.data_chiusura) + '</td>' +
+            '<td class="td-commerciale small">' +
+                '<span class="nome-commerciale">' + escapeHtmlChiuse(t.commerciale_nome_snapshot || '-') + '</span>' +
+            '</td>' +
+            '<td class="td-azioni">' +
+                '<button class="btn btn-sm btn-outline-secondary" onclick="toggleEspandi(' + t.id + ')" title="Visualizza storico">' +
+                    '<i class="bi bi-eye"></i>' +
+                '</button>' +
+            '</td>';
+        
+        tbody.appendChild(tr);
+    });
+}
+
+function renderPaginazioneChiuse() {
+    var container = document.getElementById('infoRisultatiChiuse');
+    var paginazione = document.getElementById('paginazioneChiuse');
+    
+    var inizio = paginazioneChiuse.offset + 1;
+    var fine = Math.min(paginazioneChiuse.offset + paginazioneChiuse.limite, paginazioneChiuse.totale);
+    var totalePagine = Math.ceil(paginazioneChiuse.totale / paginazioneChiuse.limite);
+    var paginaCorrente = Math.floor(paginazioneChiuse.offset / paginazioneChiuse.limite) + 1;
+    
+    // Info risultati con selector elementi per pagina
+    if (container) {
+        container.innerHTML = 
+            '<span>' + inizio + '-' + fine + ' di ' + paginazioneChiuse.totale + '</span>' +
+            '<select class="form-select form-select-sm d-inline-block ms-2" style="width: auto;" onchange="cambiaLimiteChiuse(this.value)">' +
+            '<option value="10"' + (paginazioneChiuse.limite == 10 ? ' selected' : '') + '>10</option>' +
+            '<option value="25"' + (paginazioneChiuse.limite == 25 ? ' selected' : '') + '>25</option>' +
+            '<option value="50"' + (paginazioneChiuse.limite == 50 ? ' selected' : '') + '>50</option>' +
+            '<option value="100"' + (paginazioneChiuse.limite == 100 ? ' selected' : '') + '>100</option>' +
+            '</select>' +
+            '<span class="ms-1">per pagina</span>';
+    }
+    
+    // Paginazione
+    if (paginazione && totalePagine > 1) {
+        var html = '';
+        
+        // Precedente
+        html += '<li class="page-item' + (paginaCorrente <= 1 ? ' disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="paginaChiuse(' + (paginaCorrente - 1) + '); return false;">&laquo;</a></li>';
+        
+        // Numeri pagina (max 5)
+        var startPage = Math.max(1, paginaCorrente - 2);
+        var endPage = Math.min(totalePagine, startPage + 4);
+        
+        for (var i = startPage; i <= endPage; i++) {
+            html += '<li class="page-item' + (i == paginaCorrente ? ' active' : '') + '">' +
+                    '<a class="page-link" href="#" onclick="paginaChiuse(' + i + '); return false;">' + i + '</a></li>';
+        }
+        
+        // Successivo
+        html += '<li class="page-item' + (paginaCorrente >= totalePagine ? ' disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="paginaChiuse(' + (paginaCorrente + 1) + '); return false;">&raquo;</a></li>';
+        
+        paginazione.innerHTML = html;
+    } else if (paginazione) {
+        paginazione.innerHTML = '';
+    }
+}
+
+function paginaChiuse(numPagina) {
+    paginazioneChiuse.offset = (numPagina - 1) * paginazioneChiuse.limite;
+    caricaTrattativeChiuse();
+}
+
+function cambiaLimiteChiuse(nuovoLimite) {
+    paginazioneChiuse.limite = parseInt(nuovoLimite, 10);
+    paginazioneChiuse.offset = 0;
+    caricaTrattativeChiuse();
+}
+
+function formatDataChiuse(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        var d = new Date(dataStr);
+        return d.toLocaleDateString('it-IT');
+    } catch(e) {
+        return dataStr;
+    }
+}
+
+function escapeHtmlChiuse(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>

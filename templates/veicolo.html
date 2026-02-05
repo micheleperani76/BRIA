@@ -1,0 +1,1180 @@
+{% extends "base.html" %}
+
+{% block title %}{{ veicolo.targa or 'Nuovo' }} - {{ veicolo.marca }} {{ veicolo.modello }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sim-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+    }
+    .sim-card.has-result {
+        border-color: #0d6efd;
+        border-style: solid;
+    }
+    .result-ok { background: linear-gradient(135deg, #d1e7dd 0%, #badbcc 100%); }
+    .result-warning { background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); }
+    .result-danger { background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%); }
+    
+    .km-progress {
+        height: 30px;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .info-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .info-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+    .noleggiatore-badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+        color: white;
+        min-width: 280px;
+    }
+    
+    /* Chart container */
+    #chartContainer {
+        min-height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/flotta">Flotta</a></li>
+                {% if veicolo.cliente_id %}
+                <li class="breadcrumb-item"><a href="{{ url_cliente({'p_iva': veicolo.p_iva, 'cod_fiscale': veicolo.cod_fiscale, 'id': veicolo.cliente_id}) }}">{{ veicolo.nome_cliente or 'Cliente' }}</a></li>
+                {% endif %}
+                <li class="breadcrumb-item active">{{ veicolo.targa or 'Veicolo' }}</li>
+            </ol>
+        </nav>
+        <h4 class="mb-0">
+            {% if veicolo.targa %}
+            <code class="fs-4">{{ veicolo.targa }}</code>
+            {% else %}
+            <!-- Input targa se mancante -->
+            <div class="d-inline-flex align-items-center gap-2">
+                <input type="text" class="form-control form-control-sm" id="inputTarga" 
+                       placeholder="Inserisci targa" style="width: 140px; text-transform: uppercase;"
+                       maxlength="10" pattern="[A-Za-z0-9]+">
+                <button type="button" class="btn btn-sm btn-warning" onclick="confermaTarga()">
+                    <i class="bi bi-save"></i> Salva Targa
+                </button>
+            </div>
+            {% endif %}
+            <span class="text-muted">-</span>
+            {{ veicolo.marca }} {{ veicolo.modello }}
+        </h4>
+    </div>
+    <div class="d-flex flex-column align-items-end gap-2">
+        <!-- Nome noleggiatore -->
+        <span class="badge noleggiatore-badge" style="background-color: {{ noleggiatore_color }};">
+            {{ veicolo.noleggiatore or 'N/D' }}
+        </span>
+        
+        <!-- Tipo veicolo (Installato/Extra) -->
+        {% set tipo = veicolo.tipo_veicolo or 'Extra' %}
+        {% set tipo_colore = '#28a745' if tipo == 'Installato' else '#fd7e14' %}
+        {% set tipo_icona = 'bi-check-circle-fill' if tipo == 'Installato' else 'bi-arrow-right-circle-fill' %}
+        <span class="badge" style="background-color: {{ tipo_colore }};">
+            <i class="bi {{ tipo_icona }}"></i> {{ tipo }}
+        </span>
+        
+        {% if link_assistenza %}
+        <!-- Tasto trova centro assistenza -->
+        <a href="{{ link_assistenza }}" target="_blank" class="text-decoration-none w-100" title="Apri pagina assistenza {{ veicolo.noleggiatore }}">
+            <span class="badge noleggiatore-badge w-100 text-center" style="background-color: {{ noleggiatore_color }}; cursor: pointer;">
+                <i class="bi bi-wrench me-1"></i> TROVA IL CENTRO ASSISTENZA
+            </span>
+        </a>
+        {% endif %}
+        
+        {% if link_denuncia %}
+        <!-- Tasto denuncia sinistro -->
+        <a href="{{ link_denuncia }}" target="_blank" class="text-decoration-none w-100" title="Denuncia sinistro {{ veicolo.noleggiatore }}">
+            <span class="badge noleggiatore-badge w-100 text-center" style="background-color: {{ noleggiatore_color }}; cursor: pointer;">
+                <i class="bi bi-exclamation-triangle me-1"></i> DENUNCIA UN SINISTRO
+            </span>
+        </a>
+        {% endif %}
+        
+        {% if link_restituzione %}
+        <!-- Tasto guida restituzione -->
+        <a href="{{ link_restituzione }}" target="_blank" class="text-decoration-none w-100" title="Guida restituzione {{ veicolo.noleggiatore }}">
+            <span class="badge noleggiatore-badge w-100 text-center" style="background-color: {{ noleggiatore_color }}; cursor: pointer;">
+                <i class="bi bi-box-arrow-right me-1"></i> GUIDA ALLA RESTITUZIONE
+            </span>
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Colonna sinistra: Dati veicolo -->
+    <div class="col-lg-5">
+        <!-- Info contratto -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-file-text"></i> Dati Contratto
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="info-label">Durata</div>
+                        <div class="info-value">{{ veicolo.durata or '-' }} mesi</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Canone</div>
+                        <div class="info-value text-success">&euro; {{ (veicolo.canone or 0)|format_numero }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Inizio</div>
+                        <div class="info-value">{{ veicolo.inizio|format_data if veicolo.inizio else '-' }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="info-label">Scadenza</div>
+                        <div class="info-value {% if giorni_rimasti and giorni_rimasti < 90 %}text-danger{% endif %}">
+                            {{ veicolo.scadenza|format_data if veicolo.scadenza else '-' }}
+                        </div>
+                    </div>
+                    
+                    <div class="col-12"><hr class="my-2"></div>
+                    
+                    <!-- Km contratto -->
+                    <div class="col-6">
+                        <div class="info-label">Km Contratto</div>
+                        <div class="info-value">{{ "{:,}".format(veicolo.km or 0).replace(",", ".") }}</div>
+                    </div>
+                    
+                    {% if veicolo.noleggiatore == 'LEASYS' %}
+                    <div class="col-6">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="info-label">+ Franchigia Km</div>
+                                <div class="info-value text-info">{{ "{:,}".format(veicolo.km_franchigia or 0).replace(",", ".") }}</div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#modalFranchigiaKm" title="Modifica Franchigia">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="info-label">Km Totali Disponibili</div>
+                        <div class="info-value text-primary fs-4">
+                            {{ "{:,}".format(km_totali_contratto).replace(",", ".") }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="col-6">
+                        <div class="info-label">Km/mese</div>
+                        <div class="info-value">{{ "{:,}".format(km_mese).replace(",", ".") }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Costi Km -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-currency-euro"></i> Costi Km</span>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCostiKm">
+                    <i class="bi bi-pencil"></i> Modifica
+                </button>
+            </div>
+            <div class="card-body">
+                {% if veicolo.soglia_scaglione %}
+                <!-- ARVAL: 2 fasce -->
+                <div class="row g-2">
+                    <div class="col-12">
+                        <small class="text-muted">Sistema a scaglioni (soglia {{ veicolo.soglia_scaglione }}%)</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Km Extra &le;{{ veicolo.soglia_scaglione }}%</small>
+                            <div class="fw-bold text-danger">&euro; {{ "%.4f"|format(veicolo.costo_km_extra_1 or 0) }}/km</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Km Extra >{{ veicolo.soglia_scaglione }}%</small>
+                            <div class="fw-bold text-danger">&euro; {{ "%.4f"|format(veicolo.costo_km_extra_2 or 0) }}/km</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Rimborso &le;{{ veicolo.soglia_scaglione }}%</small>
+                            <div class="fw-bold text-success">&euro; {{ "%.4f"|format(veicolo.costo_km_rimborso_1 or 0) }}/km</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Rimborso >{{ veicolo.soglia_scaglione }}%</small>
+                            <div class="fw-bold text-success">&euro; {{ "%.4f"|format(veicolo.costo_km_rimborso_2 or 0) }}/km</div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <!-- LEASYS/LEASEPLAN: Lineare -->
+                <div class="row g-2">
+                    <div class="col-12">
+                        <small class="text-muted">Sistema lineare</small>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Km Extra</small>
+                            <div class="fw-bold text-danger">&euro; {{ "%.4f"|format(veicolo.costo_km_extra_1 or 0) }}/km</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 bg-light rounded">
+                            <small class="text-muted">Rimborso</small>
+                            <div class="fw-bold text-success">
+                                {% if veicolo.costo_km_rimborso_1 %}
+                                &euro; {{ "%.4f"|format(veicolo.costo_km_rimborso_1) }}/km
+                                {% else %}
+                                Non previsto
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if not veicolo.costo_km_extra_1 %}
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Costi km non configurati. <a href="#" data-bs-toggle="modal" data-bs-target="#modalCostiKm">Configura ora</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Driver -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person"></i> Driver</span>
+                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalDriver">
+                    <i class="bi bi-pencil"></i> Modifica
+                </button>
+            </div>
+            <div class="card-body">
+                {% if veicolo.driver %}
+                <div class="fw-bold mb-2">{{ veicolo.driver }}</div>
+                {% if veicolo.driver_telefono %}
+                <div class="small">
+                    <i class="bi bi-telephone text-muted"></i>
+                    <a href="tel:{{ veicolo.driver_telefono }}">{{ veicolo.driver_telefono }}</a>
+                </div>
+                {% endif %}
+                {% if veicolo.driver_email %}
+                <div class="small">
+                    <i class="bi bi-envelope text-muted"></i>
+                    <a href="mailto:{{ veicolo.driver_email }}">{{ veicolo.driver_email }}</a>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted">Non assegnato</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Note Multiple -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-sticky"></i> Note
+                    {% if note_veicolo %}
+                    <span class="badge bg-primary">{{ note_veicolo|length }}</span>
+                    {% endif %}
+                </span>
+                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#modalNuovaNota">
+                    <i class="bi bi-plus"></i> Aggiungi
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if note_veicolo %}
+                <div class="list-group list-group-flush">
+                    {% for nota in note_veicolo %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <small class="text-muted">
+                                <i class="bi bi-calendar"></i> {{ nota.data_creazione|format_data }}
+                                {% if nota.autore %}
+                                <span class="ms-2"><i class="bi bi-person"></i> {{ nota.autore }}</span>
+                                {% endif %}
+                                {% if nota.data_modifica %}
+                                <span class="ms-2 text-warning" title="Modificata il {{ nota.data_modifica }}">
+                                    <i class="bi bi-pencil"></i>
+                                </span>
+                                {% endif %}
+                            </small>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary btn-sm" 
+                                        onclick="modificaNota({{ nota.id }}, {{ nota.testo|tojson }}, {{ (nota.autore or '')|tojson }})"
+                                        title="Modifica">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger btn-sm" 
+                                        onclick="eliminaNota({{ nota.id }})"
+                                        title="Elimina">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div style="white-space: pre-wrap;">{{ nota.testo }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-4">
+                    <i class="bi bi-sticky" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">Nessuna nota presente</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Colonna destra: Simulazione e Grafico -->
+    <div class="col-lg-7">
+        <!-- Card Simulazione -->
+        <div class="card mb-4 sim-card" id="simCard">
+            <div class="card-header bg-transparent">
+                <i class="bi bi-calculator"></i> Simulazione Km - Previsione Sforamento
+            </div>
+            <div class="card-body">
+                <form id="formSimulazione">
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="form-label">Km Attuali</label>
+                            <input type="number" class="form-control form-control-lg" id="kmInput" 
+                                   placeholder="es. 45000" value="{{ veicolo.km_attuali or '' }}" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Data Rilevazione</label>
+                            <input type="date" class="form-control form-control-lg" id="dataInput" 
+                                   value="{{ oggi }}">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="button" class="btn btn-primary btn-lg w-100" onclick="calcolaPrevisione()">
+                                <i class="bi bi-calculator"></i> Calcola
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <!-- Risultato simulazione (nascosto inizialmente) -->
+                <div id="risultatoSimulazione" class="mt-4" style="display: none;">
+                    <hr>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="p-3 rounded" id="boxPrevisione">
+                                <div class="info-label">Km Previsti a Fine Contratto</div>
+                                <div class="info-value fs-3" id="kmPrevisti">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded" id="boxSforamento">
+                                <div class="info-label">Sforamento / Risparmio</div>
+                                <div class="info-value fs-3" id="sforamento">-</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="p-3 bg-light rounded">
+                                <div class="info-label">Stima Economica</div>
+                                <div class="info-value fs-4" id="stimaCosto">-</div>
+                                <small class="text-muted" id="dettaglioCosto"></small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Barra progresso visuale -->
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>0 km</small>
+                            <small id="labelKmContratto">{{ "{:,}".format(km_totali_contratto).replace(",", ".") }} km</small>
+                        </div>
+                        <div class="progress km-progress">
+                            <div class="progress-bar bg-success" id="progressKm" style="width: 0%"></div>
+                            <div class="progress-bar bg-danger" id="progressExtra" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pulsanti azione -->
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="button" class="btn btn-success" onclick="salvaRilevazione()">
+                            <i class="bi bi-save"></i> Salva Rilevazione
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetSimulazione()">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grafico -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-graph-up"></i> Grafico Km nel Tempo
+            </div>
+            <div class="card-body">
+                <div id="chartContainer">
+                    <canvas id="chartKm"></canvas>
+                </div>
+                {% if not storico_km %}
+                <div class="text-center text-muted py-4" id="noDataChart">
+                    <i class="bi bi-bar-chart" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Nessuna rilevazione registrata.<br>Inserisci i km attuali per iniziare il monitoraggio.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Storico rilevazioni -->
+        {% if storico_km %}
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-clock-history"></i> Storico Rilevazioni ({{ storico_km|length }})
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th class="text-end">Km</th>
+                            <th class="text-end">ÃŽâ€Ã‚Â km</th>
+                            <th>Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in storico_km %}
+                        <tr>
+                            <td>{{ s.data_rilevazione|format_data }}</td>
+                            <td class="text-end">{{ "{:,}".format(s.km_rilevati).replace(",", ".") }}</td>
+                            <td class="text-end">
+                                {% if loop.index < storico_km|length %}
+                                {% set delta = s.km_rilevati - storico_km[loop.index].km_rilevati %}
+                                <span class="{% if delta > 0 %}text-info{% else %}text-muted{% endif %}">
+                                    +{{ "{:,}".format(delta).replace(",", ".") }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td><small class="text-muted">{{ s.note or '' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Modifica Costi Km -->
+<div class="modal fade" id="modalCostiKm" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-currency-euro"></i> Configura Costi Km</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/costi-km">
+                <div class="modal-body">
+                    <!-- Tipo sistema -->
+                    <div class="mb-3">
+                        <label class="form-label">Sistema calcolo</label>
+                        <select class="form-select" name="tipo_sistema" id="tipoSistema" onchange="toggleScaglioni()">
+                            <option value="lineare" {% if not veicolo.soglia_scaglione %}selected{% endif %}>
+                                Lineare (Leasys, LeasePlan)
+                            </option>
+                            <option value="scaglioni" {% if veicolo.soglia_scaglione %}selected{% endif %}>
+                                A scaglioni (Arval)
+                            </option>
+                        </select>
+                    </div>
+                    
+                    <!-- Soglia scaglioni -->
+                    <div class="mb-3" id="divSoglia" style="{% if not veicolo.soglia_scaglione %}display:none{% endif %}">
+                        <label class="form-label">Soglia scaglioni (%)</label>
+                        <input type="number" class="form-control" name="soglia_scaglione" 
+                               value="{{ veicolo.soglia_scaglione or 15 }}" step="1">
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Costi km extra -->
+                    <h6 class="text-danger"><i class="bi bi-plus-circle"></i> Km Eccedenti</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label">&euro;/km <span id="labelFascia1Extra">(fascia 1)</span></label>
+                            <input type="number" class="form-control" name="costo_km_extra_1" 
+                                   value="{{ veicolo.costo_km_extra_1 or '' }}" step="0.0001" placeholder="0.0556">
+                        </div>
+                        <div class="col" id="divExtra2" style="{% if not veicolo.soglia_scaglione %}display:none{% endif %}">
+                            <label class="form-label">&euro;/km (fascia 2)</label>
+                            <input type="number" class="form-control" name="costo_km_extra_2" 
+                                   value="{{ veicolo.costo_km_extra_2 or '' }}" step="0.0001" placeholder="0.1113">
+                        </div>
+                    </div>
+                    
+                    <!-- Costi km rimborso -->
+                    <h6 class="text-success"><i class="bi bi-dash-circle"></i> Km Rimborso</h6>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label class="form-label">&euro;/km <span id="labelFascia1Rimb">(fascia 1)</span></label>
+                            <input type="number" class="form-control" name="costo_km_rimborso_1" 
+                                   value="{{ veicolo.costo_km_rimborso_1 or '' }}" step="0.0001" placeholder="0.0278">
+                        </div>
+                        <div class="col" id="divRimb2" style="{% if not veicolo.soglia_scaglione %}display:none{% endif %}">
+                            <label class="form-label">&euro;/km (fascia 2)</label>
+                            <input type="number" class="form-control" name="costo_km_rimborso_2" 
+                                   value="{{ veicolo.costo_km_rimborso_2 or '' }}" step="0.0001" placeholder="0.0139">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva Costi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Driver -->
+<div class="modal fade" id="modalDriver" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person"></i> Modifica Driver</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/driver">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Nome Driver</label>
+                        <input type="text" class="form-control" name="driver" 
+                               value="{{ veicolo.driver or '' }}" placeholder="Mario Rossi">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Telefono</label>
+                        <input type="tel" class="form-control" name="driver_telefono" 
+                               value="{{ veicolo.driver_telefono or '' }}" placeholder="+39 333 1234567">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="driver_email" 
+                               value="{{ veicolo.driver_email or '' }}" placeholder="mario.rossi@email.com">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuova Nota -->
+<div class="modal fade" id="modalNuovaNota" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nuova Nota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/nota/nuova">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Testo nota</label>
+                        <textarea class="form-control" name="testo" rows="4" required
+                                  placeholder="Inserisci la nota..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Autore</label>
+                        <div class="form-control bg-light text-muted">
+                            <i class="bi bi-person-fill me-1"></i>{{ session.cognome or session.username }}
+                        </div>
+                        <small class="text-muted">Assegnato automaticamente all utente loggato</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-plus"></i> Aggiungi Nota
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Nota -->
+<div class="modal fade" id="modalModificaNota" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Modifica Nota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/nota/modifica" id="formModificaNota">
+                <input type="hidden" name="nota_id" id="modificaNotaId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Testo nota</label>
+                        <textarea class="form-control" name="testo" id="modificaNotaTesto" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Autore originale</label>
+                        <div class="form-control bg-light text-muted" id="modificaNotaAutore">
+                            <i class="bi bi-person-fill me-1"></i><span id="autoreDisplay">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check"></i> Salva Modifiche
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione Nota -->
+<div class="modal fade" id="modalEliminaNota" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-trash"></i> Elimina Nota</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/nota/elimina" id="formEliminaNota">
+                <input type="hidden" name="nota_id" id="eliminaNotaId">
+                <div class="modal-body">
+                    <p>Sei sicuro di voler eliminare questa nota?</p>
+                    <small class="text-muted">La nota verra nascosta ma non cancellata definitivamente.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Elimina
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Targa (overlay oscurante) -->
+<div class="modal fade" id="modalConfermaTarga" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> Conferma Targa</h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <p class="fs-5 mb-3">La targa inserita e:</p>
+                <div class="alert alert-secondary py-3">
+                    <code class="fs-2" id="targaConferma"></code>
+                </div>
+                <p class="text-danger fw-bold mb-0">
+                    <i class="bi bi-exclamation-circle"></i> La targa e corretta?
+                </p>
+                <small class="text-muted">Attenzione: una volta salvata, la targa non sara piu modificabile.</small>
+            </div>
+            <div class="modal-footer justify-content-center gap-3">
+                <button type="button" class="btn btn-lg btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> No, correggi
+                </button>
+                <button type="button" class="btn btn-lg btn-success" onclick="salvaTarga()">
+                    <i class="bi bi-check"></i> Si, salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Franchigia Km (solo LEASYS) -->
+<div class="modal fade" id="modalFranchigiaKm" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Franchigia Km</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/veicolo/{{ veicolo.id }}/franchigia-km">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Km Franchigia aggiuntivi</label>
+                        <input type="number" class="form-control form-control-lg text-center" 
+                               name="km_franchigia" value="{{ veicolo.km_franchigia or 0 }}" 
+                               min="0" step="1000" placeholder="0">
+                        <small class="text-muted">Km extra concessi dal noleggiatore LEASYS</small>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <small>
+                            <strong>Km Contratto:</strong> {{ "{:,}".format(veicolo.km or 0).replace(",", ".") }}<br>
+                            <strong>Nuovo Totale:</strong> <span id="nuovoTotaleKm">{{ "{:,}".format(km_totali_contratto).replace(",", ".") }}</span>
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script>
+// Funzioni gestione note
+function modificaNota(id, testo, autore) {
+    document.getElementById('modificaNotaId').value = id;
+    document.getElementById('modificaNotaTesto').value = testo;
+    document.getElementById('autoreDisplay').textContent = autore || 'N/D';
+    new bootstrap.Modal(document.getElementById('modalModificaNota')).show();
+}
+
+function eliminaNota(id) {
+    document.getElementById('eliminaNotaId').value = id;
+    new bootstrap.Modal(document.getElementById('modalEliminaNota')).show();
+}
+
+// ==============================================================================
+// GESTIONE TARGA
+// ==============================================================================
+
+function confermaTarga() {
+    const input = document.getElementById('inputTarga');
+    const targa = input.value.trim().toUpperCase();
+    
+    if (!targa) {
+        alert('Inserisci una targa valida');
+        input.focus();
+        return;
+    }
+    
+    // Validazione base targa
+    if (targa.length < 5 || targa.length > 10) {
+        alert('La targa deve avere tra 5 e 10 caratteri');
+        input.focus();
+        return;
+    }
+    
+    // Mostra modal conferma
+    document.getElementById('targaConferma').textContent = targa;
+    new bootstrap.Modal(document.getElementById('modalConfermaTarga')).show();
+}
+
+function salvaTarga() {
+    const targa = document.getElementById('targaConferma').textContent;
+    
+    fetch('/veicolo/{{ veicolo.id }}/salva-targa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targa: targa })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Errore di comunicazione: ' + error);
+    });
+}
+
+// ==============================================================================
+// GESTIONE FRANCHIGIA KM
+// ==============================================================================
+
+// Aggiorna preview totale km nel modal franchigia
+document.addEventListener('DOMContentLoaded', function() {
+    const inputFranchigia = document.querySelector('input[name="km_franchigia"]');
+    if (inputFranchigia) {
+        inputFranchigia.addEventListener('input', function() {
+            const kmBase = {{ veicolo.km or 0 }};
+            const kmFranchigia = parseInt(this.value) || 0;
+            const totale = kmBase + kmFranchigia;
+            document.getElementById('nuovoTotaleKm').textContent = 
+                totale.toLocaleString('it-IT') + ' km';
+        });
+    }
+});
+
+// Dati veicolo per calcoli JS
+const VEICOLO = {
+    id: {{ veicolo.id }},
+    kmContratto: {{ km_totali_contratto }},
+    kmFranchigia: {{ veicolo.km_franchigia or 0 }},
+    dataInizio: '{{ veicolo.inizio or "" }}',
+    dataScadenza: '{{ veicolo.scadenza or "" }}',
+    noleggiatore: '{{ veicolo.noleggiatore or "" }}',
+    costoExtra1: {{ veicolo.costo_km_extra_1 or 0 }},
+    costoExtra2: {{ veicolo.costo_km_extra_2 or 0 }},
+    costoRimborso1: {{ veicolo.costo_km_rimborso_1 or 0 }},
+    costoRimborso2: {{ veicolo.costo_km_rimborso_2 or 0 }},
+    sogliaScaglione: {{ veicolo.soglia_scaglione or 0 }}
+};
+
+// Storico km per grafico
+const STORICO_KM = [
+    {% for s in storico_km %}
+    { data: '{{ s.data_rilevazione }}', km: {{ s.km_rilevati }} }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+function calcolaPrevisione() {
+    const kmAttuali = parseInt(document.getElementById('kmInput').value);
+    const dataRilevazione = document.getElementById('dataInput').value;
+    
+    if (!kmAttuali || kmAttuali <= 0) {
+        alert('Inserisci un valore km valido');
+        return;
+    }
+    
+    if (!dataRilevazione) {
+        alert('Inserisci la data di rilevazione');
+        return;
+    }
+    
+    if (!VEICOLO.dataInizio || !VEICOLO.dataScadenza) {
+        alert('Date contratto non configurate per questo veicolo');
+        return;
+    }
+    
+    // Calcolo giorni
+    const dataInizio = new Date(VEICOLO.dataInizio);
+    const dataScadenza = new Date(VEICOLO.dataScadenza);
+    const dataOggi = new Date(dataRilevazione);
+    
+    const giorniTotali = Math.ceil((dataScadenza - dataInizio) / (1000 * 60 * 60 * 24));
+    const giorniTrascorsi = Math.ceil((dataOggi - dataInizio) / (1000 * 60 * 60 * 24));
+    const giorniRimanenti = Math.ceil((dataScadenza - dataOggi) / (1000 * 60 * 60 * 24));
+    
+    if (giorniTrascorsi <= 0) {
+        alert('La data rilevazione deve essere successiva alla data inizio contratto');
+        return;
+    }
+    
+    // Calcolo previsione
+    const kmMediGiorno = kmAttuali / giorniTrascorsi;
+    const kmPrevistiFine = Math.round(kmAttuali + (kmMediGiorno * giorniRimanenti));
+    const sforamento = kmPrevistiFine - VEICOLO.kmContratto;
+    
+    // Calcolo costo/rimborso
+    let stimaCosto = 0;
+    let dettaglio = '';
+    
+    if (sforamento > 0) {
+        // Eccedenza km
+        if (VEICOLO.sogliaScaglione > 0) {
+            // Sistema a scaglioni (ARVAL)
+            const sogliaKm = VEICOLO.kmContratto * (VEICOLO.sogliaScaglione / 100);
+            if (sforamento <= sogliaKm) {
+                stimaCosto = sforamento * VEICOLO.costoExtra1;
+                dettaglio = `${sforamento.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoExtra1.toFixed(4)} (fascia 1)`;
+            } else {
+                const kmFascia1 = sogliaKm;
+                const kmFascia2 = sforamento - sogliaKm;
+                stimaCosto = (kmFascia1 * VEICOLO.costoExtra1) + (kmFascia2 * VEICOLO.costoExtra2);
+                dettaglio = `${kmFascia1.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoExtra1.toFixed(4)} + ${kmFascia2.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoExtra2.toFixed(4)}`;
+            }
+        } else {
+            // Sistema lineare
+            stimaCosto = sforamento * VEICOLO.costoExtra1;
+            dettaglio = `${sforamento.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoExtra1.toFixed(4)}`;
+        }
+    } else if (sforamento < 0) {
+        // Rimborso km
+        const kmNonPercorsi = Math.abs(sforamento);
+        if (VEICOLO.costoRimborso1 > 0) {
+            if (VEICOLO.sogliaScaglione > 0) {
+                // Sistema a scaglioni
+                const sogliaKm = VEICOLO.kmContratto * (VEICOLO.sogliaScaglione / 100);
+                if (kmNonPercorsi <= sogliaKm) {
+                    stimaCosto = -(kmNonPercorsi * VEICOLO.costoRimborso1);
+                    dettaglio = `${kmNonPercorsi.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoRimborso1.toFixed(4)} (rimborso fascia 1)`;
+                } else {
+                    const kmFascia1 = sogliaKm;
+                    const kmFascia2 = kmNonPercorsi - sogliaKm;
+                    stimaCosto = -((kmFascia1 * VEICOLO.costoRimborso1) + (kmFascia2 * VEICOLO.costoRimborso2));
+                    dettaglio = `Rimborso: ${kmFascia1.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoRimborso1.toFixed(4)} + ${kmFascia2.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoRimborso2.toFixed(4)}`;
+                }
+            } else {
+                stimaCosto = -(kmNonPercorsi * VEICOLO.costoRimborso1);
+                dettaglio = `Rimborso: ${kmNonPercorsi.toLocaleString('it')} km Ãƒâ€” &euro;${VEICOLO.costoRimborso1.toFixed(4)}`;
+            }
+        } else {
+            dettaglio = 'Rimborso non previsto per questo noleggiatore';
+        }
+    }
+    
+    // Aggiorna UI
+    document.getElementById('risultatoSimulazione').style.display = 'block';
+    document.getElementById('simCard').classList.add('has-result');
+    
+    document.getElementById('kmPrevisti').textContent = kmPrevistiFine.toLocaleString('it');
+    
+    const sforaEl = document.getElementById('sforamento');
+    const boxSfora = document.getElementById('boxSforamento');
+    const boxPrev = document.getElementById('boxPrevisione');
+    
+    if (sforamento > 0) {
+        sforaEl.textContent = '+' + sforamento.toLocaleString('it') + ' km';
+        sforaEl.className = 'info-value fs-3 text-danger';
+        boxSfora.className = 'p-3 rounded result-danger';
+        boxPrev.className = 'p-3 rounded result-warning';
+    } else if (sforamento < 0) {
+        sforaEl.textContent = sforamento.toLocaleString('it') + ' km';
+        sforaEl.className = 'info-value fs-3 text-success';
+        boxSfora.className = 'p-3 rounded result-ok';
+        boxPrev.className = 'p-3 rounded result-ok';
+    } else {
+        sforaEl.textContent = 'In linea!';
+        sforaEl.className = 'info-value fs-3 text-primary';
+        boxSfora.className = 'p-3 rounded result-ok';
+        boxPrev.className = 'p-3 rounded result-ok';
+    }
+    
+    // Stima costo
+    const costoEl = document.getElementById('stimaCosto');
+    if (stimaCosto > 0) {
+        costoEl.textContent = '- &euro; ' + stimaCosto.toFixed(2).replace('.', ',');
+        costoEl.className = 'info-value fs-4 text-danger';
+    } else if (stimaCosto < 0) {
+        costoEl.textContent = '+ &euro; ' + Math.abs(stimaCosto).toFixed(2).replace('.', ',');
+        costoEl.className = 'info-value fs-4 text-success';
+    } else {
+        costoEl.textContent = '&euro; 0,00';
+        costoEl.className = 'info-value fs-4';
+    }
+    document.getElementById('dettaglioCosto').textContent = dettaglio;
+    
+    // Progress bar
+    const percKm = Math.min(100, (kmPrevistiFine / VEICOLO.kmContratto) * 100);
+    const percExtra = Math.max(0, percKm - 100);
+    document.getElementById('progressKm').style.width = Math.min(100, percKm) + '%';
+    document.getElementById('progressExtra').style.width = percExtra + '%';
+    
+    // Aggiorna grafico con previsione
+    aggiornaGraficoConPrevisione(dataRilevazione, kmAttuali, kmPrevistiFine);
+}
+
+function resetSimulazione() {
+    document.getElementById('kmInput').value = '';
+    document.getElementById('risultatoSimulazione').style.display = 'none';
+    document.getElementById('simCard').classList.remove('has-result');
+    
+    // Reset grafico
+    if (window.chartKm) {
+        initGrafico();
+    }
+}
+
+function salvaRilevazione() {
+    const kmAttuali = document.getElementById('kmInput').value;
+    const dataRilevazione = document.getElementById('dataInput').value;
+    
+    if (!kmAttuali || !dataRilevazione) {
+        alert('Calcola prima la previsione');
+        return;
+    }
+    
+    // Invio dati al server
+    fetch('/veicolo/{{ veicolo.id }}/salva-km', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            km: parseInt(kmAttuali),
+            data: dataRilevazione
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Rilevazione salvata con successo!');
+            location.reload();
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Errore di comunicazione: ' + error);
+    });
+}
+
+// Toggle scaglioni nel modal
+function toggleScaglioni() {
+    const tipo = document.getElementById('tipoSistema').value;
+    const show = tipo === 'scaglioni';
+    
+    document.getElementById('divSoglia').style.display = show ? 'block' : 'none';
+    document.getElementById('divExtra2').style.display = show ? 'block' : 'none';
+    document.getElementById('divRimb2').style.display = show ? 'block' : 'none';
+    
+    document.getElementById('labelFascia1Extra').textContent = show ? '(fascia 1)' : '';
+    document.getElementById('labelFascia1Rimb').textContent = show ? '(fascia 1)' : '';
+}
+
+// Grafico
+let chartKm = null;
+
+function initGrafico() {
+    const ctx = document.getElementById('chartKm');
+    if (!ctx) return;
+    
+    if (chartKm) {
+        chartKm.destroy();
+    }
+    
+    // Linea ideale (da inizio a fine)
+    const dataInizio = new Date(VEICOLO.dataInizio);
+    const dataScadenza = new Date(VEICOLO.dataScadenza);
+    
+    const lineaIdeale = [
+        { x: dataInizio, y: 0 },
+        { x: dataScadenza, y: VEICOLO.kmContratto }
+    ];
+    
+    // Rilevazioni reali
+    const rilevazioni = STORICO_KM.map(s => ({
+        x: new Date(s.data),
+        y: s.km
+    }));
+    
+    chartKm = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'Km Ideali',
+                    data: lineaIdeale,
+                    borderColor: '#6c757d',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                },
+                {
+                    label: 'Km Rilevati',
+                    data: rilevazioni,
+                    borderColor: '#0d6efd',
+                    backgroundColor: '#0d6efd',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'month',
+                        displayFormats: {
+                            month: 'MMM yy'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Data'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Km'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString('it');
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString('it') + ' km';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function aggiornaGraficoConPrevisione(dataRilev, kmAttuali, kmPrevisti) {
+    if (!chartKm) return;
+    
+    const dataScadenza = new Date(VEICOLO.dataScadenza);
+    
+    // Aggiungi/aggiorna dataset previsione
+    const previsione = [
+        { x: new Date(dataRilev), y: kmAttuali },
+        { x: dataScadenza, y: kmPrevisti }
+    ];
+    
+    // Rimuovi vecchia previsione se esiste
+    if (chartKm.data.datasets.length > 2) {
+        chartKm.data.datasets.pop();
+    }
+    
+    // Aggiungi nuova previsione
+    chartKm.data.datasets.push({
+        label: 'Previsione',
+        data: previsione,
+        borderColor: kmPrevisti > VEICOLO.kmContratto ? '#dc3545' : '#198754',
+        borderDash: [10, 5],
+        pointRadius: [6, 8],
+        pointBackgroundColor: kmPrevisti > VEICOLO.kmContratto ? '#dc3545' : '#198754',
+        fill: false
+    });
+    
+    chartKm.update();
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', function() {
+    if (STORICO_KM.length > 0 || VEICOLO.dataInizio) {
+        document.getElementById('noDataChart')?.remove();
+        initGrafico();
+    }
+});
+</script>
+{% endblock %}

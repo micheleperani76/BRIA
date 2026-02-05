@@ -1,0 +1,363 @@
+{# ================================================
+   INDEX - STYLES
+   Stili CSS per la pagina lista clienti
+   Versione: 1.5.0 - Colonne Cliente e Azioni fisse
+   ================================================ #}
+<style>
+    /* Tabella con larghezza 100% e layout fisso */
+    .table-resizable {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .table-resizable th,
+    .table-resizable td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+    .table-resizable th {
+        position: relative;
+    }
+    .table-resizable th .resizer {
+        position: absolute;
+        right: 0;
+        top: 0;
+        height: 100%;
+        width: 8px;
+        cursor: col-resize;
+        background: transparent;
+        z-index: 10;
+    }
+    .table-resizable th .resizer:hover {
+        background: rgba(68, 114, 196, 0.3);
+    }
+    .table-resizable th .resizer.resizing {
+        background: #4472C4;
+    }
+    
+    /* ==============================================
+       COLONNE FISSE: Cliente (sinistra) e Azioni (destra)
+       ============================================== */
+    
+    /* Colonna CLIENTE - sempre a sinistra, contenuto allineato a sinistra */
+    .col-cliente {
+        min-width: 150px;  /* Larghezza minima (30% di ~500px originale) */
+        text-align: left !important;
+    }
+    .col-cliente td,
+    td.col-cliente {
+        text-align: left !important;
+    }
+    
+    /* Colonna AZIONI - larghezza fissa, non ridimensionabile, contenuto a destra */
+    .col-azioni-header {
+        width: 200px !important;
+        min-width: 200px !important;
+        max-width: 200px !important;
+        text-align: right !important;
+    }
+    .col-azioni-header .resizer {
+        display: none !important;  /* Nessun resizer per Azioni */
+    }
+    td .col-azioni {
+        justify-content: flex-end !important;  /* Icone allineate a destra */
+    }
+    
+    /* Larghezze colonne intermedie - tutte allineate a sinistra */
+    .col-stato { 
+        width: 95px;
+        min-width: 50px;
+        text-align: left !important; 
+    }
+    td[data-col="stato"] {
+        text-align: left !important;
+    }
+    td[data-col="stato"] .col-content {
+        display: inline-block;
+    }
+    
+    .col-piva { 
+        width: 130px; 
+        min-width: 50px;
+        text-align: left !important;
+    }
+    td[data-col="piva"] {
+        text-align: left !important;
+    }
+    
+    .col-score { 
+        width: 70px; 
+        min-width: 40px;
+        text-align: left !important;
+    }
+    td[data-col="score"] {
+        text-align: left !important;
+    }
+    
+    .col-telefono { 
+        width: 135px; 
+        min-width: 50px;
+        text-align: left !important;
+    }
+    td[data-col="telefono"] {
+        text-align: left !important;
+    }
+    
+    .col-provincia { 
+        width: 60px; 
+        min-width: 40px;
+        text-align: left !important;
+    }
+    td[data-col="provincia"] {
+        text-align: left !important;
+    }
+    
+    .col-flotta { 
+        width: 70px; 
+        min-width: 40px;
+        text-align: left !important;
+    }
+    td[data-col="flotta"] {
+        text-align: left !important;
+    }
+    
+    .col-commerciale { 
+        width: 120px; 
+        min-width: 50px;
+        text-align: left !important;
+    }
+    td[data-col="commerciale"] {
+        text-align: left !important;
+    }
+    
+    /* Celle con contenuto che puo essere troncato */
+    .cell-truncate {
+        max-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Indice alfabetico */
+    .alpha-index {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        margin-bottom: 10px;
+    }
+    .alpha-index a {
+        padding: 4px 8px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: #495057;
+    }
+    .alpha-index a:hover {
+        background: #e9ecef;
+    }
+    .alpha-index a.active {
+        background: #4472C4;
+        color: white;
+        border-color: #4472C4;
+    }
+    
+    /* Paginazione */
+    .pagination {
+        margin-bottom: 0;
+    }
+    .page-link {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+    }
+    
+    /* Score badge */
+    .score-badge {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        font-weight: bold;
+        color: white;
+        font-size: 0.85rem;
+    }
+    .score-badge-ns {
+        display: inline-block;
+        width: 28px;
+        height: 28px;
+        line-height: 28px;
+        text-align: center;
+        border-radius: 50%;
+        font-weight: bold;
+        background-color: #6c757d;
+        color: white;
+        font-size: 0.7rem;
+    }
+    .score-A { background-color: #28a745; }
+    .score-B { background-color: #4472C4; }
+    .score-C { background-color: #fd7e14; }
+    .score-D { background-color: #dc3545; }
+    .score-E { background-color: #343a40; }
+    .score-NS { background-color: #6c757d; }
+    
+    /* Stat cards per score */
+    .stat-card {
+        min-width: 50px;
+        height: 55px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: scale(1.05);
+        color: white;
+    }
+    .stat-card .stat-value {
+        font-size: 1.2rem;
+        font-weight: bold;
+        line-height: 1;
+    }
+    .stat-card .stat-label {
+        font-size: 0.65rem;
+        opacity: 0.9;
+    }
+    #btn-nuovo-cliente {
+        text-decoration: none;
+    }
+    #btn-nuovo-cliente:hover .stat-card {
+        background: #157347 !important;
+        transform: scale(1.05);
+    }
+    
+    /* Tasto referente stella */
+    .btn-star-ref {
+        color: #ffc107;
+        padding: 2px 6px;
+    }
+    .btn-star-ref:hover {
+        color: #e0a800;
+        background: #fff3cd;
+        border-radius: 4px;
+    }
+    
+    /* Colonna azioni - layout con 8 slot fissi */
+    .col-azioni {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 0;
+    }
+    
+    /* Singolo slot icona */
+    .slot-icona {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .slot-icona i {
+        font-size: 1.1rem;
+    }
+    .slot-icona .badge {
+        width: 22px;
+        height: 22px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .slot-icona .btn {
+        padding: 2px 4px;
+        line-height: 1;
+    }
+    .slot-icona a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* ==============================================
+       SISTEMA COLONNE COLLASSABILI (GENERICO)
+       ============================================== */
+    
+    /* Icona toggle (occhio) per nascondere colonna */
+    .col-toggle-btn {
+        cursor: pointer;
+        opacity: 0.4;
+        margin-left: 4px;
+        font-size: 0.75rem;
+    }
+    .col-toggle-btn:hover {
+        opacity: 1;
+        color: #dc3545;
+    }
+    
+    /* Header collassato */
+    th.collapsed {
+        width: 35px !important;
+        min-width: 35px !important;
+        max-width: 35px !important;
+        text-align: center !important;
+        cursor: pointer;
+    }
+    th.collapsed .col-content,
+    th.collapsed .col-toggle-btn,
+    th.collapsed .resizer {
+        display: none !important;
+    }
+    th.collapsed .col-icon {
+        display: inline-block !important;
+    }
+    th:not(.collapsed) .col-toggle-btn {
+        display: inline-block !important;
+    }
+    th:not(.collapsed) .col-icon {
+        display: none !important;
+    }
+    
+    /* Cella collassata */
+    td.collapsed {
+        width: 35px !important;
+        min-width: 35px !important;
+        max-width: 35px !important;
+        text-align: center !important;
+    }
+    td.collapsed .col-content {
+        display: none !important;
+    }
+    td.collapsed .col-icon {
+        display: inline-block !important;
+        /* Colore ereditato da style inline per colonne con colori dinamici (es. Stato, Score) */
+    }
+    /* Colore default grigio solo per colonne senza colore dinamico */
+    td.collapsed:not([data-col="stato"]):not([data-col="score"]):not([data-col="commerciale"]):not([data-col="flotta"]) .col-icon {
+        color: #6c757d;
+    }
+    td:not(.collapsed) .col-icon {
+        display: none !important;
+    }
+    
+    /* Header ordinabile */
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    .sortable-header:hover {
+        background: #e9ecef;
+    }
+</style>

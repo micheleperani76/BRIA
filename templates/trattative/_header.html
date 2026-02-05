@@ -1,0 +1,106 @@
+<!-- ============================================================
+     TRATTATIVE - Header
+     Versione: 1.2
+     Data: 2026-01-28
+     Fix: Badge cliccabili + badge pratiche chiuse anno
+     ============================================================ -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">
+            <i class="bi bi-briefcase me-2"></i>Gestione Trattative
+        </h4>
+        <small class="text-muted">Tracciamento avanzamento lavori e vendite</small>
+    </div>
+    <div>
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNuovaTrattativa">
+            <i class="bi bi-plus-lg me-1"></i>Nuova Trattativa
+        </button>
+    </div>
+</div>
+
+<!-- Badge statistiche rapide - chiuse anno PRIMO, poi stati aperti -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <!-- Badge pratiche chiuse anno corrente - SEMPRE PRIMO -->
+    <span class="badge rounded-pill" 
+          style="background-color: #28a745; font-size: 0.85rem; cursor: pointer;"
+          onclick="mostraChiuseAnnoCorrente()"
+          title="Mostra pratiche caricate anno corrente">
+        <i class="bi bi-check-circle me-1"></i>Chiuse questo anno: <span id="countChiuseAnno">0</span>
+    </span>
+    
+    {% for stato, count in stats_per_stato.items() %}
+    {% if stato not in stati_chiusi %}
+    <span class="badge rounded-pill badge-filtro-stato" 
+          style="background-color: {{ colori_stati.get(stato, '#6c757d') }}; font-size: 0.85rem; cursor: pointer;"
+          onclick="filtraPerStato('{{ stato }}')"
+          title="Clicca per filtrare">
+        {{ stato }}: {{ count }}
+    </span>
+    {% endif %}
+    {% endfor %}
+    
+    <!-- Badge reset filtri -->
+    <span class="badge rounded-pill bg-secondary" 
+          style="font-size: 0.85rem; cursor: pointer;"
+          onclick="resetFiltriHeader()"
+          title="Mostra tutte">
+        <i class="bi bi-x-circle me-1"></i>Tutti
+    </span>
+</div>
+
+<script>
+function filtraPerStato(stato) {
+    var selectStato = document.getElementById('filtroStato');
+    if (selectStato) {
+        selectStato.value = stato;
+    }
+    if (typeof caricaTrattative === 'function') {
+        caricaTrattative();
+    }
+}
+
+function resetFiltriHeader() {
+    var selectStato = document.getElementById('filtroStato');
+    if (selectStato) selectStato.value = '';
+    
+    var selectNoleggiatore = document.getElementById('filtroNoleggiatore');
+    if (selectNoleggiatore) selectNoleggiatore.value = '';
+    
+    var filtroCliente = document.getElementById('filtroCliente');
+    if (filtroCliente) filtroCliente.value = '';
+    
+    if (typeof caricaTrattative === 'function') {
+        caricaTrattative();
+    }
+}
+
+function mostraChiuseAnnoCorrente() {
+    // Apri la sezione chiuse
+    var sezioneChiuse = document.getElementById('sezioneTrattativeChiuse');
+    if (sezioneChiuse && !sezioneChiuse.classList.contains('show')) {
+        var bsCollapse = new bootstrap.Collapse(sezioneChiuse, {show: true});
+    }
+    
+    // Scorri alla sezione
+    setTimeout(function() {
+        var headerChiuse = document.querySelector('[data-bs-target="#sezioneTrattativeChiuse"]');
+        if (headerChiuse) {
+            headerChiuse.scrollIntoView({behavior: 'smooth'});
+        }
+    }, 300);
+}
+
+// Carica conteggio chiuse anno corrente
+document.addEventListener('DOMContentLoaded', function() {
+    var annoCorrente = new Date().getFullYear();
+    fetch('/trattative/api/lista?solo_chiuse=1&anno=' + annoCorrente + '&limite=1000')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var counter = document.getElementById('countChiuseAnno');
+                if (counter) counter.textContent = data.totale || (data.trattative || []).length;
+            }
+        })
+        .catch(function(e) { console.log('Errore conteggio chiuse:', e); });
+});
+</script>

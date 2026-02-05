@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRIA</title>
+    
+    <!-- Favicon BR CAR SERVICE -->
+    <link rel="icon" type="image/png" href="https://www.brcarservice.it/wp-content/uploads/2025/08/logo-brcarservice-bianco-150x150.png">
+    <link rel="apple-touch-icon" href="https://www.brcarservice.it/wp-content/uploads/2025/08/logo-brcarservice-bianco-150x150.png">
+    
+    <!-- Applica stato sidebar PRIMA del rendering per evitare flash -->
+    <script>
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.documentElement.classList.add('sidebar-collapsed-init');
+        }
+    </script>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --sidebar-width: 250px;
+            --sidebar-width-collapsed: 70px;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: #f8fafc;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100vh;
+            background: linear-gradient(180deg, #1e3a5f 0%, #0f172a 100%);
+            padding: 1rem;
+        }
+        
+        
+        .sidebar-nav {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .sidebar-nav::-webkit-scrollbar {
+            display: none;
+        }
+        
+        
+        /* Sidebar Collassata */
+        .sidebar.collapsed {
+            width: var(--sidebar-width-collapsed);
+            overflow: visible;
+        }
+        
+        /* Stato iniziale collapsed (applicato via html class prima del rendering) */
+        .sidebar-collapsed-init .sidebar {
+            display: flex;
+            flex-direction: column;
+            width: var(--sidebar-width-collapsed);
+            overflow: visible;
+        }
+        
+        .sidebar-collapsed-init .sidebar .logo-text {
+            display: none;
+        }
+        
+        .sidebar-collapsed-init .sidebar .nav-link span {
+            display: none;
+        }
+        
+        .sidebar-collapsed-init .sidebar .nav-link {
+            text-align: center;
+            padding: 0.75rem 0.5rem;
+        }
+        
+        .sidebar-collapsed-init .sidebar .nav-link i {
+            margin-right: 0;
+            font-size: 1.25rem;
+        }
+        
+        .sidebar-collapsed-init .sidebar .nav-section {
+            visibility: hidden;
+            height: 0;
+            padding: 0;
+            margin: 0.5rem 0;
+        }
+        
+        .sidebar-collapsed-init .main-content {
+            margin-left: var(--sidebar-width-collapsed);
+        }
+        
+        .sidebar-collapsed-init .sidebar-toggle {
+            left: calc(var(--sidebar-width-collapsed) - 26px);
+        }
+        
+        .sidebar-collapsed-init .sidebar-footer {
+            padding: 0.5rem !important;
+        }
+        
+        .sidebar-collapsed-init .sidebar-footer .nav-link {
+            padding: 0.5rem 0 !important;
+        }
+        
+        .sidebar-collapsed-init .sidebar-footer .nav-link span {
+            display: none;
+        }
+        
+        .sidebar.collapsed .logo-text {
+            display: none;
+        }
+        
+        .sidebar.collapsed .nav-link span {
+            display: none;
+        }
+        
+        .sidebar.collapsed .nav-link {
+            text-align: center;
+            padding: 0.75rem 0.5rem;
+        }
+        
+        .sidebar.collapsed .nav-link i {
+            margin-right: 0;
+            font-size: 1.25rem;
+        }
+        
+        .sidebar.collapsed .nav-section {
+            visibility: hidden;
+            height: 0;
+            padding: 0;
+            margin: 0.5rem 0;
+        }
+        
+        .sidebar.collapsed .sidebar-footer {
+            padding: 0.5rem !important;
+        }
+        
+        .sidebar.collapsed .sidebar-footer .nav-link {
+            padding: 0.5rem 0 !important;
+        }
+        
+        .sidebar.collapsed .sidebar-footer .nav-link span {
+            display: none;
+        }
+        
+        /* Toggle Button - angolo in alto a destra della sidebar */
+        .sidebar-toggle {
+            position: fixed;
+            left: calc(var(--sidebar-width) - 26px);
+            top: 4px;
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: rgba(255,255,255,0.8);
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.3s ease, background 0.2s;
+            font-size: 0.65rem;
+            z-index: 1002;
+        }
+        
+        .sidebar-toggle:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        body.sidebar-collapsed .sidebar-toggle {
+            left: calc(var(--sidebar-width-collapsed) - 26px);
+        }
+        
+        .sidebar .logo {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 700;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 1rem;
+            position: relative;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.25rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .sidebar .nav-link.active {
+            color: white;
+            background: var(--primary-color);
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 0.75rem;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .sidebar .nav-section {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1rem 0.5rem;
+            margin-top: 0.5rem;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        /* Main content */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            padding: 2rem;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        
+        body.sidebar-collapsed .main-content {
+            margin-left: var(--sidebar-width-collapsed);
+        }
+        
+        /* Tooltip per menu collassato - gestiti via JS */
+        .sidebar.collapsed .nav-link {
+            position: relative;
+        }
+        
+        /* Cards */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+        }
+        
+        /* Score badges */
+        .score-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .score-A { background: #10b981; color: white; }
+        .score-B { background: #3b82f6; color: white; }
+        .score-C { background: #f59e0b; color: white; }
+        .score-D { background: #ef4444; color: white; }
+        .score-E { background: #1f2937; color: white; }
+        
+        /* Stat cards */
+        .stat-card {
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card.clickable {
+            cursor: pointer;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        
+        .stat-card .stat-label {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* Tables */
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            font-weight: 600;
+            color: #475569;
+            border-bottom-width: 2px;
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        /* Buttons */
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        
+        /* Forms */
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        /* Alerts */
+        .alert {
+            border: none;
+            border-radius: 8px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+            display: flex;
+            flex-direction: column;
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            body.sidebar-collapsed .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <!-- Toggle button in alto a destra -->
+        <button class="sidebar-toggle" id="sidebarToggle" title="Comprimi menu">
+            <i class="bi bi-chevron-double-left" id="toggleIcon"></i>
+        </button>
+        
+        <div class="logo" style="display: flex; align-items: center;">
+            <a href="https://www.brcarservice.it/" target="_blank" title="Vai al sito BR CAR SERVICE" style="text-decoration: none;">
+                <img src="https://www.brcarservice.it/wp-content/uploads/2025/08/logo-brcarservice-bianco-150x150.png" 
+                     alt="BR CAR SERVICE" 
+                     style="width: 53px; height: 53px; min-width: 53px;">
+            </a>
+            <div class="logo-text" style="margin-left: 10px; line-height: 1.2;">
+                <div style="font-size: 0.85rem;">BR CAR SERVICE</div>
+                <div style="font-size: 0.95rem; font-weight: 700;">GESTIONE FLOTTA</div>
+            </div>
+        </div>
+        <div class="sidebar-nav">
+        
+        <div class="nav-section">Principale</div>
+        <a href="/dashboard" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}" data-tooltip="Dashboard">
+            <i class="bi bi-house-door"></i> <span>Dashboard</span>
+        </a>
+        <a href="/clienti" class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" data-tooltip="Clienti">
+            <i class="bi bi-person"></i> <span>Clienti</span>
+        </a>
+        <a href="/trattative" class="nav-link {% if request.endpoint == 'trattative.lista_trattative' %}active{% endif %}" data-tooltip="Trattative">
+            <i class="bi bi-briefcase"></i> <span>Trattative</span>
+        </a>
+        <a href="/top-prospect" class="nav-link {% if request.endpoint == 'top_prospect.pagina_principale' %}active{% endif %}" data-tooltip="Top Prospect">
+            <i class="bi bi-trophy-fill"></i> <span>Top Prospect</span>
+        </a>
+        
+        <div class="nav-section">Sezione Flotta</div>
+        <a href="/flotta" class="nav-link {% if request.endpoint == 'flotta' %}active{% endif %}" data-tooltip="Dashboard Flotta">
+            <i class="bi bi-speedometer2"></i> <span>Dashboard Flotta</span>
+        </a>
+        <a href="/flotta/per-noleggiatore" class="nav-link" data-tooltip="Per Noleggiatore">
+            <i class="bi bi-buildings"></i> <span>Per Noleggiatore</span>
+        </a>
+        <a href="/flotta/per-commerciale" class="nav-link" data-tooltip="Per Commerciale">
+            <i class="bi bi-people"></i> <span>Per Commerciale</span>
+        </a>
+        {% if ha_permesso('flotta_assegnazioni') %}
+        <a href="/flotta/gestione-commerciali" class="nav-link" data-tooltip="Assegnazioni">
+            <i class="bi bi-arrow-left-right"></i> <span>Assegnazioni</span>
+        </a>
+        {% endif %}
+        
+        <div class="nav-section">Sistema</div>
+        <a href="/export/configuratore" class="nav-link" data-tooltip="Esporta e Stampa">
+            <i class="bi bi-file-earmark-spreadsheet"></i> <span>Esporta e Stampa</span>
+        </a>
+        <a href="/statistiche" class="nav-link {% if request.endpoint == 'statistiche' %}active{% endif %}" data-tooltip="Statistiche">
+            <i class="bi bi-graph-up"></i> <span>Statistiche</span>
+        </a>
+        
+        {% if current_user and (current_user.is_admin or ha_permesso('admin_sistema')) %}
+        <div class="nav-section">Amministrazione</div>
+        <a href="/admin" class="nav-link {% if request.endpoint == 'admin' %}active{% endif %}" data-tooltip="Gestione Sistema">
+            <i class="bi bi-gear"></i> <span>Gestione Sistema</span>
+        </a>
+        <a href="/admin/utenti" class="nav-link {% if 'admin_utenti' in request.endpoint|default('') %}active{% endif %}" data-tooltip="Gestione Utenti">
+            <i class="bi bi-people-fill"></i> <span>Gestione Utenti</span>
+        </a>
+        {% endif %}
+        
+        </div><!-- fine sidebar-nav -->
+        <!-- Profilo e Logout utente -->
+        {% if current_user %}
+        <div class="sidebar-footer" style="padding: 0.5rem 1rem; border-top: 1px solid rgba(255,255,255,0.1); background: linear-gradient(180deg, #0f172a 0%, #0a1120 100%);">
+            <a href="/auth/profilo" class="nav-link" style="margin: 0; padding: 0.5rem 1rem;" data-tooltip="Il Mio Profilo">
+                <i class="bi bi-person-circle"></i> <span>Il Mio Profilo</span>
+            </a>
+            <a href="/auth/logout" class="nav-link" style="margin: 0; padding: 0.5rem 1rem;" data-tooltip="Esci">
+                <i class="bi bi-box-arrow-left"></i> <span>Esci: {{ current_user.nome }}</span>
+            </a>
+        </div>
+        {% endif %}
+    </nav>
+    <main class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Sidebar Toggle Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const toggleIcon = document.getElementById('toggleIcon');
+            const body = document.body;
+            const html = document.documentElement;
+            const navLinks = document.querySelectorAll('.sidebar .nav-link[data-tooltip]');
+            
+            // Inizializza tooltip Bootstrap
+            function initTooltips() {
+                navLinks.forEach(link => {
+                    const existingTooltip = bootstrap.Tooltip.getInstance(link);
+                    if (existingTooltip) {
+                        existingTooltip.dispose();
+                    }
+                    
+                    if (sidebar.classList.contains('collapsed')) {
+                        new bootstrap.Tooltip(link, {
+                            title: link.getAttribute('data-tooltip'),
+                            placement: 'right',
+                            trigger: 'hover',
+                            container: 'body'
+                        });
+                    }
+                });
+            }
+            
+            // Trasferisci stato da html a sidebar/body e rimuovi classe init
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                sidebar.classList.add('collapsed');
+                body.classList.add('sidebar-collapsed');
+                toggleIcon.classList.remove('bi-chevron-double-left');
+                toggleIcon.classList.add('bi-chevron-double-right');
+                toggleBtn.title = 'Espandi menu';
+                initTooltips();
+            }
+            // Rimuovi classe init (ora gli stili sono gestiti da .collapsed)
+            html.classList.remove('sidebar-collapsed-init');
+            
+            // Toggle click
+            toggleBtn.addEventListener('click', function() {
+                sidebar.classList.toggle('collapsed');
+                body.classList.toggle('sidebar-collapsed');
+                
+                const nowCollapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebarCollapsed', nowCollapsed);
+                
+                if (nowCollapsed) {
+                    toggleIcon.classList.remove('bi-chevron-double-left');
+                    toggleIcon.classList.add('bi-chevron-double-right');
+                    toggleBtn.title = 'Espandi menu';
+                } else {
+                    toggleIcon.classList.remove('bi-chevron-double-right');
+                    toggleIcon.classList.add('bi-chevron-double-left');
+                    toggleBtn.title = 'Comprimi menu';
+                }
+                
+                initTooltips();
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

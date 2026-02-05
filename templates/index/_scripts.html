@@ -1,0 +1,510 @@
+{# ================================================
+   INDEX - SCRIPTS
+   JavaScript per la pagina lista clienti
+   Versione: 1.0.0
+   ================================================ #}
+<script>
+    // =====================================================
+    // CONFIGURAZIONE
+    // =====================================================
+    const COLONNE_COLLASSABILI = ['stato', 'piva', 'score', 'telefono', 'provincia', 'flotta', 'commerciale'];
+    
+    // Colonne aperte di default (non collapsed)
+    const COLONNE_APERTE_DEFAULT = ['stato', 'piva', 'score', 'telefono', 'provincia', 'flotta', 'commerciale'];
+    
+    // Larghezze colonne (indice -> pixel)
+    // 0=Cliente, 1=Stato, 2=PIVA, 3=Score, 4=Telefono, 5=Prov, 6=Flotta, 7=Commerciale, 8=Azioni
+    const LARGHEZZE_COLONNE = {
+        1: 95,   // Stato (Prospetto + icona)
+        2: 130,  // P.IVA/CF (13 caratteri + icona)
+        3: 70,   // Score (badge + icona)
+        4: 135,  // Telefono (numero + icona)
+        5: 60,   // Provincia (2 lettere + icona)
+        6: 70,   // Flotta (badge + icona)
+        7: 120,  // Commerciale (nome + icona)
+        8: 200   // Azioni
+    };
+    
+    // Mappa nome colonna -> indice per LARGHEZZE_COLONNE
+    const INDICE_COLONNE = {
+        'stato': 1,
+        'piva': 2,
+        'score': 3,
+        'telefono': 4,
+        'provincia': 5,
+        'flotta': 6,
+        'commerciale': 7
+    };
+    
+    // =====================================================
+    // TOGGLE COLONNA
+    // =====================================================
+    function toggleColonna(nomeColonna) {
+        const th = document.querySelector(`th[data-col="${nomeColonna}"]`);
+        const tds = document.querySelectorAll(`td[data-col="${nomeColonna}"]`);
+        
+        if (!th) return;
+        
+        const isCollapsed = th.classList.contains('collapsed');
+        
+        if (isCollapsed) {
+            // Espandi
+            th.classList.remove('collapsed');
+            tds.forEach(td => td.classList.remove('collapsed'));
+            localStorage.setItem(`col_${nomeColonna}_collapsed`, 'false');
+        } else {
+            // Collassa
+            th.classList.add('collapsed');
+            tds.forEach(td => td.classList.add('collapsed'));
+            localStorage.setItem(`col_${nomeColonna}_collapsed`, 'true');
+        }
+        
+        // Ricalcola tutte le larghezze per mantenere tabella nel contenitore
+        ricalcolaLarghezzeColonne();
+    }
+    
+    // Ricalcola le larghezze di tutte le colonne mantenendo la tabella nel contenitore
+    function ricalcolaLarghezzeColonne() {
+        const table = document.getElementById('clienti-table');
+        if (!table) return;
+        
+        const container = table.closest('.table-responsive');
+        const headerRow = table.querySelector('thead tr');
+        const ths = headerRow.querySelectorAll('th');
+        const containerWidth = container.clientWidth;
+        
+        // Calcola spazio occupato dalle colonne fisse (non Cliente)
+        let fixedTotal = 0;
+        for (let i = 1; i < ths.length; i++) {
+            const th = ths[i];
+            const indice = i;
+            
+            if (th.classList.contains('collapsed')) {
+                th.style.width = '35px';
+                fixedTotal += 35;
+            } else {
+                const w = LARGHEZZE_COLONNE[indice] || 80;
+                th.style.width = w + 'px';
+                fixedTotal += w;
+            }
+        }
+        
+        // Colonna Cliente prende lo spazio rimanente (minimo 150px)
+        const clienteWidth = Math.max(150, containerWidth - fixedTotal - 20);
+        ths[0].style.width = clienteWidth + 'px';
+        
+        // Tabella sempre uguale al contenitore
+        table.style.width = containerWidth + 'px';
+    }
+    
+    // Toggle globale: se ci sono colonne aperte -> nasconde tutte, altrimenti -> mostra tutte
+    function toggleTutteColonne() {
+        // Conta quante colonne sono aperte (non collapsed)
+        let colonneAperte = 0;
+        COLONNE_COLLASSABILI.forEach(nome => {
+            const th = document.querySelector(`th[data-col="${nome}"]`);
+            if (th && !th.classList.contains('collapsed')) {
+                colonneAperte++;
+            }
+        });
+        
+        if (colonneAperte > 0) {
+            // Ci sono colonne aperte -> nascondile tutte
+            COLONNE_COLLASSABILI.forEach(nome => {
+                const th = document.querySelector(`th[data-col="${nome}"]`);
+                if (th && !th.classList.contains('collapsed')) {
+                    toggleColonna(nome);
+                }
+            });
+        } else {
+            // Tutte nascoste -> mostrala tutte
+            COLONNE_COLLASSABILI.forEach(nome => {
+                const th = document.querySelector(`th[data-col="${nome}"]`);
+                if (th && th.classList.contains('collapsed')) {
+                    toggleColonna(nome);
+                }
+            });
+        }
+    }
+    
+    // Click su header: se collapsed -> espandi, altrimenti ordina
+    function clickHeader(event, nomeColonna, campoOrdinamento) {
+        // Ignora se click su icona occhio (toggle)
+        if (event.target.closest('.col-toggle-btn')) {
+            return;
+        }
+        
+        const th = document.querySelector(`th[data-col="${nomeColonna}"]`);
+        
+        if (th && th.classList.contains('collapsed')) {
+            // Colonna collapsed: espandi invece di ordinare
+            event.stopPropagation();
+            toggleColonna(nomeColonna);
+        } else if (campoOrdinamento) {
+            // Colonna aperta: ordina
+            ordinaPer(campoOrdinamento);
+        }
+    }
+    
+    // Ripristina stato colonne da localStorage
+    function ripristinaStatoColonne() {
+        COLONNE_COLLASSABILI.forEach(nome => {
+            const savedState = localStorage.getItem(`col_${nome}_collapsed`);
+            
+            let collapsed;
+            if (savedState !== null) {
+                // Usa stato salvato
+                collapsed = savedState === 'true';
+            } else {
+                // Default: aperta se in COLONNE_APERTE_DEFAULT, altrimenti nascosta
+                collapsed = !COLONNE_APERTE_DEFAULT.includes(nome);
+            }
+            
+            if (collapsed) {
+                const th = document.querySelector(`th[data-col="${nome}"]`);
+                const tds = document.querySelectorAll(`td[data-col="${nome}"]`);
+                
+                if (th) {
+                    th.classList.add('collapsed');
+                    tds.forEach(td => td.classList.add('collapsed'));
+                }
+            }
+        });
+    }
+    
+    // =====================================================
+    // ORDINAMENTO
+    // =====================================================
+    let blockSorting = false;
+    
+    function ordinaPer(campo) {
+        if (blockSorting) return;
+        
+        const url = new URL(window.location);
+        const currentOrder = url.searchParams.get('order') || 'nome_cliente';
+        
+        console.log('ordinaPer chiamata - campo:', campo, 'currentOrder:', currentOrder);
+        
+        let newOrder;
+        if (currentOrder === campo) {
+            newOrder = campo + '_desc';
+        } else if (currentOrder === campo + '_desc') {
+            newOrder = campo;
+        } else {
+            newOrder = campo;
+        }
+        
+        console.log('Nuovo ordinamento:', newOrder);
+        
+        url.searchParams.set('order', newOrder);
+        url.searchParams.delete('page');
+        window.location = url;
+    }
+    
+    // =====================================================
+    // UTILITA
+    // =====================================================
+    function cambiaPerPage(value) {
+        const url = new URL(window.location);
+        url.searchParams.set('per_page', value);
+        url.searchParams.delete('page');
+        window.location = url;
+    }
+    
+    function mostraReferente(clienteId) {
+        fetch('/api/cliente/' + clienteId + '/referente-principale')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.referente) {
+                const r = data.referente;
+                let html = '<div class="referente-card">';
+                
+                if (r.nome || r.cognome) {
+                    html += '<h5>' + (r.nome || '') + ' ' + (r.cognome || '') + '</h5>';
+                }
+                if (r.ruolo) {
+                    html += '<p class="text-muted mb-3">' + r.ruolo + '</p>';
+                }
+                
+                html += '<table class="table table-sm">';
+                if (r.telefono) {
+                    html += '<tr><td><i class="bi bi-telephone"></i> Telefono</td><td><a href="tel:' + r.telefono + '">' + r.telefono + '</a>';
+                    if (r.interno) html += ' (int. ' + r.interno + ')';
+                    html += '</td></tr>';
+                }
+                if (r.cellulare) {
+                    html += '<tr><td><i class="bi bi-phone"></i> Cellulare</td><td><a href="tel:' + r.cellulare + '">' + r.cellulare + '</a></td></tr>';
+                }
+                if (r.email_principale) {
+                    html += '<tr><td><i class="bi bi-envelope"></i> Email</td><td><a href="mailto:' + r.email_principale + '">' + r.email_principale + '</a></td></tr>';
+                }
+                if (r.email_secondarie) {
+                    html += '<tr><td><i class="bi bi-envelope"></i> Email 2</td><td>' + r.email_secondarie + '</td></tr>';
+                }
+                if (r.linkedin) {
+                    html += '<tr><td><i class="bi bi-linkedin"></i> LinkedIn</td><td><a href="' + r.linkedin + '" target="_blank">Profilo</a></td></tr>';
+                }
+                html += '</table>';
+                
+                if (r.note) {
+                    html += '<div class="alert alert-light mt-3"><small>' + r.note + '</small></div>';
+                }
+                
+                html += '</div>';
+                
+                document.getElementById('referente-content').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('modalReferente')).show();
+            } else {
+                alert('Referente non trovato');
+            }
+        });
+    }
+    
+    // =====================================================
+    // INIT - RIDIMENSIONAMENTO COLONNE
+    // =====================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Ripristina stato colonne
+        ripristinaStatoColonne();
+        
+        const table = document.getElementById('clienti-table');
+        if (!table) return;
+        
+        const container = table.closest('.table-responsive');
+        const headerRow = table.querySelector('thead tr');
+        const ths = headerRow.querySelectorAll('th');
+        
+        const containerWidth = container.clientWidth;
+        
+        // Applica larghezze
+        let fixedTotal = 0;
+        for (let i = 1; i < ths.length; i++) {
+            const th = ths[i];
+            const w = LARGHEZZE_COLONNE[i] || 80;
+            
+            // Se collapsed usa 35px
+            if (th.classList.contains('collapsed')) {
+                th.style.width = '35px';
+                fixedTotal += 35;
+            } else {
+                th.style.width = w + 'px';
+                fixedTotal += w;
+            }
+        }
+        
+        // Cliente prende spazio rimanente (memorizza larghezza iniziale per limite 70%)
+        const clienteWidthIniziale = Math.max(200, containerWidth - fixedTotal - 10);
+        ths[0].style.width = clienteWidthIniziale + 'px';
+        ths[0].dataset.maxWidth = clienteWidthIniziale;  // Salva per calcolo 30% minimo
+        
+        table.style.width = containerWidth + 'px';
+        
+        // Funzione aggiorna larghezza
+        function updateTableWidth() {
+            let total = 0;
+            ths.forEach(th => total += parseFloat(th.style.width) || 0);
+            table.style.width = Math.max(total, containerWidth) + 'px';
+        }
+        
+        // Setup resizers
+        const resizers = table.querySelectorAll('.resizer');
+        let isResizing = false;
+        let currentTh = null;
+        let startX = 0;
+        let startWidth = 0;
+        
+        resizers.forEach((resizer) => {
+            resizer.addEventListener('mousedown', function(e) {
+                // Non resize se collapsed
+                if (resizer.parentElement.classList.contains('collapsed')) return;
+                
+                // Non resize per colonna Azioni (ultima colonna)
+                if (resizer.parentElement.classList.contains('col-azioni-header')) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                isResizing = true;
+                blockSorting = true;
+                currentTh = resizer.parentElement;
+                startX = e.clientX;
+                startWidth = parseFloat(currentTh.style.width) || currentTh.getBoundingClientRect().width;
+                
+                resizer.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing || !currentTh) return;
+            
+            e.preventDefault();
+            const diff = e.clientX - startX;
+            let newWidth = startWidth + diff;
+            
+            // Limite speciale per colonna Cliente: minimo 30% della larghezza iniziale
+            if (currentTh.classList.contains('col-cliente')) {
+                const maxWidth = parseFloat(currentTh.dataset.maxWidth) || 500;
+                const minWidth = Math.max(150, maxWidth * 0.3);  // Minimo 30% (max restringimento 70%)
+                newWidth = Math.max(minWidth, newWidth);
+            } else {
+                newWidth = Math.max(40, newWidth);
+            }
+            
+            currentTh.style.width = newWidth + 'px';
+            updateTableWidth();
+        });
+        
+        document.addEventListener('mouseup', function() {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                
+                if (currentTh) {
+                    const resizer = currentTh.querySelector('.resizer');
+                    if (resizer) resizer.classList.remove('resizing');
+                }
+                currentTh = null;
+                
+                setTimeout(function() {
+                    blockSorting = false;
+                }, 300);
+            }
+        });
+    });
+    
+    // =====================================================
+    // RICERCA UTENTI (comandi: @com, @ope)
+    // =====================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputRicerca = document.getElementById('inputRicercaSmart');
+        const dropdown = document.getElementById('commbrDropdown');
+        const form = document.getElementById('formFiltri');
+        
+        if (!inputRicerca || !dropdown) return;
+        
+        let timeoutId = null;
+        
+        // Configurazione comandi
+        const COMANDI = {
+            '@com': { tipo: 'commerciale', label: 'Commerciali', icon: 'bi-briefcase' },
+            '@ope': { tipo: 'operatore', label: 'Operatori', icon: 'bi-headset' }
+        };
+        
+        inputRicerca.addEventListener('input', function() {
+            const valore = this.value.trim().toLowerCase();
+            
+            // Cancella timeout precedente
+            if (timeoutId) clearTimeout(timeoutId);
+            
+            // Trova quale comando corrisponde
+            let comandoTrovato = null;
+            let termine = '';
+            
+            for (const [cmd, config] of Object.entries(COMANDI)) {
+                // CASO 1: Comando esatto (es. "@com")
+                if (valore === cmd) {
+                    comandoTrovato = config;
+                    termine = '';
+                    break;
+                }
+                // CASO 2: Comando + spazio + filtro (es. "@com paolo")
+                if (valore.startsWith(cmd + ' ')) {
+                    comandoTrovato = config;
+                    termine = valore.substring(cmd.length + 1).trim();
+                    break;
+                }
+            }
+            
+            // Se nessun comando trovato, nascondi dropdown
+            if (!comandoTrovato) {
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            // Debounce: aspetta 300ms prima di cercare
+            timeoutId = setTimeout(function() {
+                cercaUtenti(comandoTrovato.tipo, termine, comandoTrovato.label, comandoTrovato.icon);
+            }, 300);
+        });
+        
+        // Nascondi dropdown se clicco fuori
+        document.addEventListener('click', function(e) {
+            if (!inputRicerca.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+        
+        // Impedisci submit se stiamo usando un comando
+        form.addEventListener('submit', function(e) {
+            const valore = inputRicerca.value.trim().toLowerCase();
+            
+            for (const [cmd, config] of Object.entries(COMANDI)) {
+                if (valore === cmd || valore.startsWith(cmd + ' ')) {
+                    e.preventDefault();
+                    const termine = valore.startsWith(cmd + ' ') ? valore.substring(cmd.length + 1).trim() : '';
+                    cercaUtenti(config.tipo, termine, config.label, config.icon);
+                    return;
+                }
+            }
+        });
+        
+        function cercaUtenti(tipo, termine, label, icon) {
+            const url = '/api/utenti/cerca?tipo=' + encodeURIComponent(tipo) + '&q=' + encodeURIComponent(termine);
+            
+            fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.utenti && data.utenti.length > 0) {
+                    mostraDropdownUtenti(data.utenti, termine, label, icon);
+                } else {
+                    dropdown.innerHTML = '<div class="p-3 text-muted text-center"><i class="bi bi-search me-2"></i>Nessun ' + label.toLowerCase().slice(0, -1) + ' trovato</div>';
+                    dropdown.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                dropdown.innerHTML = '<div class="p-3 text-danger text-center">Errore di ricerca</div>';
+                dropdown.style.display = 'block';
+            });
+        }
+        
+        function mostraDropdownUtenti(utenti, termine, label, icon) {
+            let html = '<div class="list-group list-group-flush">';
+            html += '<div class="list-group-item bg-light py-2"><small class="text-muted"><i class="bi ' + icon + ' me-1"></i>' + label + ' trovati: ' + utenti.length + '</small></div>';
+            
+            utenti.forEach(u => {
+                html += '<div class="list-group-item py-2">';
+                html += '<strong>' + escapeHtml(u.nome || '') + ' ' + escapeHtml(u.cognome || '') + '</strong>';
+                html += '<div class="small mt-1">';
+                if (u.cellulare) {
+                    html += '<div><i class="bi bi-phone text-muted me-1"></i><a href="tel:' + escapeHtml(u.cellulare) + '">' + escapeHtml(u.cellulare) + '</a></div>';
+                }
+                if (u.email) {
+                    html += '<div><i class="bi bi-envelope text-muted me-1"></i><a href="mailto:' + escapeHtml(u.email) + '">' + escapeHtml(u.email) + '</a></div>';
+                }
+                if (u.data_nascita) {
+                    html += '<div><i class="bi bi-calendar-heart text-muted me-1"></i>' + escapeHtml(u.data_nascita) + '</div>';
+                }
+                if (!u.cellulare && !u.email && !u.data_nascita) {
+                    html += '<span class="text-muted">Nessun contatto disponibile</span>';
+                }
+                html += '</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            dropdown.innerHTML = html;
+            dropdown.style.display = 'block';
+        }
+    });
+    
+    // Escape HTML per sicurezza
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>

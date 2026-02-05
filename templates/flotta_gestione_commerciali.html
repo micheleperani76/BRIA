@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Commerciali - Flotta{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-arrow-left-right"></i> Gestione Assegnazioni Commerciali</h4>
+    <a href="/flotta/per-commerciale" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Torna a Report
+    </a>
+</div>
+
+{% if request.args.get('success') %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{ request.args.get('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+{% if request.args.get('error') %}
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-circle"></i> {{ request.args.get('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Filtra per commerciale attuale</label>
+                <select name="da" class="form-select">
+                    <option value="">Tutti</option>
+                    <option value="0" {% if da == '0' %}selected{% endif %}>Non assegnato</option>
+                    {% for c in commerciali_filtro %}
+                    <option value="{{ c.id }}" {% if da|string == c.id|string %}selected{% endif %}>{{ c.display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Cerca cliente</label>
+                <input type="text" name="q" class="form-control" placeholder="Nome cliente..." value="{{ q }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-filter"></i> Filtra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Form assegnazione -->
+{% if clienti %}
+<form method="post" action="/flotta/assegna-commerciali">
+    
+    <!-- Selezione nuovo commerciale (SPOSTATO SOPRA) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="bi bi-person-plus"></i> Assegna a Commerciale
+        </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-start">
+                <div class="col-md-5">
+                    <label class="form-label">Seleziona commerciale</label>
+                    <select name="commerciale_id" class="form-select" required>
+                        <option value="">-- Seleziona --</option>
+                        {% for c in commerciali_assegnabili %}
+                        <option value="{{ c.id }}">{{ c.display }}</option>
+                        {% endfor %}
+                        <option value="0">Rimuovi assegnazione (non assegnato)</option>
+                    </select>
+                    <div class="form-text">
+                        Solo i commerciali con permesso "clienti_assegnabili" appaiono qui.
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Note (opzionale)</label>
+                    <input type="text" name="note" class="form-control" 
+                           placeholder="Motivo assegnazione...">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check-lg"></i> Assegna
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <span class="text-muted" id="contatore">0 clienti selezionati</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabella clienti -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Seleziona clienti da assegnare ({{ clienti|length }} trovati)</span>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary" onclick="selectAll(true)">
+                    Seleziona tutti
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="selectAll(false)">
+                    Deseleziona tutti
+                </button>
+            </div>
+        </div>
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light sticky-top">
+                    <tr>
+                        <th style="width: 50px;">
+                            <input type="checkbox" id="checkAll" onchange="selectAll(this.checked)">
+                        </th>
+                        <th>Cliente</th>
+                        <th class="text-center">Veicoli</th>
+                        <th class="text-end">Canone</th>
+                        <th>Commerciale Attuale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clienti %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="clienti[]" value="{{ c.piva }}" 
+                                   data-nome="{{ c.nome }}" class="cliente-check">
+                        </td>
+                        <td>
+                            <a href="/flotta/cliente/{{ c.nome|urlencode }}">{{ c.nome }}</a>
+                            <small class="text-muted d-block">{{ c.piva }}</small>
+                        </td>
+                        <td class="text-center">{{ c.veicoli }}</td>
+                        <td class="text-end">{{ c.canone|format_euro }}</td>
+                        <td>
+                            {% if c.commerciale_display %}
+                            <span class="badge bg-primary">{{ c.commerciale_display }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">Non assegnato</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> Nessun cliente trovato con i filtri selezionati.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectAll(checked) {
+    document.querySelectorAll('.cliente-check').forEach(cb => cb.checked = checked);
+    document.getElementById('checkAll').checked = checked;
+    aggiornaContatore();
+}
+
+function aggiornaContatore() {
+    const selezionati = document.querySelectorAll('.cliente-check:checked').length;
+    document.getElementById('contatore').textContent = selezionati + ' clienti selezionati';
+}
+
+document.querySelectorAll('.cliente-check').forEach(cb => {
+    cb.addEventListener('change', aggiornaContatore);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,559 @@
+{% extends "base.html" %}
+
+{% block title %}Storico Assegnazioni Commerciali{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/admin/utenti">Gestione Utenti</a></li>
+                <li class="breadcrumb-item active">Storico Assegnazioni</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">
+            <i class="bi bi-clock-history me-2"></i>Storico Assegnazioni Commerciali
+        </h1>
+    </div>
+    <a href="/admin/utenti" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Torna alla lista
+    </a>
+</div>
+
+<!-- Filtri compatti -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form method="GET" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <span class="badge bg-primary fs-6">{{ totale_clienti }} clienti</span>
+                <span class="badge bg-secondary">{{ totale_assegnazioni }} movimenti</span>
+            </div>
+            <div class="col-md-3">
+                <select name="commerciale" class="form-select form-select-sm">
+                    <option value="">Tutti i commerciali</option>
+                    {% for c in commerciali %}
+                    <option value="{{ c.id }}" {% if filtro_commerciale == c.id %}selected{% endif %}>
+                        {{ c.display }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="cliente" class="form-control form-control-sm" 
+                       value="{{ filtro_cliente or '' }}" placeholder="Cerca cliente/P.IVA...">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-search"></i>
+                </button>
+                {% if filtro_commerciale or filtro_cliente %}
+                <a href="{{ url_for('admin_utenti.storico_assegnazioni') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabella clienti raggruppati -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 100px;">Ultima Modifica</th>
+                        <th>Cliente</th>
+                        <th style="width: 150px;">Commerciale Attuale</th>
+                        <th style="width: 80px;" class="text-center">Cambi</th>
+                        <th style="width: 80px;" class="text-center">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clienti_storico %}
+                    <tr>
+                        <td>
+                            <small>{{ c.ultima_modifica[:10] }}</small>
+                        </td>
+                        <td>
+                            <a href="/cerca/{{ c.cliente_piva }}" class="text-decoration-none fw-bold">
+                                {{ c.cliente_nome[:45] }}{% if c.cliente_nome|length > 45 %}...{% endif %}
+                            </a>
+                            <br><small class="text-muted">{{ c.cliente_piva }}</small>
+                        </td>
+                        <td>
+                            <span class="text-primary">
+                                <i class="bi bi-person-check me-1"></i>{{ c.commerciale_attuale }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if c.num_cambi > 2 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                {{ c.num_cambi }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-storico" 
+                                    data-piva="{{ c.cliente_piva }}"
+                                    title="Vedi storico completo">
+                                <i class="bi bi-clock-history"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox me-2"></i>Nessuna assegnazione trovata
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Paginazione -->
+    {% if pagine > 1 %}
+    <div class="card-footer py-2">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagina_corrente > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina_corrente - 1 }}{% if filtro_commerciale %}&commerciale={{ filtro_commerciale }}{% endif %}{% if filtro_cliente %}&cliente={{ filtro_cliente }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for p in range(1, pagine + 1) %}
+                    {% if p == pagina_corrente %}
+                    <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% elif p <= 3 or p > pagine - 2 or (p >= pagina_corrente - 1 and p <= pagina_corrente + 1) %}
+                    <li class="page-item">
+                        <a class="page-link" href="?pagina={{ p }}{% if filtro_commerciale %}&commerciale={{ filtro_commerciale }}{% endif %}{% if filtro_cliente %}&cliente={{ filtro_cliente }}{% endif %}">{{ p }}</a>
+                    </li>
+                    {% elif p == 4 or p == pagine - 2 %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagina_corrente < pagine %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina_corrente + 1 }}{% if filtro_commerciale %}&commerciale={{ filtro_commerciale }}{% endif %}{% if filtro_cliente %}&cliente={{ filtro_cliente }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Storico Dettagliato -->
+<div class="modal fade" id="modalStorico" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history me-2"></i>Storico Assegnazioni
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Info cliente -->
+                <div class="alert alert-light mb-3">
+                    <strong id="modal-cliente-nome">-</strong>
+                    <br><small class="text-muted" id="modal-cliente-piva">-</small>
+                </div>
+                
+                <!-- Timeline storico automatico -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-clock-history me-1"></i> Storico Assegnazioni (automatico)
+                    </div>
+                    <div class="card-body p-3">
+                        <div id="storico-timeline">
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-hourglass-split me-2"></i>Caricamento...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Assegna Commerciale -->
+                <div class="card mb-3 border-primary">
+                    <div class="card-header py-2 bg-primary text-white">
+                        <i class="bi bi-person-plus me-1"></i> Assegna Commerciale
+                    </div>
+                    <div class="card-body">
+                        <form id="formAssegnaCommerciale">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label small">Nuovo Commerciale</label>
+                                    <select class="form-select form-select-sm" id="assegna-commerciale-id" required>
+                                        <option value="">-- Seleziona --</option>
+                                        {% for c in commerciali_assegnabili %}
+                                        <option value="{{ c.id }}">{{ c.display }}</option>
+                                        {% endfor %}
+                                        <option value="0">Rimuovi assegnazione</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small">Note (opzionale)</label>
+                                    <input type="text" class="form-control form-control-sm" id="assegna-note" 
+                                           placeholder="Motivo assegnazione...">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                                        <i class="bi bi-check-lg me-1"></i>Assegna
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Aggiungi Ex-Commerciale -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-plus-circle me-1"></i> Aggiungi Ex-Commerciale (manuale)
+                    </div>
+                    <div class="card-body">
+                        <form id="formExCommerciale">
+                            <input type="hidden" id="form-piva" value="">
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small">Nome Commerciale *</label>
+                                    <input type="text" class="form-control form-control-sm" id="form-nome" 
+                                           placeholder="Es: G. Rossi" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Data Inizio</label>
+                                    <input type="date" class="form-control form-control-sm" id="form-data-inizio">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small">Data Fine</label>
+                                    <input type="date" class="form-control form-control-sm" id="form-data-fine">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">Note</label>
+                                    <input type="text" class="form-control form-control-sm" id="form-note" 
+                                           placeholder="Opzionale">
+                                </div>
+                                <div class="col-md-1 d-flex align-items-end">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Lista ex-commerciali manuali -->
+                <div class="card">
+                    <div class="card-header py-2">
+                        <i class="bi bi-people me-1"></i> Ex-Commerciali (manuali)
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="lista-ex-commerciali">
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-hourglass-split me-2"></i>Caricamento...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline-item {
+    position: relative;
+    padding-left: 30px;
+    padding-bottom: 20px;
+    border-left: 2px solid #dee2e6;
+}
+.timeline-item:last-child {
+    border-left: 2px solid transparent;
+    padding-bottom: 0;
+}
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #0d6efd;
+}
+.timeline-item:first-child::before {
+    background: #198754;
+    width: 12px;
+    height: 12px;
+    left: -7px;
+}
+.timeline-item .timeline-date {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+.timeline-item .timeline-content {
+    background: #f8f9fa;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Variabile globale per P.IVA corrente
+let currentPiva = '';
+
+// Apri modal con storico cliente
+document.querySelectorAll('.btn-storico').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const piva = this.dataset.piva;
+        currentPiva = piva;
+        
+        // Reset modal
+        document.getElementById('modal-cliente-nome').textContent = 'Caricamento...';
+        document.getElementById('modal-cliente-piva').textContent = piva;
+        document.getElementById('form-piva').value = piva;
+        document.getElementById('storico-timeline').innerHTML = 
+            '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Caricamento...</div>';
+        
+        // Apri modal
+        new bootstrap.Modal(document.getElementById('modalStorico')).show();
+        
+        // Carica storico automatico
+        fetch('/admin/utenti/storico-assegnazioni/' + piva + '/dettaglio')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('modal-cliente-nome').textContent = data.cliente_nome;
+                    renderTimeline(data.storico);
+                } else {
+                    document.getElementById('storico-timeline').innerHTML = 
+                        '<div class="text-center text-danger py-3">Errore: ' + data.error + '</div>';
+                }
+            })
+            .catch(err => {
+                document.getElementById('storico-timeline').innerHTML = 
+                    '<div class="text-center text-danger py-3">Errore di connessione</div>';
+            });
+        
+        // Carica ex-commerciali manuali
+        caricaExCommerciali(piva);
+    });
+});
+
+function renderTimeline(storico) {
+    const container = document.getElementById('storico-timeline');
+    
+    if (storico.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3">Nessuno storico automatico</div>';
+        return;
+    }
+    
+    let html = '<div class="timeline">';
+    
+    storico.forEach((s, idx) => {
+        const isFirst = idx === 0;
+        const tipoLabel = {
+            'manuale': 'Assegnazione manuale',
+            'cambio_ruolo': 'Cambio ruolo automatico',
+            'trasferimento': 'Trasferimento'
+        }[s.tipo] || s.tipo;
+        
+        html += `
+            <div class="timeline-item">
+                <div class="timeline-date">
+                    ${s.data_ora.substring(0, 16).replace('T', ' ')}
+                    ${isFirst ? '<span class="badge bg-success ms-2">Attuale</span>' : ''}
+                </div>
+                <div class="timeline-content">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong class="text-primary">
+                                <i class="bi bi-person-fill me-1"></i>${s.a}
+                            </strong>
+                            ${s.da && s.da !== 'Non assegnato' ? 
+                                '<br><small class="text-muted">Da: ' + s.da + '</small>' : ''}
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">${tipoLabel}</small>
+                            <br><small class="text-muted">by ${s.operatore}</small>
+                        </div>
+                    </div>
+                    ${s.note ? '<div class="mt-2 small text-muted"><i class="bi bi-chat-text me-1"></i>' + s.note + '</div>' : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Carica lista ex-commerciali manuali
+function caricaExCommerciali(piva) {
+    const container = document.getElementById('lista-ex-commerciali');
+    container.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Caricamento...</div>';
+    
+    fetch('/admin/utenti/ex-commerciali/' + piva)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.ex_commerciali.length > 0) {
+                let html = '<table class="table table-sm mb-0">';
+                html += '<thead class="table-light"><tr><th>Nome</th><th>Periodo</th><th>Note</th><th></th></tr></thead>';
+                html += '<tbody>';
+                
+                data.ex_commerciali.forEach(ex => {
+                    const periodo = (ex.data_inizio || '?') + ' - ' + (ex.data_fine || '?');
+                    html += '<tr>';
+                    html += '<td><i class="bi bi-person me-1"></i>' + ex.nome_commerciale + '</td>';
+                    html += '<td><small>' + periodo + '</small></td>';
+                    html += '<td><small class="text-muted">' + (ex.note || '-') + '</small></td>';
+                    html += '<td class="text-end">';
+                    html += '<button class="btn btn-sm btn-outline-danger btn-elimina-ex" data-id="' + ex.id + '" data-piva="' + piva + '">';
+                    html += '<i class="bi bi-trash"></i></button>';
+                    html += '</td></tr>';
+                });
+                
+                html += '</tbody></table>';
+                container.innerHTML = html;
+                
+                // Bind elimina
+                container.querySelectorAll('.btn-elimina-ex').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        if (confirm('Eliminare questo ex-commerciale?')) {
+                            eliminaExCommerciale(this.dataset.id, this.dataset.piva);
+                        }
+                    });
+                });
+            } else {
+                container.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox me-2"></i>Nessun ex-commerciale manuale registrato</div>';
+            }
+        })
+        .catch(err => {
+            container.innerHTML = '<div class="text-center text-danger py-3">Errore caricamento</div>';
+        });
+}
+
+// Form aggiungi ex-commerciale
+document.getElementById('formExCommerciale').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const piva = document.getElementById('form-piva').value;
+    const formData = new FormData();
+    formData.append('nome_commerciale', document.getElementById('form-nome').value);
+    formData.append('data_inizio', document.getElementById('form-data-inizio').value);
+    formData.append('data_fine', document.getElementById('form-data-fine').value);
+    formData.append('note', document.getElementById('form-note').value);
+    
+    fetch('/admin/utenti/ex-commerciali/' + piva + '/aggiungi', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Reset form
+            document.getElementById('form-nome').value = '';
+            document.getElementById('form-data-inizio').value = '';
+            document.getElementById('form-data-fine').value = '';
+            document.getElementById('form-note').value = '';
+            
+            // Ricarica lista
+            caricaExCommerciali(piva);
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    });
+});
+
+// Elimina ex-commerciale
+function eliminaExCommerciale(id, piva) {
+    fetch('/admin/utenti/ex-commerciali/elimina/' + id, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            caricaExCommerciali(piva);
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    });
+}
+
+// Form assegna commerciale
+document.getElementById('formAssegnaCommerciale').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const piva = currentPiva;
+    const commercialeId = document.getElementById('assegna-commerciale-id').value;
+    const note = document.getElementById('assegna-note').value;
+    
+    if (!commercialeId) {
+        alert('Seleziona un commerciale');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('commerciale_id', commercialeId);
+    formData.append('note', note);
+    
+    // Disabilita bottone durante invio
+    const btn = this.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    fetch('/admin/utenti/storico-assegnazioni/' + piva + '/assegna', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Assegna';
+        
+        if (data.success) {
+            // Reset form
+            document.getElementById('assegna-commerciale-id').value = '';
+            document.getElementById('assegna-note').value = '';
+            
+            // Mostra messaggio successo
+            alert(data.message);
+            
+            // Ricarica storico nel modal
+            fetch('/admin/utenti/storico-assegnazioni/' + piva + '/dettaglio')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTimeline(data.storico);
+                    }
+                });
+            
+            // Ricarica pagina per aggiornare tabella
+            setTimeout(() => location.reload(), 500);
+        } else {
+            alert('Errore: ' + data.error);
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Assegna';
+        alert('Errore di connessione');
+    });
+});
+</script>
+{% endblock %}

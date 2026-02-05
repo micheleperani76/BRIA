@@ -1,0 +1,48 @@
+<!-- ==============================================================================
+     CAR POLICY - Modal Grande Draggable
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-20
+     Descrizione: Modal grande, draggable, resizable per gestione Car Policy
+                  Supporta drag & drop file, lista con file fissabili
+     ============================================================================== -->
+
+<div class="modal fade" id="modalCarPolicy" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-text me-2"></i>Car Policy - {{ cliente.ragione_sociale or cliente.nome_cliente }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body drop-zone" id="carPolicyDropZone">
+                <!-- Lista file -->
+                <div id="car-policy-file-list" class="car-policy-file-list">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted">Caricamento documenti...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Area Upload -->
+            <div class="upload-area">
+                <form id="form-upload-car-policy" enctype="multipart/form-data">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="input-group">
+                                <input type="file" class="form-control" 
+                                       id="file-car-policy" name="file" 
+                                       accept=".pdf,.doc,.docx,.odt,.xls,.xlsx">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-1"></i> Carica
+                                </button>
+                            </div>
+                            <small class="text-muted">Formati: PDF, Word (.doc, .docx), LibreOffice (.odt), Excel (.xls, .xlsx) - Usa il pulsante <i class="bi bi-filetype-pdf"></i> per convertire in PDF</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,65 @@
+{# ================================================
+   INDEX - HEADER
+   Titolo pagina e card Score Internazionale
+   Versione: 1.1.0 - Ripristinato layout originale
+   ================================================ #}
+
+<!-- Header con titolo a sinistra e card score a destra -->
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-person"></i> Clienti</h4>
+            <small class="text-muted">Score Internazionale:</small>
+        </div>
+        {% if filtri_attivi %}
+        <span class="badge bg-primary">Filtri attivi</span>
+        {% endif %}
+    </div>
+    
+    <!-- Cards statistiche compatte allineate a destra -->
+    <div class="d-flex gap-2 align-items-center">
+        <a href="/clienti" class="text-decoration-none">
+            <div class="stat-card clickable text-center score-card {% if not filtri_attivi %}border border-primary border-2{% endif %}">
+                <div class="stat-value text-primary" style="font-size: 1.4rem;">{{ stats.totale }}</div>
+                <div class="stat-label" style="font-size: 0.75rem;">Totale</div>
+            </div>
+        </a>
+        {% for s in ['A', 'B', 'C', 'D', 'E'] %}
+        <a href="/clienti?score={{ s }}" class="text-decoration-none">
+            <div class="stat-card clickable text-center score-card {% if score == s %}border border-2{% endif %}" 
+                 style="{% if score == s %}border-color: var(--bs-{{ score_colors[s].bg }}){% endif %}">
+                <div class="stat-value">
+                    <span class="score-badge score-{{ s }}">{{ s }}</span>
+                </div>
+                <div class="stat-label mt-1" style="font-size: 0.75rem;">{{ stats['score_' + s] }}</div>
+            </div>
+        </a>
+        {% endfor %}
+        <a href="/clienti?score=NS" class="text-decoration-none">
+            <div class="stat-card clickable text-center score-card {% if score == 'NS' %}border border-secondary border-2{% endif %}">
+                <div class="stat-value">
+                    <span class="score-badge-ns">NS</span>
+                </div>
+                <div class="stat-label mt-1" style="font-size: 0.75rem;">{{ stats.score_NS }}</div>
+            </div>
+        </a>
+        <!-- Pulsante Nuovo Cliente -->
+        <a href="#" class="text-decoration-none" id="btn-nuovo-cliente" title="Aggiungi nuovo cliente">
+            <div class="stat-card clickable text-center score-card" style="background: #198754; color: white;">
+                <div class="stat-value" style="font-size: 1.5rem;">
+                    <i class="bi bi-plus-lg"></i>
+                </div>
+                <div class="stat-label mt-1" style="font-size: 0.70rem; color: white;">Nuovo Cliente</div>
+            </div>
+        </a>
+    </div>
+</div>
+
+{% if prov_veicolo %}
+<div class="alert alert-info d-flex justify-content-between align-items-center mb-4">
+    <span><i class="bi bi-geo-alt"></i> Filtro attivo: Clienti con veicoli in provincia <strong>{{ prov_veicolo }}</strong></span>
+    <a href="/clienti" class="btn btn-sm btn-outline-info">
+        <i class="bi bi-x-circle"></i> Rimuovi filtro
+    </a>
+</div>
+{% endif %}

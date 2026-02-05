@@ -1,0 +1,306 @@
+<!-- ============================================================
+     TOP PROSPECT - Modal Dettaglio
+     Versione: 2.0.0
+     Data: 2026-01-30
+     Descrizione: Modal UNIFICATO per gestione note (nuova/modifica)
+     
+     PRINCIPIO: Un unico modal per tutte le operazioni sulle note.
+     La modalita' (nuovo/modifica) viene gestita via JavaScript.
+     ============================================================ -->
+
+<!-- Modal Nota UNIFICATO - Gestisce sia creazione che modifica -->
+<div class="modal fade" id="modalNota" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="width: fit-content; max-width: 95vw;">
+        <div class="modal-content modal-nota-resizable">
+            <!-- Handle di resize su tutti i bordi -->
+            <div class="resize-handle resize-handle-n" data-resize="n"></div>
+            <div class="resize-handle resize-handle-s" data-resize="s"></div>
+            <div class="resize-handle resize-handle-e" data-resize="e"></div>
+            <div class="resize-handle resize-handle-w" data-resize="w"></div>
+            <div class="resize-handle resize-handle-ne" data-resize="ne"></div>
+            <div class="resize-handle resize-handle-nw" data-resize="nw"></div>
+            <div class="resize-handle resize-handle-se" data-resize="se"></div>
+            <div class="resize-handle resize-handle-sw" data-resize="sw"></div>
+            
+            <!-- Header: colore e titolo cambiano in base alla modalita' -->
+            <div class="modal-header text-white" id="modalNotaHeader" style="flex-shrink: 0;">
+                <h5 class="modal-title" id="modalNotaTitolo">
+                    <i class="bi bi-chat-left-text me-2" id="modalNotaIcona"></i>
+                    <span id="modalNotaTitoloTesto">Nota</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Campi hidden per gestire lo stato -->
+                <input type="hidden" id="notaTopProspectId">
+                <input type="hidden" id="notaId" value="">
+                <input type="hidden" id="notaModalita" value="nuovo">
+                <input type="hidden" id="notaAllegatiDaEliminare" value="[]">
+                
+                <!-- Titolo: sempre visibile -->
+                <div class="mb-3" style="flex-shrink: 0;">
+                    <label class="form-label">Titolo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="notaTitolo" required placeholder="Oggetto della nota...">
+                </div>
+                
+                <!-- Textarea: si espande -->
+                <div class="nota-testo-container mb-3">
+                    <label class="form-label">Testo</label>
+                    <textarea class="form-control" id="notaTesto" placeholder="Scrivi qui il contenuto della nota..."></textarea>
+                </div>
+                
+                <!-- Checkbox Fissa in alto -->
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="notaFissata">
+                        <label class="form-check-label" for="notaFissata">
+                            <i class="bi bi-pin me-1"></i>Fissa in alto
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Allegati esistenti (visibile solo in modifica) -->
+                <div id="notaAllegatiEsistenti" class="mb-3"></div>
+                
+                <!-- Campo per allegati -->
+                <div class="mb-0">
+                    <label class="form-label"><i class="bi bi-paperclip me-1"></i>Allegati</label>
+                    <input type="file" class="form-control form-control-sm" id="notaAllegati" multiple 
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv">
+                    <small class="text-muted">PDF, Word, Excel, immagini</small>
+                    <div id="notaAllegatiSelezionati" class="mt-1 small"></div>
+                </div>
+            </div>
+            
+            <div class="modal-footer justify-content-between" style="flex-shrink: 0;">
+                <!-- Pulsante Elimina: visibile solo in modifica -->
+                <div id="notaBtnEliminaContainer">
+                    <button type="button" class="btn btn-outline-danger" onclick="eliminaNota()" id="btnEliminaNota">
+                        <i class="bi bi-trash me-1"></i>Elimina
+                    </button>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" class="btn btn-primary" onclick="salvaNota()" id="btnSalvaNota">
+                        <i class="bi bi-check-lg me-1"></i>Salva
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuovo Appuntamento -->
+<div class="modal fade" id="modalNuovoAppuntamento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Nuovo Appuntamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="appTopProspectId">
+                <input type="hidden" id="appId">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Data <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="appData" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Ora</label>
+                        <input type="time" class="form-control" id="appOra">
+                    </div>
+                </div>
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Tipo</label>
+                    <select class="form-select" id="appTipo">
+                        <option value="visita">Visita</option>
+                        <option value="telefonata">Telefonata</option>
+                        <option value="videochiamata">Videochiamata</option>
+                        <option value="altro">Altro</option>
+                    </select>
+                </div>
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Note</label>
+                    <textarea class="form-control" id="appNote" rows="3" placeholder="Obiettivi dell'incontro..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="salvaAppuntamento()">
+                    <i class="bi bi-check-lg me-1"></i>Salva Appuntamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Completa Appuntamento -->
+<div class="modal fade" id="modalCompletaAppuntamento" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Completa Appuntamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="completaTopProspectId">
+                <input type="hidden" id="completaAppId">
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Esito dell'appuntamento</label>
+                    <textarea class="form-control" id="completaEsito" rows="4" placeholder="Descrivi l'esito dell'incontro..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-info" onclick="completaAppuntamento()">
+                    <i class="bi bi-check-lg me-1"></i>Segna Completato
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Candidato -->
+<div class="modal fade" id="modalConfermaCandidato" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-trophy-fill me-2"></i>Conferma Top Prospect</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="confermaCandidatoId">
+                <p>Stai per confermare <strong id="confermaNomeAzienda"></strong> come Top Prospect.</p>
+                
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Priorit&agrave;</label>
+                    <select class="form-select" id="confermaPriorita">
+                        {% for livello, config in livelli_priorita.items() %}
+                        <option value="{{ livello }}" {% if livello == 4 %}selected{% endif %}>
+                            {{ config.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Note (opzionale)</label>
+                    <textarea class="form-control" id="confermaNote" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-warning" onclick="confermaTopProspect()">
+                    <i class="bi bi-trophy-fill me-1"></i>Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Archivia Top Prospect -->
+<div class="modal fade" id="modalArchivia" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-archive me-2"></i>Archivia Top Prospect</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="archiviaTopProspectId">
+                <p>Stai per archiviare <strong id="archiviaNomeAzienda"></strong>.</p>
+                <p class="text-muted small">L'azienda perder&agrave; le icone Top Prospect e non sar&agrave; pi&ugrave; visibile nella lista principale.</p>
+                
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Motivo archiviazione</label>
+                    <textarea class="form-control" id="archiviaNote" rows="2" placeholder="Es: non pi&ugrave; interessato, contratto perso..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" onclick="archiviaTopProspect()">
+                    <i class="bi bi-archive me-1"></i>Archivia
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Priorit&agrave; -->
+<div class="modal fade" id="modalPriorita" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-star me-2"></i>Modifica Priorit&agrave;</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="prioritaTopProspectId">
+                <select class="form-select" id="nuovaPriorita">
+                    {% for livello, config in livelli_priorita.items() %}
+                    <option value="{{ livello }}">{{ config.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-sm btn-primary" onclick="salvaPriorita()">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Candidatura Manuale -->
+<!-- Modal Candidatura Manuale (stile trattative) -->
+<div class="modal fade" id="modalCandidaturaManuale" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i>Proposta Manuale Top Prospect</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                    <label class="form-label">Cerca Cliente</label>
+                    <div class="position-relative">
+                        <input type="text" class="form-control" id="cercaClienteManuale" 
+                               autocomplete="off" placeholder="Digita per filtrare...">
+                        <div id="dropdownClientiTP" class="dropdown-menu w-100" style="max-height: 250px; overflow-y: auto;"></div>
+                    </div>
+                    <div id="loadingClientiTP" class="text-muted small mt-1 d-none">
+                        <i class="bi bi-hourglass-split me-1"></i>Caricamento clienti...
+                    </div>
+                </div>
+                <div id="clienteSelezionatoInfo" class="d-none">
+                    <hr>
+                    <input type="hidden" id="clienteSelezionatoId">
+                    <div class="alert alert-light">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Cliente:</strong> <span id="infoNomeCliente"></span></p>
+                                <p class="mb-1"><strong>P.IVA:</strong> <span id="infoPiva"></span></p>
+                                <p class="mb-0"><strong>Provincia:</strong> <span id="infoProvincia"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Dipendenti:</strong> <span id="infoDipendenti"></span></p>
+                                <p class="mb-1"><strong>Veicoli:</strong> <span id="infoVeicoli"></span></p>
+                                <p class="mb-0"><strong>Commerciale:</strong> <span id="infoCommerciale"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3" style="flex: 1; display: flex; flex-direction: column;">
+                        <label class="form-label">Note (opzionale)</label>
+                        <textarea class="form-control" id="candidaturaNote" rows="2" placeholder="Motivo della proposta..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" id="btnConfermaCandidatura" onclick="confermaCandidaturaManuale()" disabled>
+                    <i class="bi bi-hand-index-thumb me-1"></i>Proponi come Top Prospect
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

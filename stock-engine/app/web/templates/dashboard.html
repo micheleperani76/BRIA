@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Stock Engine{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-gray-800">Dashboard</h2>
+        <p class="text-gray-500">{{ oggi.strftime('%d/%m/%Y') }}</p>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Veicoli Totali (DB)</h3>
+            <p class="text-3xl font-bold text-gray-800 mt-2">{{ stats.veicoli_totali | default(0) }}</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Veicoli Oggi</h3>
+            <p class="text-3xl font-bold text-blue-600 mt-2">{{ stats.veicoli_oggi | default(0) }}</p>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-sm font-medium text-gray-500">Stato Sistema</h3>
+            <p class="text-xl font-bold text-green-600 mt-2">✓ Operativo</p>
+        </div>
+    </div>
+    
+    <!-- Stats per Noleggiatore -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b">
+            <h3 class="text-lg font-medium">Stock per Noleggiatore (oggi)</h3>
+        </div>
+        <div class="p-6">
+            <table class="w-full">
+                <thead class="text-left text-sm text-gray-500">
+                    <tr>
+                        <th class="pb-3">Noleggiatore</th>
+                        <th class="pb-3">Totale</th>
+                        <th class="pb-3">Matched</th>
+                        <th class="pb-3">No Match</th>
+                        <th class="pb-3">Match Rate</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-800">
+                    {% for nome, s in stats_noleggiatori.items() %}
+                    <tr class="border-t">
+                        <td class="py-3 font-medium">{{ nome }}</td>
+                        <td class="py-3">{{ s.totale | default(0) }}</td>
+                        <td class="py-3 text-green-600">{{ s.matched | default(0) }}</td>
+                        <td class="py-3 text-red-600">{{ s.no_match | default(0) }}</td>
+                        <td class="py-3">
+                            {% if s.match_rate %}
+                            <span class="px-2 py-1 rounded text-sm 
+                                {% if s.match_rate >= 90 %}status-ok
+                                {% elif s.match_rate >= 70 %}status-warn
+                                {% else %}status-error{% endif %}">
+                                {{ s.match_rate }}%
+                            </span>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Ultime Elaborazioni -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b">
+            <h3 class="text-lg font-medium">Ultime Elaborazioni</h3>
+        </div>
+        <div class="p-6">
+            {% if elaborazioni %}
+            <table class="w-full">
+                <thead class="text-left text-sm text-gray-500">
+                    <tr>
+                        <th class="pb-3">Data/Ora</th>
+                        <th class="pb-3">Noleggiatore</th>
+                        <th class="pb-3">Veicoli</th>
+                        <th class="pb-3">Match Rate</th>
+                        <th class="pb-3">Durata</th>
+                        <th class="pb-3">Stato</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-800">
+                    {% for e in elaborazioni %}
+                    <tr class="border-t">
+                        <td class="py-3 text-sm">{{ e.data_elaborazione.strftime('%d/%m %H:%M') }}</td>
+                        <td class="py-3 font-medium">{{ e.noleggiatore }}</td>
+                        <td class="py-3">{{ e.veicoli_importati | default(0) }}</td>
+                        <td class="py-3">{{ e.match_rate | default(0) }}%</td>
+                        <td class="py-3 text-sm text-gray-500">{{ e.durata_secondi | default(0) }}s</td>
+                        <td class="py-3">
+                            {% if e.stato == 'completata' %}
+                            <span class="px-2 py-1 rounded text-xs status-ok">✓ Completata</span>
+                            {% elif e.stato == 'in_corso' %}
+                            <span class="px-2 py-1 rounded text-xs status-warn">⏳ In corso</span>
+                            {% else %}
+                            <span class="px-2 py-1 rounded text-xs status-error">✗ Errore</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-gray-500 text-center py-8">Nessuna elaborazione recente</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-medium mb-4">Azioni Rapide</h3>
+        <div class="flex flex-wrap gap-3">
+            <a href="/api/export/list" 
+               class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                📥 Lista Export
+            </a>
+            <a href="/api/stock/statistics" 
+               class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
+                📊 Statistiche API
+            </a>
+            <a href="/api/health" 
+               class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                ❤️ Health Check
+            </a>
+        </div>
+    </div>
+    
+    <!-- API Info -->
+    <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+        <h3 class="text-lg font-medium mb-4">📡 Endpoint API Principali</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm font-mono">
+            <div>
+                <p class="text-gray-500">Lista veicoli:</p>
+                <code class="text-blue-600">GET /api/stock/ayvens</code>
+            </div>
+            <div>
+                <p class="text-gray-500">Ricerca:</p>
+                <code class="text-blue-600">GET /api/stock/search?marca=FIAT</code>
+            </div>
+            <div>
+                <p class="text-gray-500">Download Excel:</p>
+                <code class="text-blue-600">GET /api/export/excel/ayvens</code>
+            </div>
+            <div>
+                <p class="text-gray-500">Lancia elaborazione:</p>
+                <code class="text-blue-600">POST /api/elabora/ayvens</code>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}

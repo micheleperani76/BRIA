@@ -1,0 +1,178 @@
+<!-- ==============================================================================
+     ORDINI - JavaScript Dedicato
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2026-01-27
+     Descrizione: Funzioni JS per gestione Ordini
+                  - Apertura modal, caricamento lista, render file
+                  - Upload con verifica duplicati, drag &amp; drop
+     Dipendenze: Richiede shared/_scripts_comuni.html per getIcona(), verificaDuplicati()
+     ============================================================================== -->
+
+<script>
+(function() {
+    const TIPO_DOC = 'ordini';
+    
+    // === APRI MODAL ===
+    window.apriModalOrdini = function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalOrdini'));
+        modal.show();
+        caricaOrdini();
+    };
+    
+    // === CARICA LISTA ===
+    function caricaOrdini() {
+        const container = document.getElementById('ordini-file-list');
+        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+        
+        fetch(`/api/cliente/${clienteId}/documenti/${TIPO_DOC}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderDocumenti(container, data.documenti, TIPO_DOC);
+                } else {
+                    container.innerHTML = '<div class="text-danger text-center py-4">Errore caricamento</div>';
+                }
+            })
+            .catch(err => {
+                container.innerHTML = '<div class="text-danger text-center py-4">Errore connessione</div>';
+            });
+    }
+    
+    window.caricaOrdini = caricaOrdini;
+    
+    // === RENDER LISTA ===
+    function renderDocumenti(container, documenti, tipo) {
+        if (documenti.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-folder-x" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Nessun documento</p>
+                    <p class="small">Carica il primo documento usando il form in basso oppure trascina qui un file</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordina alfabeticamente per nome originale
+        documenti.sort((a, b) => a.nome_originale.localeCompare(b.nome_originale));
+        
+        let html = '';
+        documenti.forEach(doc => {
+            html += `
+                <div class="file-item" data-nome="${doc.nome}">
+                    <div class="file-icon">${getIcona(doc.nome)}</div>
+                    <div class="file-info">
+                        <a href="/cliente/${clienteId}/documento/${tipo}/${doc.nome}" 
+                           target="_blank" class="file-name text-decoration-none">
+                            ${doc.nome_originale}
+                        </a>
+                        <div class="file-meta">
+                            ${doc.dimensione_fmt || ''} ${doc.data_modifica ? '- ' + doc.data_modifica : ''}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                onclick="apriRinomina('${tipo}', '${doc.nome}', '${doc.nome_originale}')" title="Rinomina">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="eliminaDocumento('${tipo}', '${doc.nome}')" title="Elimina">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // === UPLOAD ===
+    document.getElementById('form-upload-ordini')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('file-ordini');
+        if (!fileInput.files.length) {
+            alert('Seleziona un file');
+            return;
+        }
+        verificaDuplicati(TIPO_DOC, fileInput.files[0], fileInput, caricaOrdini);
+    });
+    
+    // === DRAG & DROP ===
+    (function() {
+        const dropZone = document.getElementById('ordiniDropZone');
+        if (!dropZone) return;
+        
+        const modal = document.getElementById('modalOrdini');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const fileInput = document.getElementById('file-ordini');
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                fileInput.files = dt.files;
+                verificaDuplicati(TIPO_DOC, files[0], fileInput, caricaOrdini);
+            }
+        }, false);
+        
+        document.addEventListener('dragover', function(e) {
+            if (modal.classList.contains('show')) e.preventDefault();
+        });
+        document.addEventListener('drop', function(e) {
+            if (modal.classList.contains('show')) e.preventDefault();
+        });
+    })();
+    
+    // === DRAG MODAL ===
+    (function() {
+        const modal = document.getElementById('modalOrdini');
+        if (!modal) return;
+        
+        const header = modal.querySelector('.modal-header');
+        const dialog = modal.querySelector('.modal-dialog');
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+        
+        header.addEventListener('mousedown', function(e) {
+            if (e.target.classList.contains('btn-close')) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = dialog.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            dialog.style.margin = '0';
+            dialog.style.position = 'fixed';
+            dialog.style.left = startLeft + 'px';
+            dialog.style.top = startTop + 'px';
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            dialog.style.left = (startLeft + e.clientX - startX) + 'px';
+            dialog.style.top = (startTop + e.clientY - startY) + 'px';
+        });
+        
+        document.addEventListener('mouseup', () => isDragging = false);
+    })();
+    
+})();
+</script>

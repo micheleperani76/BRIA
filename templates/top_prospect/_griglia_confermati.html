@@ -1,0 +1,94 @@
+<!-- ============================================================
+     TOP PROSPECT - Griglia Confermati
+     Versione: 1.1.0
+     Data: 2026-01-30
+     Descrizione: Griglia principale Top Prospect confermati
+     Modifiche: Aggiunti tooltip intestazioni colonne
+     ============================================================ -->
+
+<div class="card-body p-0">
+    <div class="table-responsive">
+        <table class="table table-hover table-top-prospect mb-0" id="tabellaConfermati">
+            <thead>
+                <tr>
+                    <th class="col-priorita" data-bs-toggle="tooltip" data-bs-placement="top" title="Priorit&agrave;: da Massima (1) a Bassa (5)">P</th>
+                    <th style="width: 30px;"></th><!-- Espansione -->
+                    <th style="width: 30px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Origine: manuale o automatica">O</th>
+                    <th>Azienda</th>
+                    <th style="width: 120px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Commerciale assegnato">Commerciale</th>
+                    <th style="width: 70px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Numero veicoli in flotta">Flotta</th>
+                    <th style="width: 70px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Numero dipendenti">Dip.</th>
+                    <th style="width: 60px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Provincia sede legale">Prov.</th>
+                    <th style="width: 100px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Data ultimo appuntamento completato">Ultimo App.</th>
+                    <th style="width: 100px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Data prossimo appuntamento pianificato">Prossimo App.</th>
+                    <th style="width: 40px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Car Policy presente">CP</th>
+                    <th style="width: 50px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Numero di note">Note</th>
+                    {% if is_admin %}
+                    <th class="col-azioni">Azioni</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody id="tbodyConfermati">
+                <!-- Caricato via JavaScript -->
+                <tr>
+                    <td colspan="13" class="text-center py-4 text-muted">
+                        <i class="bi bi-hourglass-split me-2"></i>Caricamento...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Template riga (nascosto) -->
+<template id="templateRigaConfermato">
+    <tr class="tp-row" data-tp-id="">
+        <td class="col-priorita">
+            <i class="bi bi-star-fill priorita-icona"></i>
+        </td>
+        <td class="text-center">
+            <i class="bi bi-chevron-right expand-icon" style="transition: transform 0.2s;"></i>
+        </td>
+        <td class="origine text-center"></td>
+        <td class="nome-azienda"></td>
+        <td class="commerciale"></td>
+        <td class="flotta text-center"></td>
+        <td class="dipendenti text-center"></td>
+        <td class="provincia text-center"></td>
+        <td class="ultimo-app"></td>
+        <td class="prossimo-app"></td>
+        <td class="car-policy text-center"></td>
+        <td class="note-count text-center"></td>
+        <td class="col-azioni azioni-admin"></td>
+    </tr>
+    <!-- Riga dettaglio espandibile -->
+    <tr class="tp-detail-row" style="display: none;">
+        <td colspan="13">
+            <div class="tp-detail-content">
+                <div class="row">
+                    <!-- Colonna Note -->
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-chat-left-text me-2"></i>Note</h6>
+                        <div class="note-container" style="max-height: 250px; overflow-y: auto;"></div>
+                        <button class="btn btn-sm btn-outline-primary mt-2 btn-nuova-nota">
+                            <i class="bi bi-plus me-1"></i>Nuova Nota
+                        </button>
+                    </div>
+                    <!-- Colonna Appuntamenti -->
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-calendar-event me-2"></i>Appuntamenti</h6>
+                        <div class="appuntamenti-container" style="max-height: 250px; overflow-y: auto;"></div>
+                        <button class="btn btn-sm btn-outline-success mt-2 btn-nuovo-app">
+                            <i class="bi bi-plus me-1"></i>Nuovo Appuntamento
+                        </button>
+                    </div>
+                    <!-- Colonna Storico -->
+                    <div class="col-md-4">
+                        <h6><i class="bi bi-clock-history me-2"></i>Storico Attivit&agrave;</h6>
+                        <div class="storico-container" style="max-height: 250px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </td>
+    </tr>
+</template>

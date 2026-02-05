@@ -1,0 +1,283 @@
+{# ================================================
+   DASHBOARD - RICERCA SMART SCRIPTS
+   JavaScript per ricerca con dropdown risultati
+   Versione: 1.0.0
+   ================================================ #}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('dashboardSearchInput');
+    const dropdown = document.getElementById('dashboardSearchDropdown');
+    const clearBtn = document.getElementById('dashboardSearchClear');
+    
+    if (!input || !dropdown) return;
+    
+    let timeoutId = null;
+    
+    // Configurazione comandi speciali
+    const COMANDI = {
+        '@com': { tipo: 'commerciale', label: 'Commerciali', icon: 'bi-briefcase' },
+        '@ope': { tipo: 'operatore', label: 'Operatori', icon: 'bi-headset' }
+    };
+    
+    // =====================================================
+    // EVENT LISTENERS
+    // =====================================================
+    
+    input.addEventListener('input', function() {
+        const valore = this.value.trim();
+        
+        // Mostra/nascondi pulsante clear
+        clearBtn.style.display = valore.length > 0 ? 'block' : 'none';
+        
+        // Cancella timeout precedente
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Se vuoto, nascondi dropdown
+        if (!valore) {
+            dropdown.classList.remove('show');
+            return;
+        }
+        
+        const valoreLower = valore.toLowerCase();
+        
+        // Controlla se &egrave; un comando speciale
+        let comandoTrovato = null;
+        let termine = '';
+        
+        for (const [cmd, config] of Object.entries(COMANDI)) {
+            if (valoreLower === cmd) {
+                comandoTrovato = config;
+                termine = '';
+                break;
+            }
+            if (valoreLower.startsWith(cmd + ' ')) {
+                comandoTrovato = config;
+                termine = valore.substring(cmd.length + 1).trim();
+                break;
+            }
+        }
+        
+        if (comandoTrovato) {
+            // Ricerca utenti (@com, @ope)
+            timeoutId = setTimeout(() => {
+                cercaUtenti(comandoTrovato.tipo, termine, comandoTrovato.label, comandoTrovato.icon);
+            }, 300);
+        } else if (valore.length >= 2) {
+            // Ricerca clienti standard
+            timeoutId = setTimeout(() => {
+                cercaClienti(valore);
+            }, 300);
+        } else {
+            // Mostra hint
+            mostraHint();
+        }
+    });
+    
+    // Click fuori chiude dropdown
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+    
+    // Focus riapre dropdown se c'&egrave; contenuto
+    input.addEventListener('focus', function() {
+        if (this.value.trim().length >= 2 && dropdown.innerHTML) {
+            dropdown.classList.add('show');
+        }
+    });
+    
+    // Pulsante clear
+    clearBtn.addEventListener('click', function() {
+        input.value = '';
+        clearBtn.style.display = 'none';
+        dropdown.classList.remove('show');
+        input.focus();
+    });
+    
+    // Keyboard navigation
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            dropdown.classList.remove('show');
+            input.blur();
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            // Se c'&egrave; un solo risultato, vai al dettaglio
+            const primoLink = dropdown.querySelector('a.search-result-item');
+            if (primoLink) {
+                window.location.href = primoLink.href;
+            }
+        }
+    });
+    
+    // =====================================================
+    // FUNZIONI RICERCA
+    // =====================================================
+    
+    function cercaClienti(termine) {
+        fetch('/api/cerca?q=' + encodeURIComponent(termine) + '&limit=10')
+        .then(r => r.json())
+        .then(data => {
+            if (data.risultati && data.risultati.length > 0) {
+                mostraRisultatiClienti(data.risultati, termine);
+            } else {
+                mostraNessunRisultato('cliente');
+            }
+        })
+        .catch(err => {
+            mostraErrore();
+        });
+    }
+    
+    function cercaUtenti(tipo, termine, label, icon) {
+        const url = '/api/utenti/cerca?tipo=' + encodeURIComponent(tipo) + '&q=' + encodeURIComponent(termine);
+        
+        fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.utenti && data.utenti.length > 0) {
+                mostraRisultatiUtenti(data.utenti, label, icon);
+            } else {
+                mostraNessunRisultato(label.toLowerCase().slice(0, -1));
+            }
+        })
+        .catch(err => {
+            mostraErrore();
+        });
+    }
+    
+    // =====================================================
+    // FUNZIONI RENDER
+    // =====================================================
+    
+    function mostraRisultatiClienti(clienti, termine) {
+        let html = '';
+        html += '<div class="search-result-header"><i class="bi bi-people me-1"></i>Clienti trovati: ' + clienti.length + '</div>';
+        
+        clienti.forEach(c => {
+            const url = c._url || '/cliente/' + c.id;
+            const nome = escapeHtml(c.nome_cliente || c.ragione_sociale || 'N/D');
+            const telefonoCliente = c.telefono || '';
+            const emailCliente = c.email || '';
+            
+            // Referente principale
+            const refNome = ((c.ref_nome || '') + ' ' + (c.ref_cognome || '')).trim();
+            const refTelefono = c.ref_cellulare || c.ref_telefono || '';
+            const refEmail = c.ref_email || '';
+            
+            html += '<a href="' + url + '" class="search-result-item d-block text-decoration-none">';
+            html += '<div class="cliente-nome">' + nome + '</div>';
+            html += '<div class="cliente-info">';
+            
+            // Contatti cliente (telefono + email)
+            if (telefonoCliente || emailCliente) {
+                html += '<div>';
+                if (telefonoCliente) {
+                    html += '<span class="me-3"><i class="bi bi-telephone text-muted me-1"></i>' + escapeHtml(telefonoCliente) + '</span>';
+                }
+                if (emailCliente) {
+                    html += '<span><i class="bi bi-envelope text-muted me-1"></i>' + escapeHtml(emailCliente) + '</span>';
+                }
+                html += '</div>';
+            }
+            
+            // Referente principale (se esiste)
+            if (refNome) {
+                html += '<div class="mt-1 pt-1 border-top">';
+                html += '<small class="text-primary fw-semibold"><i class="bi bi-person-badge me-1"></i>' + escapeHtml(refNome) + '</small>';
+                
+                if (refTelefono || refEmail) {
+                    html += '<span class="ms-2">';
+                    if (refTelefono) {
+                        html += '<span class="me-2"><i class="bi bi-phone text-muted me-1"></i>' + escapeHtml(refTelefono) + '</span>';
+                    }
+                    if (refEmail) {
+                        html += '<span><i class="bi bi-envelope text-muted me-1"></i>' + escapeHtml(refEmail) + '</span>';
+                    }
+                    html += '</span>';
+                }
+                html += '</div>';
+            }
+            
+            // Se non c'&egrave; nessun dato
+            if (!telefonoCliente && !emailCliente && !refNome) {
+                html += '<span class="text-muted">Nessun contatto</span>';
+            }
+            
+            html += '</div>';
+            html += '</a>';
+        });
+        
+        // Link per vedere tutti i risultati
+        html += '<a href="/clienti?search=' + encodeURIComponent(termine) + '" class="search-view-all">';
+        html += '<i class="bi bi-arrow-right me-1"></i>Vedi tutti nella lista clienti';
+        html += '</a>';
+        
+        dropdown.innerHTML = html;
+        dropdown.classList.add('show');
+    }
+    
+    function mostraRisultatiUtenti(utenti, label, icon) {
+        let html = '';
+        html += '<div class="search-result-header"><i class="bi ' + icon + ' me-1"></i>' + label + ' trovati: ' + utenti.length + '</div>';
+        
+        utenti.forEach(u => {
+            html += '<div class="search-result-user">';
+            html += '<div class="user-nome"><i class="bi bi-person me-1 text-muted"></i>' + escapeHtml(u.nome || '') + ' ' + escapeHtml(u.cognome || '') + '</div>';
+            html += '<div class="user-contatti">';
+            
+            if (u.cellulare) {
+                html += '<div><i class="bi bi-phone text-muted me-1"></i><a href="tel:' + escapeHtml(u.cellulare) + '">' + escapeHtml(u.cellulare) + '</a></div>';
+            }
+            if (u.email) {
+                html += '<div><i class="bi bi-envelope text-muted me-1"></i><a href="mailto:' + escapeHtml(u.email) + '">' + escapeHtml(u.email) + '</a></div>';
+            }
+            if (u.data_nascita) {
+                html += '<div><i class="bi bi-calendar-heart text-muted me-1"></i>' + escapeHtml(u.data_nascita) + '</div>';
+            }
+            if (!u.cellulare && !u.email && !u.data_nascita) {
+                html += '<span class="text-muted">Nessun contatto disponibile</span>';
+            }
+            
+            html += '</div>';
+            html += '</div>';
+        });
+        
+        dropdown.innerHTML = html;
+        dropdown.classList.add('show');
+    }
+    
+    function mostraHint() {
+        let html = '<div class="search-hint">';
+        html += '<i class="bi bi-lightbulb me-1"></i>';
+        html += '<strong>Suggerimento:</strong> Digita almeno 2 caratteri per cercare clienti, oppure usa ';
+        html += '<code>@com</code> per i commerciali o <code>@ope</code> per gli operatori';
+        html += '</div>';
+        dropdown.innerHTML = html;
+        dropdown.classList.add('show');
+    }
+    
+    function mostraNessunRisultato(tipo) {
+        dropdown.innerHTML = '<div class="search-no-results"><i class="bi bi-search me-2"></i>Nessun ' + tipo + ' trovato</div>';
+        dropdown.classList.add('show');
+    }
+    
+    function mostraErrore() {
+        dropdown.innerHTML = '<div class="search-error"><i class="bi bi-exclamation-triangle me-2"></i>Errore durante la ricerca</div>';
+        dropdown.classList.add('show');
+    }
+    
+    // =====================================================
+    // UTILITY
+    // =====================================================
+    
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+});
+</script>

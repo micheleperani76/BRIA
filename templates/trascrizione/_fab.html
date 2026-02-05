@@ -1,0 +1,110 @@
+<!-- ==========================================================================
+     TRASCRIZIONE - Widget Flottante (FAB) per base.html
+     Visibile SOLO se l'utente ha trascrizioni in corso o in coda
+     ========================================================================== -->
+
+{% if current_user %}
+<a href="/trascrizione" class="trascrizione-fab" title="Trascrizione in corso..." id="fab-trascrizione" style="display: none;">
+    <i class="bi bi-mic-fill"></i>
+    <span id="fab-badge-coda" class="badge bg-danger" style="display: none;">0</span>
+</a>
+
+<style>
+    .trascrizione-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1050;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: #2563eb;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .trascrizione-fab:hover {
+        transform: scale(1.08);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+        background: #1d4ed8;
+        color: white;
+    }
+    .trascrizione-fab .badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        font-size: 0.65rem;
+        min-width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        padding: 0 4px;
+    }
+    /* Animazione pulsante quando in elaborazione */
+    .trascrizione-fab.elaborazione {
+        animation: fab-pulse 2s ease-in-out infinite;
+    }
+    @keyframes fab-pulse {
+        0%, 100% { box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+        50% { box-shadow: 0 4px 20px rgba(37, 99, 235, 0.7); }
+    }
+</style>
+
+<script>
+    // Mostra FAB solo se utente ha job in corso
+    if (!window.location.pathname.startsWith('/trascrizione')) {
+        function aggiornaFabVisibilita() {
+            fetch('/trascrizione/coda')
+                .then(r => r.json())
+                .then(data => {
+                    const fab = document.getElementById('fab-trascrizione');
+                    const badge = document.getElementById('fab-badge-coda');
+                    if (!fab) return;
+                    
+                    // Conta solo i MIEI job
+                    let miei = 0;
+                    let inElaborazione = false;
+                    
+                    if (data.in_lavorazione && data.in_lavorazione.is_mio) {
+                        miei++;
+                        inElaborazione = true;
+                    }
+                    if (data.mio_job) {
+                        miei++;
+                    }
+                    
+                    if (miei > 0) {
+                        // Mostra FAB
+                        fab.style.display = 'flex';
+                        badge.textContent = miei;
+                        badge.style.display = 'flex';
+                        
+                        // Pulsazione se in elaborazione
+                        if (inElaborazione) {
+                            fab.classList.add('elaborazione');
+                            fab.title = 'Trascrizione in elaborazione...';
+                        } else {
+                            fab.classList.remove('elaborazione');
+                            fab.title = 'Trascrizione in coda...';
+                        }
+                    } else {
+                        // Nascondi FAB
+                        fab.style.display = 'none';
+                    }
+                })
+                .catch(() => {});
+        }
+        aggiornaFabVisibilita();
+        setInterval(aggiornaFabVisibilita, 15000);
+    }
+</script>
+{% endif %}

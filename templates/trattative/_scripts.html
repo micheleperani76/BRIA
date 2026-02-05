@@ -1,0 +1,26 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Master (include modulari)
+     Versione: 2.0 - Modulare
+     Data: 2026-01-28
+     ============================================================ -->
+
+{% include 'trattative/_scripts_caricamento.html' %}
+{% include 'trattative/_scripts_render.html' %}
+{% include 'trattative/_scripts_espansione.html' %}
+{% include 'trattative/_scripts_ricerca_clienti.html' %}
+{% include 'trattative/_scripts_filtro_cliente.html' %}
+{% include 'trattative/_scripts_modal_nuova.html' %}
+{% include 'trattative/_scripts_modal_modifica.html' %}
+{% include 'trattative/_scripts_modal_avanzamento.html' %}
+{% include 'trattative/_scripts_chiuse.html' %}
+{% include 'trattative/_scripts_cancellate.html' %}
+{% include 'trattative/_scripts_init.html' %}
+
+<!-- Colori stati per JavaScript -->
+<script>
+window.coloriStati = {
+    {% for stato, colore in colori_stati.items() %}
+    "{{ stato }}": "{{ colore }}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+</script>

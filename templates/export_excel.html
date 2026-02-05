@@ -1,0 +1,1123 @@
+{% extends "base.html" %}
+
+{% block title %}Esporta e Stampa - Gestione Flotta{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== TAB PERSONALIZZATI ===== */
+    .nav-tabs-export {
+        border-bottom: 2px solid #dee2e6;
+        gap: 5px;
+    }
+    .nav-tabs-export .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #6c757d;
+        font-weight: 500;
+        padding: 12px 20px;
+        transition: all 0.2s;
+    }
+    .nav-tabs-export .nav-link:hover {
+        color: #4472C4;
+        border-bottom-color: #dee2e6;
+    }
+    .nav-tabs-export .nav-link.active {
+        color: #4472C4;
+        border-bottom-color: #4472C4;
+        background: transparent;
+    }
+    .nav-tabs-export .nav-link i {
+        margin-right: 8px;
+    }
+    
+    /* ===== PANNELLI ===== */
+    .panel-header {
+        background: #4472C4;
+        color: white;
+        padding: 12px 15px;
+        border-radius: 8px 8px 0 0;
+        font-weight: 500;
+    }
+    .panel-header.green { background: #198754; }
+    .panel-header.orange { background: #fd7e14; }
+    
+    .panel-body {
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        padding: 15px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    
+    /* ===== CAMPI DISPONIBILI (Tab Clienti) ===== */
+    .campo-item {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.2s;
+    }
+    .campo-item:hover {
+        border-color: #4472C4;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .campo-item.selected {
+        background: #e7f1ff;
+        border-color: #4472C4;
+    }
+    .campo-item .campo-label {
+        font-weight: 500;
+        flex-grow: 1;
+    }
+    .campo-item .btn-add {
+        padding: 2px 10px;
+        font-size: 1.2rem;
+    }
+    
+    /* ===== CAMPI SELEZIONATI (Tab Clienti) ===== */
+    .selected-campo {
+        background: #fff;
+        border: 1px solid #198754;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .selected-campo .drag-handle {
+        cursor: grab;
+        color: #6c757d;
+        font-size: 1.2rem;
+    }
+    .selected-campo .campo-info {
+        flex-grow: 1;
+    }
+    .selected-campo .campo-nome {
+        font-weight: 500;
+    }
+    .selected-campo .order-select {
+        width: 130px;
+    }
+    .selected-campo .btn-remove {
+        color: #dc3545;
+        padding: 2px 8px;
+    }
+    
+    #sortable-selected {
+        min-height: 100px;
+    }
+    .sortable-ghost {
+        opacity: 0.4;
+        background: #c8e6c9;
+    }
+    
+    /* ===== DIVISORE SEZIONE ===== */
+    .section-divider {
+        border-top: 2px dashed #dee2e6;
+        margin: 20px 0;
+        position: relative;
+    }
+    .section-divider span {
+        position: absolute;
+        top: -10px;
+        left: 20px;
+        background: #f8f9fa;
+        padding: 0 10px;
+        color: #6c757d;
+        font-size: 0.85rem;
+    }
+    
+    /* ===== MESSAGGIO VUOTO ===== */
+    .empty-selection {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    .empty-selection i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+    
+    /* ===== STORICO ===== */
+    .storico-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    .storico-item:last-child {
+        border-bottom: none;
+    }
+    .storico-item:hover {
+        background: #f8f9fa;
+    }
+    
+    /* ===== FILTRI (Tab Trattative) ===== */
+    .filtro-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    .filtro-card label {
+        font-weight: 500;
+        margin-bottom: 5px;
+        display: block;
+    }
+    
+    /* ===== GRIGLIA ANTEPRIMA (Tab Top Prospect) ===== */
+    .griglia-preview {
+        font-size: 0.85rem;
+    }
+    .griglia-preview th {
+        background: #4472C4;
+        color: white;
+        position: sticky;
+        top: 0;
+    }
+    .griglia-preview td {
+        white-space: nowrap;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* ===== PULSANTI FORMATO ===== */
+    .btn-formato {
+        min-width: 120px;
+    }
+    .btn-formato i {
+        margin-right: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-file-earmark-spreadsheet me-2"></i>Esporta e Stampa</h2>
+            <p class="text-muted mb-0">Esporta dati in Excel, CSV o stampa direttamente</p>
+        </div>
+        <a href="/clienti" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Torna alla Home
+        </a>
+    </div>
+
+    <!-- TAB Navigation -->
+    <ul class="nav nav-tabs nav-tabs-export mb-4" id="exportTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-clienti" data-bs-toggle="tab" data-bs-target="#pane-clienti" type="button" role="tab">
+                <i class="bi bi-people"></i>Clienti
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-top-prospect" data-bs-toggle="tab" data-bs-target="#pane-top-prospect" type="button" role="tab">
+                <i class="bi bi-trophy-fill"></i>Top Prospect
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-trattative" data-bs-toggle="tab" data-bs-target="#pane-trattative" type="button" role="tab">
+                <i class="bi bi-briefcase"></i>Trattative
+            </button>
+        </li>
+    </ul>
+
+    <!-- TAB Content -->
+    <div class="tab-content" id="exportTabsContent">
+        
+        <!-- ============================================================ -->
+        <!-- TAB CLIENTI -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade show active" id="pane-clienti" role="tabpanel">
+            <div class="row">
+                <!-- Colonna sinistra: Campi disponibili -->
+                <div class="col-md-5">
+                    <div class="panel-header">
+                        <i class="bi bi-list-ul me-2"></i>Campi Disponibili
+                    </div>
+                    <div class="panel-body" id="campi-disponibili">
+                        <!-- Campi Principali -->
+                        <h6 class="text-primary mb-3"><i class="bi bi-star-fill me-1"></i> Campi Principali</h6>
+                        {% for campo in campi_principali %}
+                        <div class="campo-item" data-campo-id="{{ campo.id }}" data-campo-label="{{ campo.label }}" data-campo-tipo="{{ campo.tipo }}">
+                            <span class="campo-label">{{ campo.label }}</span>
+                            <button class="btn btn-sm btn-outline-success btn-add" onclick="aggiungiCampo('{{ campo.id }}', '{{ campo.label }}', '{{ campo.tipo }}')">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                        
+                        <!-- Divisore -->
+                        <div class="section-divider">
+                            <span>Campi Secondari</span>
+                        </div>
+                        
+                        <!-- Campi Secondari -->
+                        {% for campo in campi_secondari %}
+                        <div class="campo-item" data-campo-id="{{ campo.id }}" data-campo-label="{{ campo.label }}" data-campo-tipo="{{ campo.tipo }}">
+                            <span class="campo-label">{{ campo.label }}</span>
+                            <button class="btn btn-sm btn-outline-success btn-add" onclick="aggiungiCampo('{{ campo.id }}', '{{ campo.label }}', '{{ campo.tipo }}')">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Colonna destra: Campi selezionati -->
+                <div class="col-md-7">
+                    <div class="panel-header green d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-check2-square me-2"></i>Campi Selezionati</span>
+                        <span class="badge bg-light text-dark" id="count-selected">0</span>
+                    </div>
+                    <div class="panel-body">
+                        <div id="sortable-selected">
+                            <!-- Campi selezionati verranno aggiunti qui -->
+                        </div>
+                        <div class="empty-selection" id="empty-message">
+                            <i class="bi bi-inbox"></i>
+                            <p>Clicca <strong>+</strong> sui campi a sinistra per aggiungerli all'export</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Azioni Clienti -->
+                    <div class="mt-3">
+                        <div class="d-flex gap-2 flex-wrap mb-2">
+                            <button class="btn btn-success btn-formato" onclick="generaExportClienti('xlsx')" id="btn-genera-clienti">
+                                <i class="bi bi-file-earmark-excel"></i>Excel
+                            </button>
+                            <button class="btn btn-outline-success btn-formato" onclick="generaExportClienti('csv')">
+                                <i class="bi bi-filetype-csv"></i>CSV
+                            </button>
+                            <button class="btn btn-outline-primary btn-formato" onclick="stampaClienti()">
+                                <i class="bi bi-printer"></i>Stampa
+                            </button>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="anteprimaClienti()">
+                                <i class="bi bi-eye me-1"></i>Anteprima
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="pulisciSelezione()">
+                                <i class="bi bi-trash me-1"></i>Pulisci
+                            </button>
+                            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#modalStorico">
+                                <i class="bi bi-clock-history me-1"></i>Storico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================================ -->
+        <!-- TAB TOP PROSPECT -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="pane-top-prospect" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Top Prospect Confermati</strong> - Esporta la lista dei Top Prospect confermati con tutti i dati di monitoraggio.
+                    </div>
+                    
+                    <!-- Campi fissi (info) -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="bi bi-columns me-2"></i>Campi Esportati
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for campo in campi_top_prospect %}
+                                <div class="col-md-3 col-sm-4 col-6 mb-2">
+                                    <span class="badge bg-secondary">{{ campo.label }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Anteprima Top Prospect -->
+                    <div class="card mb-3" id="anteprima-tp-container" style="display:none;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-eye me-2"></i>Anteprima</span>
+                            <span class="badge bg-primary" id="anteprima-tp-count">0</span>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 400px; overflow: auto;">
+                            <table class="table table-sm table-striped table-hover griglia-preview mb-0" id="tabella-anteprima-tp">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Azioni Top Prospect -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-success btn-formato" onclick="generaExportTopProspect('xlsx')" id="btn-genera-tp">
+                            <i class="bi bi-file-earmark-excel"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-success btn-formato" onclick="generaExportTopProspect('csv')">
+                            <i class="bi bi-filetype-csv"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-primary btn-formato" onclick="stampaTopProspect()">
+                            <i class="bi bi-printer"></i>Stampa
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="anteprimaTopProspect()">
+                            <i class="bi bi-eye me-1"></i>Anteprima
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ============================================================ -->
+        <!-- TAB TRATTATIVE -->
+        <!-- ============================================================ -->
+        <div class="tab-pane fade" id="pane-trattative" role="tabpanel">
+            <div class="row">
+                <!-- Colonna Filtri -->
+                <div class="col-md-4">
+                    <div class="panel-header orange">
+                        <i class="bi bi-funnel me-2"></i>Filtri
+                    </div>
+                    <div class="panel-body">
+                        <!-- Tipo Trattativa -->
+                        <div class="filtro-card">
+                            <label><i class="bi bi-tag me-1"></i>Tipo Trattativa</label>
+                            <select class="form-select" id="filtro-tipo-trattativa">
+                                <option value="">Tutti i tipi</option>
+                                {% for tipo in tipi_trattativa %}
+                                <option value="{{ tipo.Etichetta }}">{{ tipo.Etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Stato -->
+                        <div class="filtro-card">
+                            <label><i class="bi bi-flag me-1"></i>Stato</label>
+                            <select class="form-select" id="filtro-stato">
+                                <option value="">Tutti gli stati</option>
+                                <option value="__aperte__">Solo Aperte</option>
+                                <option value="__chiuse__">Solo Chiuse</option>
+                                {% for stato in stati_trattativa %}
+                                <option value="{{ stato.Etichetta }}">{{ stato.Etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Noleggiatore -->
+                        <div class="filtro-card">
+                            <label><i class="bi bi-building me-1"></i>Noleggiatore</label>
+                            <select class="form-select" id="filtro-noleggiatore">
+                                <option value="">Tutti</option>
+                                {% for codice, nome in noleggiatori %}
+                                <option value="{{ nome }}">{{ nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Commerciale -->
+                        <div class="filtro-card">
+                            <label><i class="bi bi-person me-1"></i>Commerciale</label>
+                            <select class="form-select" id="filtro-commerciale">
+                                <option value="">Tutti (visibili)</option>
+                                {% for comm in commerciali %}
+                                <option value="{{ comm.id }}">{{ comm.display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Periodo -->
+                        <div class="filtro-card">
+                            <label><i class="bi bi-calendar me-1"></i>Periodo</label>
+                            <div class="row g-2 mb-2">
+                                <div class="col-12">
+                                    <small class="text-muted">Da:</small>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="filtro-mese-da">
+                                        <option value="">Mese</option>
+                                        <option value="01">Gennaio</option>
+                                        <option value="02">Febbraio</option>
+                                        <option value="03">Marzo</option>
+                                        <option value="04">Aprile</option>
+                                        <option value="05">Maggio</option>
+                                        <option value="06">Giugno</option>
+                                        <option value="07">Luglio</option>
+                                        <option value="08">Agosto</option>
+                                        <option value="09">Settembre</option>
+                                        <option value="10">Ottobre</option>
+                                        <option value="11">Novembre</option>
+                                        <option value="12">Dicembre</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="filtro-anno-da">
+                                        <option value="">Anno</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                        <option value="2027">2027</option>
+                                        <option value="2028">2028</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <small class="text-muted">A:</small>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="filtro-mese-a">
+                                        <option value="">Mese</option>
+                                        <option value="01">Gennaio</option>
+                                        <option value="02">Febbraio</option>
+                                        <option value="03">Marzo</option>
+                                        <option value="04">Aprile</option>
+                                        <option value="05">Maggio</option>
+                                        <option value="06">Giugno</option>
+                                        <option value="07">Luglio</option>
+                                        <option value="08">Agosto</option>
+                                        <option value="09">Settembre</option>
+                                        <option value="10">Ottobre</option>
+                                        <option value="11">Novembre</option>
+                                        <option value="12">Dicembre</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <select class="form-select form-select-sm" id="filtro-anno-a">
+                                        <option value="">Anno</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                        <option value="2027">2027</option>
+                                        <option value="2028">2028</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-outline-secondary btn-sm w-100" onclick="resetFiltriTrattative()">
+                            <i class="bi bi-x-circle me-1"></i>Reset Filtri
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Colonna Anteprima/Azioni -->
+                <div class="col-md-8">
+                    <!-- Info Campi -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-secondary text-white">
+                            <i class="bi bi-columns me-2"></i>Campi Esportati
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% for campo in campi_trattative %}
+                                <div class="col-md-3 col-sm-4 col-6 mb-2">
+                                    <span class="badge bg-secondary">{{ campo.label }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Anteprima Trattative -->
+                    <div class="card mb-3" id="anteprima-tratt-container" style="display:none;">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-eye me-2"></i>Anteprima</span>
+                            <span class="badge bg-primary" id="anteprima-tratt-count">0</span>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 400px; overflow: auto;">
+                            <table class="table table-sm table-striped table-hover griglia-preview mb-0" id="tabella-anteprima-tratt">
+                                <thead></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Azioni Trattative -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-success btn-formato" onclick="generaExportTrattative('xlsx')" id="btn-genera-tratt">
+                            <i class="bi bi-file-earmark-excel"></i>Excel
+                        </button>
+                        <button class="btn btn-outline-success btn-formato" onclick="generaExportTrattative('csv')">
+                            <i class="bi bi-filetype-csv"></i>CSV
+                        </button>
+                        <button class="btn btn-outline-primary btn-formato" onclick="stampaTrattative()">
+                            <i class="bi bi-printer"></i>Stampa
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="anteprimaTrattative()">
+                            <i class="bi bi-eye me-1"></i>Anteprima
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div><!-- fine tab-content -->
+</div>
+
+<!-- ============================================================ -->
+<!-- MODALS -->
+<!-- ============================================================ -->
+
+<!-- Modal Nome File -->
+<div class="modal fade" id="modalNomeFile" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark me-2"></i>Nome File Export</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Inserisci il nome del file:</label>
+                <input type="text" class="form-control" id="inputNomeFile" placeholder="Export_2026-01-30">
+                <small class="text-muted">L'estensione verr&agrave; aggiunta automaticamente</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="eseguiExport()">
+                    <i class="bi bi-download me-1"></i>Genera
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Anteprima Clienti -->
+<div class="modal fade" id="modalAnteprima" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-eye me-2"></i>Anteprima Dati</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" style="max-height: 70vh; overflow: auto;">
+                <table class="table table-sm table-striped table-hover mb-0" id="tabella-anteprima-modal">
+                    <thead class="table-dark sticky-top"></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <small class="text-muted me-auto" id="anteprima-count"></small>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Storico -->
+<div class="modal fade" id="modalStorico" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Storico Export</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0" id="lista-storico">
+                <div class="p-4 text-center text-muted">Caricamento...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Iframe nascosto per stampa -->
+<iframe id="printFrame" style="display:none;"></iframe>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+    // ==========================================================================
+    // VARIABILI GLOBALI
+    // ==========================================================================
+    let campiSelezionati = [];
+    let exportPendente = null;  // {tipo: 'clienti'|'tp'|'tratt', formato: 'xlsx'|'csv'}
+    
+    // ==========================================================================
+    // INIZIALIZZAZIONE
+    // ==========================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Inizializza Sortable per drag&drop
+        new Sortable(document.getElementById('sortable-selected'), {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            onEnd: aggiornaOrdine
+        });
+        
+        // Carica storico quando si apre il modal
+        document.getElementById('modalStorico').addEventListener('show.bs.modal', caricaStorico);
+    });
+    
+    // ==========================================================================
+    // TAB CLIENTI - Gestione campi
+    // ==========================================================================
+    function aggiungiCampo(id, label, tipo) {
+        // Verifica se gia presente
+        if (campiSelezionati.find(c => c.id === id)) {
+            return;
+        }
+        
+        campiSelezionati.push({id: id, label: label, tipo: tipo, order: null});
+        
+        // Aggiungi elemento HTML
+        const container = document.getElementById('sortable-selected');
+        const html = `
+            <div class="selected-campo" data-selected-id="${id}">
+                <span class="drag-handle"><i class="bi bi-grip-vertical"></i></span>
+                <div class="campo-info">
+                    <span class="campo-nome">${label}</span>
+                </div>
+                <select class="form-select form-select-sm order-select" onchange="cambiaOrdinamento('${id}', this.value)">
+                    <option value="">Nessun ordine</option>
+                    <option value="asc">Crescente</option>
+                    <option value="desc">Decrescente</option>
+                </select>
+                <button class="btn btn-sm btn-remove" onclick="rimuoviCampo('${id}')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+        
+        document.getElementById('empty-message').style.display = 'none';
+        aggiornaContatore();
+        
+        const disponibile = document.querySelector(`.campo-item[data-campo-id="${id}"]`);
+        if (disponibile) disponibile.classList.add('selected');
+    }
+    
+    function rimuoviCampo(id) {
+        campiSelezionati = campiSelezionati.filter(c => c.id !== id);
+        
+        const elemento = document.querySelector(`[data-selected-id="${id}"]`);
+        if (elemento) elemento.remove();
+        
+        if (campiSelezionati.length === 0) {
+            document.getElementById('empty-message').style.display = 'block';
+        }
+        
+        aggiornaContatore();
+        
+        const disponibile = document.querySelector(`.campo-item[data-campo-id="${id}"]`);
+        if (disponibile) disponibile.classList.remove('selected');
+    }
+    
+    function cambiaOrdinamento(id, value) {
+        const campo = campiSelezionati.find(c => c.id === id);
+        if (campo) campo.order = value || null;
+    }
+    
+    function aggiornaOrdine() {
+        const nuovoOrdine = [];
+        document.querySelectorAll('[data-selected-id]').forEach(el => {
+            const id = el.dataset.selectedId;
+            const campo = campiSelezionati.find(c => c.id === id);
+            if (campo) nuovoOrdine.push(campo);
+        });
+        campiSelezionati = nuovoOrdine;
+    }
+    
+    function aggiornaContatore() {
+        document.getElementById('count-selected').textContent = campiSelezionati.length;
+    }
+    
+    function pulisciSelezione() {
+        if (campiSelezionati.length === 0) return;
+        
+        if (confirm('Vuoi rimuovere tutti i campi selezionati?')) {
+            campiSelezionati = [];
+            document.getElementById('sortable-selected').innerHTML = '';
+            document.getElementById('empty-message').style.display = 'block';
+            aggiornaContatore();
+            
+            document.querySelectorAll('.campo-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+        }
+    }
+    
+    // ==========================================================================
+    // TAB CLIENTI - Export
+    // ==========================================================================
+    function generaExportClienti(formato) {
+        if (campiSelezionati.length === 0) {
+            alert('Seleziona almeno un campo da esportare');
+            return;
+        }
+        
+        exportPendente = {tipo: 'clienti', formato: formato};
+        
+        const oggi = new Date().toISOString().slice(0,10);
+        document.getElementById('inputNomeFile').value = 'Export_Clienti_' + oggi;
+        
+        new bootstrap.Modal(document.getElementById('modalNomeFile')).show();
+        setTimeout(() => document.getElementById('inputNomeFile').select(), 300);
+    }
+    
+    function anteprimaClienti() {
+        if (campiSelezionati.length === 0) {
+            alert('Seleziona almeno un campo per visualizzare l\'anteprima');
+            return;
+        }
+        
+        fetch('/export/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({campi: campiSelezionati, limit: 20})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderAnteprimaModal(data.headers, data.rows, data.total);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    function stampaClienti() {
+        if (campiSelezionati.length === 0) {
+            alert('Seleziona almeno un campo da stampare');
+            return;
+        }
+        
+        fetch('/export/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({campi: campiSelezionati, limit: 1000})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                stampaTabella(data.headers, data.rows, 'Export Clienti');
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    // ==========================================================================
+    // TAB TOP PROSPECT
+    // ==========================================================================
+    function anteprimaTopProspect() {
+        fetch('/export/top-prospect/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({limit: 20})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderAnteprimaInline('tp', data.headers, data.rows, data.total);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    function generaExportTopProspect(formato) {
+        exportPendente = {tipo: 'tp', formato: formato};
+        
+        const oggi = new Date().toISOString().slice(0,10);
+        document.getElementById('inputNomeFile').value = 'Top_Prospect_' + oggi;
+        
+        new bootstrap.Modal(document.getElementById('modalNomeFile')).show();
+        setTimeout(() => document.getElementById('inputNomeFile').select(), 300);
+    }
+    
+    function stampaTopProspect() {
+        fetch('/export/top-prospect/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({limit: 1000})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                stampaTabella(data.headers, data.rows, 'Top Prospect Confermati');
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    // ==========================================================================
+    // TAB TRATTATIVE
+    // ==========================================================================
+    function getFiltriTrattative() {
+        const filtri = {};
+        
+        const tipo = document.getElementById('filtro-tipo-trattativa').value;
+        if (tipo) filtri.tipo_trattativa = tipo;
+        
+        const stato = document.getElementById('filtro-stato').value;
+        if (stato === '__aperte__') {
+            filtri.solo_aperte = true;
+        } else if (stato === '__chiuse__') {
+            filtri.solo_chiuse = true;
+        } else if (stato) {
+            filtri.stato = stato;
+        }
+        
+        const noleggiatore = document.getElementById('filtro-noleggiatore').value;
+        if (noleggiatore) filtri.noleggiatore = noleggiatore;
+        
+        const commerciale = document.getElementById('filtro-commerciale').value;
+        if (commerciale) filtri.commerciale_id = commerciale;
+        
+        // Periodo - 4 select separati
+        const meseDa = document.getElementById('filtro-mese-da').value;
+        const annoDa = document.getElementById('filtro-anno-da').value;
+        if (meseDa && annoDa) {
+            filtri.data_da = `${annoDa}-${meseDa}-01`;
+        }
+        
+        const meseA = document.getElementById('filtro-mese-a').value;
+        const annoA = document.getElementById('filtro-anno-a').value;
+        if (meseA && annoA) {
+            // Calcola ultimo giorno del mese
+            const ultimoGiorno = new Date(annoA, parseInt(meseA), 0).getDate();
+            filtri.data_a = `${annoA}-${meseA}-${ultimoGiorno.toString().padStart(2, '0')}`;
+        }
+        
+        return filtri;
+    }
+    
+    function resetFiltriTrattative() {
+        document.getElementById('filtro-tipo-trattativa').value = '';
+        document.getElementById('filtro-stato').value = '';
+        document.getElementById('filtro-noleggiatore').value = '';
+        document.getElementById('filtro-commerciale').value = '';
+        document.getElementById('filtro-mese-da').value = '';
+        document.getElementById('filtro-anno-da').value = '';
+        document.getElementById('filtro-mese-a').value = '';
+        document.getElementById('filtro-anno-a').value = '';
+        document.getElementById('anteprima-tratt-container').style.display = 'none';
+    }
+    
+    function anteprimaTrattative() {
+        const filtri = getFiltriTrattative();
+        filtri.limit = 20;
+        
+        fetch('/export/trattative/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(filtri)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderAnteprimaInline('tratt', data.headers, data.rows, data.total);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    function generaExportTrattative(formato) {
+        exportPendente = {tipo: 'tratt', formato: formato, filtri: getFiltriTrattative()};
+        
+        const oggi = new Date().toISOString().slice(0,10);
+        document.getElementById('inputNomeFile').value = 'Trattative_' + oggi;
+        
+        new bootstrap.Modal(document.getElementById('modalNomeFile')).show();
+        setTimeout(() => document.getElementById('inputNomeFile').select(), 300);
+    }
+    
+    function stampaTrattative() {
+        const filtri = getFiltriTrattative();
+        filtri.limit = 1000;
+        
+        fetch('/export/trattative/anteprima', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(filtri)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                stampaTabella(data.headers, data.rows, 'Trattative');
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+    
+    // ==========================================================================
+    // FUNZIONI COMUNI
+    // ==========================================================================
+    function eseguiExport() {
+        let nomeFile = document.getElementById('inputNomeFile').value.trim();
+        
+        if (!nomeFile) {
+            alert('Inserisci un nome per il file');
+            return;
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('modalNomeFile')).hide();
+        
+        let url, body;
+        
+        if (exportPendente.tipo === 'clienti') {
+            url = '/export/genera';
+            body = {
+                campi: campiSelezionati,
+                nome_file: nomeFile,
+                formato: exportPendente.formato
+            };
+        } else if (exportPendente.tipo === 'tp') {
+            url = '/export/top-prospect/genera';
+            body = {
+                nome_file: nomeFile,
+                formato: exportPendente.formato
+            };
+        } else if (exportPendente.tipo === 'tratt') {
+            url = '/export/trattative/genera';
+            body = {
+                ...exportPendente.filtri,
+                nome_file: nomeFile,
+                formato: exportPendente.formato
+            };
+        }
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Download
+                const ext = exportPendente.formato;
+                if (ext === 'csv') {
+                    window.location.href = '/export/download-csv/' + data.filename;
+                } else {
+                    window.location.href = '/export/download/' + data.filename;
+                }
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Errore di connessione: ' + error);
+        });
+    }
+    
+    function renderAnteprimaModal(headers, rows, total) {
+        const thead = document.querySelector('#tabella-anteprima-modal thead');
+        const tbody = document.querySelector('#tabella-anteprima-modal tbody');
+        
+        thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+        tbody.innerHTML = rows.map(row => 
+            '<tr>' + row.map(cell => `<td>${cell !== null ? cell : ''}</td>`).join('') + '</tr>'
+        ).join('');
+        
+        document.getElementById('anteprima-count').textContent = 
+            `Mostrate ${rows.length} di ${total} righe totali`;
+        
+        new bootstrap.Modal(document.getElementById('modalAnteprima')).show();
+    }
+    
+    function renderAnteprimaInline(tipo, headers, rows, total) {
+        const container = document.getElementById(`anteprima-${tipo}-container`);
+        const tabella = document.getElementById(`tabella-anteprima-${tipo}`);
+        const counter = document.getElementById(`anteprima-${tipo}-count`);
+        
+        const thead = tabella.querySelector('thead');
+        const tbody = tabella.querySelector('tbody');
+        
+        thead.innerHTML = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+        tbody.innerHTML = rows.map(row => 
+            '<tr>' + row.map(cell => `<td title="${cell !== null ? cell : ''}">${cell !== null ? cell : ''}</td>`).join('') + '</tr>'
+        ).join('');
+        
+        counter.textContent = `${rows.length} di ${total}`;
+        container.style.display = 'block';
+    }
+    
+    function stampaTabella(headers, rows, titolo) {
+        const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${titolo}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; font-size: 10pt; }
+                    h1 { font-size: 14pt; margin-bottom: 10px; }
+                    .info { font-size: 9pt; color: #666; margin-bottom: 15px; }
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+                    th { background: #4472C4; color: white; font-weight: bold; }
+                    tr:nth-child(even) { background: #f9f9f9; }
+                    @media print {
+                        @page { margin: 1cm; }
+                        th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>${titolo}</h1>
+                <div class="info">Stampato il ${new Date().toLocaleString('it-IT')} - ${rows.length} record</div>
+                <table>
+                    <thead>
+                        <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => '<tr>' + row.map(cell => `<td>${cell !== null ? cell : ''}</td>`).join('') + '</tr>').join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        
+        const iframe = document.getElementById('printFrame');
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(printContent);
+        iframeDoc.close();
+        
+        iframe.onload = function() {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        };
+    }
+    
+    function caricaStorico() {
+        fetch('/export/storico')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('lista-storico');
+            
+            if (data.files.length === 0) {
+                container.innerHTML = '<div class="p-4 text-center text-muted">Nessun export nello storico</div>';
+                return;
+            }
+            
+            container.innerHTML = data.files.map(f => `
+                <div class="storico-item">
+                    <div>
+                        <i class="bi bi-file-earmark-excel text-success me-2"></i>
+                        <strong>${f.nome}</strong>
+                        <small class="text-muted ms-2">${f.data} - ${f.dimensione}</small>
+                    </div>
+                    <a href="/export/download/${f.nome}" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-download"></i>
+                    </a>
+                </div>
+            `).join('');
+        });
+    }
+</script>
+{% endblock %}

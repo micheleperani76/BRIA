@@ -1,0 +1,72 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Modal Nuova
+     Versione: 1.2
+     Data: 2026-01-28
+     Fix: Corretto invio commerciale_assegnato al backend
+     ============================================================ -->
+<script>
+// ==============================================================================
+// MODAL NUOVA TRATTATIVA
+// ==============================================================================
+function salvaTrattativa() {
+    const clienteId = document.getElementById('nuovaClienteId').value;
+    
+    if (!clienteId) {
+        alert('Seleziona un cliente');
+        return;
+    }
+    
+    // Leggo il commerciale assegnato (se presente il dropdown)
+    const elemComm = document.getElementById("nuovaCommercialeAssegnato");
+    let commercialeAssegnato = null;
+    if (elemComm && elemComm.value) {
+        const parsed = parseInt(elemComm.value, 10);
+        if (!isNaN(parsed) && parsed > 0) {
+            commercialeAssegnato = parsed;
+        }
+    }
+    
+    const dati = {
+        cliente_id: parseInt(clienteId, 10),
+        commerciale_assegnato: commercialeAssegnato,
+        noleggiatore: document.getElementById('nuovaNoleggiatore').value || null,
+        tipo_trattativa: document.getElementById('nuovaTipoTrattativa').value || null,
+        marca: document.getElementById('nuovaMarca').value || null,
+        descrizione_veicolo: document.getElementById('nuovaDescrizioneVeicolo').value || null,
+        tipologia_veicolo: document.getElementById('nuovaTipologiaVeicolo').value || null,
+        num_pezzi: parseInt(document.getElementById('nuovaNumPezzi').value, 10) || 1,
+        stato: document.getElementById('nuovaStato').value,
+        note: document.getElementById('nuovaNote').value || null,
+        provvigione: parseFloat(document.getElementById('nuovaProvvigione').value) || null,
+        q_percentuale: parseFloat(document.getElementById('nuovaQPercentuale').value) || null,
+        mesi: parseInt(document.getElementById('nuovaMesi').value, 10) || null,
+        km_totali: parseInt(document.getElementById('nuovaKmTotali').value, 10) || null
+    };
+    
+    fetch('/trattative/api/crea', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dati)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNuovaTrattativa')).hide();
+            resetFormNuova();
+            caricaTrattative();
+            mostraSuccesso('Trattativa creata con successo');
+        } else {
+            mostraErrore('Errore: ' + data.error);
+        }
+    })
+    .catch(err => mostraErrore('Errore di rete: ' + err.message));
+}
+
+function resetFormNuova() {
+    document.getElementById('formNuovaTrattativa').reset();
+    document.getElementById('nuovaClienteId').value = '';
+    document.getElementById('nuovaClienteSearch').value = '';
+    const sel = document.getElementById('nuovaClienteSelezionato');
+    if (sel) sel.classList.add('d-none');
+}
+</script>

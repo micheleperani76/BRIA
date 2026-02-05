@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Stock Engine{% endblock %}</title>
+    
+    <!-- Tailwind CSS (CDN per semplicità) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        .status-ok { background-color: #dcfce7; color: #166534; }
+        .status-warn { background-color: #fef3c7; color: #92400e; }
+        .status-error { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Navbar -->
+    <nav class="bg-blue-600 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-xl font-bold">🚗 Stock Engine</h1>
+                    <span class="text-sm opacity-75">v1.0.0</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="hover:underline">Dashboard</a>
+                    <a href="/api/health" class="hover:underline text-sm">API Health</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-gray-200 text-center py-4 text-sm text-gray-600 mt-8">
+        Stock Engine © 2026 - Sistema Gestione Stock Veicoli
+    </footer>
+</body>
+</html>

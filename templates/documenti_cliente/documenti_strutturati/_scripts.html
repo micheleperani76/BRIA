@@ -1,0 +1,55 @@
+<!-- ==============================================================================
+     DOCUMENTI STRUTTURATI - Scripts Badge Scadenze
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-20
+     Descrizione: Script per caricare e visualizzare badge scadenze documenti
+     Nota: Il modal e le funzioni principali sono in documenti_modal.html
+     ============================================================================== -->
+
+<script>
+(function() {
+    // clienteId è già definito globalmente
+    
+    // === BADGE SCADENZE DOCUMENTI ===
+    function caricaBadgeScadenze() {
+        fetch(`/api/cliente/${clienteId}/documenti-strutturati/info`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const badge = document.getElementById('badge-scadenze-documenti');
+                    if (!badge) return;
+                    
+                    // Trova documento con scadenza più urgente
+                    let minGiorni = Infinity;
+                    let scaduto = false;
+                    
+                    data.documenti.forEach(doc => {
+                        if (doc.giorni_scadenza !== null && doc.giorni_scadenza !== undefined) {
+                            if (doc.giorni_scadenza <= 0) {
+                                scaduto = true;
+                            } else if (doc.giorni_scadenza < minGiorni) {
+                                minGiorni = doc.giorni_scadenza;
+                            }
+                        }
+                    });
+                    
+                    if (scaduto) {
+                        badge.innerHTML = '<span class="badge bg-danger ms-1">scaduti</span>';
+                    } else if (minGiorni <= 10) {
+                        badge.innerHTML = `<span class="badge bg-danger ms-1">in scadenza tra ${minGiorni}gg</span>`;
+                    } else if (minGiorni <= 30) {
+                        badge.innerHTML = `<span class="badge bg-warning text-dark ms-1">in scadenza tra ${minGiorni}gg</span>`;
+                    } else {
+                        badge.innerHTML = '';
+                    }
+                }
+            })
+            .catch(err => console.log('Errore caricamento badge scadenze'));
+    }
+    
+    // Carica badge scadenze al load
+    caricaBadgeScadenze();
+    
+})();
+</script>

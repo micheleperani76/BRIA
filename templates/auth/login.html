@@ -1,0 +1,77 @@
+{% extends "auth/_base_auth.html" %}
+
+{% block title %}Login - Gestione Flotta{% endblock %}
+
+{% block content %}
+<div class="auth-title">
+    <h2>Accedi</h2>
+    <p>Inserisci le tue credenziali per accedere</p>
+</div>
+
+<form method="POST" action="{{ url_for('auth.login_submit') }}" id="loginForm">
+    <!-- Username -->
+    <div class="mb-3">
+        <label for="username" class="form-label">Username</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-person"></i></span>
+            <input type="text" 
+                   class="form-control" 
+                   id="username" 
+                   name="username" 
+                   placeholder="Inserisci username"
+                   value="{{ request.form.get('username', '') }}"
+                   required 
+                   autofocus>
+        </div>
+    </div>
+    
+    <!-- Password -->
+    <div class="mb-4">
+        <label for="password" class="form-label">Password</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" 
+                   class="form-control" 
+                   id="password" 
+                   name="password" 
+                   placeholder="Inserisci password"
+                   required>
+            <span class="input-group-text password-toggle" onclick="togglePassword()">
+                <i class="bi bi-eye" id="toggleIcon"></i>
+            </span>
+        </div>
+    </div>
+    
+    <!-- Submit -->
+    <button type="submit" class="btn btn-primary" id="submitBtn">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Accedi
+    </button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle password visibility
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+    }
+}
+
+// Disable submit on form submission
+document.getElementById('loginForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Accesso in corso...';
+});
+</script>
+{% endblock %}

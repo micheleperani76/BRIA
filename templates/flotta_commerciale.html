@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Report per Commerciale - Flotta{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collapse-icon {
+        transition: transform 0.2s;
+    }
+    [data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon,
+    [data-bs-toggle="collapse"]:not(.collapsed) .collapse-icon {
+        transform: rotate(90deg);
+    }
+    .card-header[data-bs-toggle="collapse"]:hover {
+        background-color: #f8f9fa !important;
+    }
+    /* Stili per albero gerarchico */
+    .tree-connector {
+        color: #adb5bd;
+        font-family: monospace;
+    }
+    .subordinato-row {
+        background-color: #f8f9fa;
+    }
+    .subordinato-row td:first-child {
+        border-left: 3px solid #0d6efd;
+    }
+    .livello-1 td:first-child { padding-left: 25px !important; }
+    .livello-2 td:first-child { padding-left: 50px !important; }
+    .livello-3 td:first-child { padding-left: 75px !important; }
+    .livello-4 td:first-child { padding-left: 100px !important; }
+    
+    /* Card subordinati */
+    .card-subordinato {
+        margin-left: 30px;
+        border-left: 3px solid #0d6efd;
+    }
+    .card-subordinato-2 { margin-left: 60px; }
+    .card-subordinato-3 { margin-left: 90px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-people"></i> Report per Commerciale</h4>
+    <div>
+        {% if puo_gestire_assegnazioni %}
+        <a href="/flotta/gestione-commerciali" class="btn btn-primary btn-sm">
+            <i class="bi bi-arrow-left-right"></i> Gestione Assegnazioni
+        </a>
+        {% endif %}
+        <a href="/flotta" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Torna a Flotta
+        </a>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- RIEPILOGO GLOBALE (visibile a TUTTI, collassabile) -->
+<!-- ========================================================================= -->
+<div class="card mb-4">
+    <div class="card-header bg-light" style="cursor: pointer;" 
+         data-bs-toggle="collapse" data-bs-target="#riepilogo-globale">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-chevron-down me-2 collapse-icon"></i>
+                <i class="bi bi-bar-chart"></i> Riepilogo Generale
+                <span class="badge bg-secondary ms-2">Tutti i commerciali</span>
+            </h5>
+            <span class="text-muted">
+                {{ totale_veicoli_globale }} veicoli | {{ totale_clienti_globale }} clienti | &#8364; {{ totale_canone_globale|format_numero }}
+            </span>
+        </div>
+    </div>
+    <div class="collapse show" id="riepilogo-globale">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40%">Commerciale</th>
+                        <th class="text-center" style="width: 15%">Veicoli</th>
+                        <th class="text-center" style="width: 15%">Clienti</th>
+                        <th class="text-end" style="width: 15%">Canone Totale</th>
+                        <th class="text-end" style="width: 15%">% su Totale</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in riepilogo_globale %}
+                    {% if r.commerciale %}
+                    <tr>
+                        <td><strong>{{ r.commerciale }}</strong></td>
+                        <td class="text-center">{{ r.veicoli }}</td>
+                        <td class="text-center">{{ r.clienti }}</td>
+                        <td class="text-end">&#8364; {{ r.canone|format_numero }}</td>
+                        <td class="text-end">
+                            <div class="progress" style="height: 20px; min-width: 100px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ r.percentuale }}%">
+                                    {{ "%.1f"|format(r.percentuale) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                    <!-- Non assegnato alla fine -->
+                    {% for r in riepilogo_globale %}
+                    {% if not r.commerciale %}
+                    <tr class="table-warning">
+                        <td><em>Non assegnato</em></td>
+                        <td class="text-center">{{ r.veicoli }}</td>
+                        <td class="text-center">{{ r.clienti }}</td>
+                        <td class="text-end">&#8364; {{ r.canone|format_numero }}</td>
+                        <td class="text-end">
+                            <div class="progress" style="height: 20px; min-width: 100px;">
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ r.percentuale }}%">
+                                    {{ "%.1f"|format(r.percentuale) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>TOTALE</th>
+                        <th class="text-center">{{ totale_veicoli_globale }}</th>
+                        <th class="text-center">{{ totale_clienti_globale }}</th>
+                        <th class="text-end">&#8364; {{ totale_canone_globale|format_numero }}</th>
+                        <th class="text-end">100%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Avviso senza commerciale -->
+{% if senza_commerciale > 0 and puo_gestire_assegnazioni %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    Ci sono clienti senza commerciale assegnato
+    <a href="/flotta/gestione-commerciali?da=0" class="btn btn-sm btn-warning ms-3">
+        <i class="bi bi-arrow-right"></i> Assegna ora
+    </a>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- DETTAGLIO (filtrato per gerarchia subordinati) -->
+<!-- ========================================================================= -->
+
+{% for item in albero %}
+{% if item.dati.commerciale %}
+{% set comm = item.dati.commerciale %}
+{% set data = dettaglio_commerciali[comm] %}
+<div class="card mb-3 {% if item.livello > 0 %}card-subordinato{% endif %} {% if item.livello > 1 %}card-subordinato-{{ item.livello }}{% endif %}">
+    <div class="card-header bg-white" style="cursor: pointer;" 
+         data-bs-toggle="collapse" data-bs-target="#collapse-comm-{{ loop.index }}">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+                {% if item.livello > 0 %}
+                <span class="tree-connector me-1">&#9492;&#9472;</span>
+                {% endif %}
+                <i class="bi bi-person{% if item.livello == 0 %}-fill{% endif %}"></i> {{ comm }}
+                <span class="badge bg-secondary">{{ data.clienti|length }} clienti</span>
+                <span class="badge bg-primary">{{ data.veicoli }} veicoli</span>
+                {% for nol, num in data.noleggiatori.items() %}<span class="badge bg-info">{{ nol }} {{ num }}</span> {% endfor %}
+            </h5>
+            <span class="text-success fw-bold">
+                &#8364; {{ data.canone|format_numero }}
+            </span>
+        </div>
+    </div>
+    <div class="collapse" id="collapse-comm-{{ loop.index }}">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50%">Cliente</th>
+                        <th class="text-center" style="width: 15%">Veicoli</th>
+                        <th class="text-end" style="width: 20%">Canone</th>
+                        <th style="width: 15%">Noleggiatori</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in data.clienti|sort(attribute='nome') %}
+                    <tr>
+                        <td>
+                            <a href="/flotta/cliente/{{ c.nome|urlencode }}">
+                                {{ c.nome[:50] }}{% if c.nome|length > 50 %}...{% endif %}
+                            </a>
+                        </td>
+                        <td class="text-center">{{ c.veicoli }}</td>
+                        <td class="text-end">&#8364; {{ c.canone|format_numero }}</td>
+                        <td>
+                            {% for n in c.noleggiatori %}
+                            <span class="badge bg-secondary">{{ n }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <th>Totale {{ comm }}</th>
+                        <th class="text-center">{{ data.veicoli }}</th>
+                        <th class="text-end">&#8364; {{ data.canone|format_numero }}</th>
+                        <th></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<!-- Non assegnato alla fine -->
+{% if 'Non assegnato' in dettaglio_commerciali %}
+<div class="card mb-3 border-warning">
+    <div class="card-header bg-warning text-dark" style="cursor: pointer;" 
+         data-bs-toggle="collapse" data-bs-target="#collapse-non-assegnato">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+                <i class="bi bi-question-circle"></i> Non assegnato
+                <span class="badge bg-dark">{{ dettaglio_commerciali['Non assegnato'].clienti|length }} clienti</span>
+                <span class="badge bg-dark">{{ dettaglio_commerciali['Non assegnato'].veicoli }} veicoli</span>
+                {% for nol, num in dettaglio_commerciali['Non assegnato'].noleggiatori.items() %}<span class="badge bg-dark">{{ nol }} {{ num }}</span> {% endfor %}
+            </h5>
+            {% if puo_gestire_assegnazioni %}
+            <a href="/flotta/gestione-commerciali?da=0" class="btn btn-sm btn-dark" onclick="event.stopPropagation();">
+                <i class="bi bi-arrow-right"></i> Assegna
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="collapse" id="collapse-non-assegnato">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50%">Cliente</th>
+                        <th class="text-center" style="width: 15%">Veicoli</th>
+                        <th class="text-end" style="width: 20%">Canone</th>
+                        <th style="width: 15%">Noleggiatori</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in dettaglio_commerciali['Non assegnato'].clienti|sort(attribute='nome') %}
+                    <tr>
+                        <td>
+                            <a href="/flotta/cliente/{{ c.nome|urlencode }}">
+                                {{ c.nome[:50] }}{% if c.nome|length > 50 %}...{% endif %}
+                            </a>
+                        </td>
+                        <td class="text-center">{{ c.veicoli }}</td>
+                        <td class="text-end">&#8364; {{ c.canone|format_numero }}</td>
+                        <td>
+                            {% for n in c.noleggiatori %}
+                            <span class="badge bg-secondary">{{ n }}</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

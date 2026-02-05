@@ -1,0 +1,33 @@
+<!-- ==============================================================================
+     SHARED - Modal Rinomina File
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-20
+     Descrizione: Modal per rinominare file, usato da tutti i tipi documento
+     ============================================================================== -->
+
+<div class="modal fade" id="modalRinomina" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Rinomina File</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="rinominaTipo">
+                <input type="hidden" id="rinominaNomeFile">
+                <div class="mb-3">
+                    <label class="form-label">Nuovo nome:</label>
+                    <input type="text" class="form-control" id="rinominaNuovoNome" placeholder="Inserisci nuovo nome">
+                    <small class="text-muted">L'estensione verrà mantenuta automaticamente</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="eseguiRinomina()">
+                    <i class="bi bi-check"></i> Rinomina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

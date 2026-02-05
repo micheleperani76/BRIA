@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Flotta - Gestione Flotta{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Colonne ridimensionabili */
+.table-resizable th {
+    resize: horizontal;
+    overflow: auto;
+    min-width: 50px;
+}
+.table-resizable th:hover {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-car-front"></i> Dashboard Flotta</h4>
+    <div>
+        <a href="/flotta/per-noleggiatore" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-buildings"></i> Per Noleggiatore
+        </a>
+        <a href="/flotta/per-commerciale" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-people"></i> Per Commerciale
+        </a>
+    </div>
+</div>
+
+<!-- Ricerca -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form action="/flotta/cerca" method="get" class="row g-2">
+            <div class="col-md-10">
+                <input type="text" name="q" class="form-control" placeholder="Cerca per targa, marca, modello, driver, P.IVA...">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Cerca
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Statistiche generali -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value text-primary">{{ totale_veicoli }}</div>
+            <div class="stat-label">Veicoli Totali</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">&euro; {{ canone_totale|format_numero }}</div>
+            <div class="stat-label">Canone Mensile</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">{{ totale_clienti }}</div>
+            <div class="stat-label">Clienti con Flotta</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Per noleggiatore -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-buildings"></i> Per Noleggiatore</span>
+                <a href="/flotta/per-noleggiatore" class="btn btn-sm btn-outline-primary">Dettaglio</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 table-resizable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Noleggiatore</th>
+                            <th class="text-center">Veicoli</th>
+                            <th class="text-end">Canone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for n in per_noleggiatore[:10] %}
+                        <tr>
+                            <td>{{ n.noleggiatore }}</td>
+                            <td class="text-center">{{ n.veicoli }}</td>
+                            <td class="text-end">&euro; {{ n.canone|format_numero }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Per commerciale -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people"></i> Per Commerciale</span>
+                <a href="/flotta/per-commerciale" class="btn btn-sm btn-outline-primary">Dettaglio</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0 table-resizable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Commerciale</th>
+                            <th class="text-center">Veicoli</th>
+                            <th class="text-end">Canone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in per_commerciale[:10] %}
+                        <tr {% if not c.commerciale %}class="table-warning"{% endif %}>
+                            <td>{{ c.commerciale or 'Non assegnato' }}</td>
+                            <td class="text-center">{{ c.veicoli }}</td>
+                            <td class="text-end">&euro; {{ c.canone|format_numero }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SEZIONE SCADENZE PROSSIME (collassabile) -->
+<div class="card mt-4">
+    <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseScadenzeProssime">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-chevron-down me-2 collapse-icon"></i>
+                <i class="bi bi-calendar-event text-warning"></i> 
+                <strong>Scadenze Prossime</strong>
+                {% if scadenze_prossime %}<span class="badge bg-warning text-dark ms-2">{{ scadenze_prossime|length }}</span>{% endif %}
+            </span>
+            <span class="text-muted small">da oggi in avanti</span>
+        </div>
+    </div>
+    <div class="collapse" id="collapseScadenzeProssime">
+        <div class="card-body py-2 bg-light">
+            <!-- Filtri scadenze prossime -->
+            <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text">Da</span>
+                    <input type="number" name="giorni_da" class="form-control" style="width: 70px;" 
+                           value="{{ giorni_da }}" min="0">
+                    <span class="input-group-text">a</span>
+                    <input type="number" name="giorni_a" class="form-control" style="width: 70px;" 
+                           value="{{ giorni_a }}" min="0">
+                    <span class="input-group-text">giorni</span>
+                </div>
+                <select name="commerciale_scad" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">Tutti i commerciali</option>
+                    <option value="__NULL__" {% if filtro_commerciale == '__NULL__' %}selected{% endif %}>Non assegnato</option>
+                    {% for c in commerciali_lista %}
+                    <option value="{{ c.id }}" {% if filtro_commerciale|string == c.id|string %}selected{% endif %}>{{ c.display }}</option>
+                    {% endfor %}
+                </select>
+                <!-- Mantieni filtri passate -->
+                <input type="hidden" name="giorni_pass_da" value="{{ giorni_pass_da }}">
+                <input type="hidden" name="giorni_pass_a" value="{{ giorni_pass_a }}">
+                <input type="hidden" name="commerciale_pass" value="{{ filtro_comm_pass }}">
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-funnel"></i> Filtra
+                </button>
+            </form>
+        </div>
+        {% if scadenze_prossime %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 table-resizable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Commerciale</th>
+                        <th>Targa</th>
+                        <th class="text-center" title="Tipo: I=Installato, E=Extra">T</th>
+                        <th>Veicolo</th>
+                        <th>Noleggiatore</th>
+                        <th class="text-center">Scadenza</th>
+                        <th class="text-center">Giorni</th>
+                        <th class="text-center">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in scadenze_prossime %}
+                    <tr class="{% if v.giorni_rimasti <= 7 %}table-danger{% elif v.giorni_rimasti <= 14 %}table-warning{% endif %}">
+                        <td>
+                            {% set nome = v.NOME_CLIENTE or v.nome_cliente or '-' %}
+                            <a href="/veicolo/{{ v.id }}">{{ nome }}</a>
+                        </td>
+                        <td>
+                            {% if v.commerciale %}
+                            <span class="badge bg-primary">{{ v.commerciale }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ v.targa }}</code></td>
+                        <td class="text-center"><span class="badge" style="background-color: {{ get_tipo_veicolo_colore(v.tipo_veicolo) }};" title="{{ v.tipo_veicolo or 'Extra' }}">{{ (v.tipo_veicolo or 'Extra')[0] }}</span></td>
+                        <td>{{ v.marca }} {{ v.modello }}</td>
+                        <td>{{ v.noleggiatore }}</td>
+                        <td class="text-center">{{ v.scadenza|format_data }}</td>
+                        <td class="text-center">
+                            <span class="badge {% if v.giorni_rimasti <= 7 %}bg-danger{% elif v.giorni_rimasti <= 14 %}bg-warning{% else %}bg-info{% endif %}">
+                                +{{ v.giorni_rimasti }} gg
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                {% if v.cliente_id_link %}
+                                <a href="/cliente/{{ v.cliente_id_link }}" class="btn btn-outline-primary" title="Scheda cliente">
+                                    <i class="bi bi-person"></i>
+                                </a>
+                                {% endif %}
+                                <a href="/veicolo/{{ v.id }}" class="btn btn-outline-secondary" title="Gestione veicolo">
+                                    <i class="bi bi-car-front"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center text-muted py-3">
+            <i class="bi bi-calendar-check"></i> Nessuna scadenza tra {{ giorni_da }} e {{ giorni_a }} giorni
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- SEZIONE SCADENZE PASSATE (collassabile, chiusa di default) -->
+<div class="card mt-3">
+    <div class="card-header bg-light" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapseScadenzePassate">
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-chevron-right me-2 collapse-icon"></i>
+                <i class="bi bi-calendar-x text-danger"></i> 
+                <strong>Scadenze Passate</strong>
+                {% if scadenze_passate %}<span class="badge bg-danger ms-2">{{ scadenze_passate|length }}</span>{% endif %}
+            </span>
+            <span class="text-muted small">gia scadute</span>
+        </div>
+    </div>
+    <div class="collapse" id="collapseScadenzePassate">
+        <div class="card-body py-2 bg-light">
+            <!-- Filtri scadenze passate -->
+            <form method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Mantieni filtri prossime -->
+                <input type="hidden" name="giorni_da" value="{{ giorni_da }}">
+                <input type="hidden" name="giorni_a" value="{{ giorni_a }}">
+                <input type="hidden" name="commerciale_scad" value="{{ filtro_commerciale }}">
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text">Da</span>
+                    <input type="number" name="giorni_pass_da" class="form-control" style="width: 70px;" 
+                           value="{{ giorni_pass_da }}" max="0">
+                    <span class="input-group-text">a</span>
+                    <input type="number" name="giorni_pass_a" class="form-control" style="width: 70px;" 
+                           value="{{ giorni_pass_a }}" max="0">
+                    <span class="input-group-text">giorni</span>
+                </div>
+                <select name="commerciale_pass" class="form-select form-select-sm" style="width: auto;">
+                    <option value="">Tutti i commerciali</option>
+                    <option value="__NULL__" {% if filtro_comm_pass == '__NULL__' %}selected{% endif %}>Non assegnato</option>
+                    {% for c in commerciali_lista %}
+                    <option value="{{ c.id }}" {% if filtro_comm_pass|string == c.id|string %}selected{% endif %}>{{ c.display }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-danger">
+                    <i class="bi bi-funnel"></i> Filtra
+                </button>
+            </form>
+        </div>
+        {% if scadenze_passate %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 table-resizable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Commerciale</th>
+                        <th>Targa</th>
+                        <th class="text-center" title="Tipo: I=Installato, E=Extra">T</th>
+                        <th>Veicolo</th>
+                        <th>Noleggiatore</th>
+                        <th class="text-center">Scadenza</th>
+                        <th class="text-center">Giorni</th>
+                        <th class="text-center">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in scadenze_passate %}
+                    {% set nome = v.NOME_CLIENTE or v.nome_cliente or '-' %}
+                    <tr class="table-secondary">
+                        <td>
+                            <a href="/veicolo/{{ v.id }}">{{ nome }}</a>
+                        </td>
+                        <td>
+                            {% if v.commerciale %}
+                            <span class="badge bg-primary">{{ v.commerciale }}</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td><code>{{ v.targa }}</code></td>
+                        <td class="text-center"><span class="badge" style="background-color: {{ get_tipo_veicolo_colore(v.tipo_veicolo) }};" title="{{ v.tipo_veicolo or 'Extra' }}">{{ (v.tipo_veicolo or 'Extra')[0] }}</span></td>
+                        <td>{{ v.marca }} {{ v.modello }}</td>
+                        <td>{{ v.noleggiatore }}</td>
+                        <td class="text-center">{{ v.scadenza|format_data }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary">{{ v.giorni_rimasti }} gg</span>
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                {% if v.cliente_id_link %}
+                                <a href="/cliente/{{ v.cliente_id_link }}" class="btn btn-outline-primary" title="Scheda cliente">
+                                    <i class="bi bi-person"></i>
+                                </a>
+                                {% endif %}
+                                <a href="/veicolo/{{ v.id }}" class="btn btn-outline-secondary" title="Gestione veicolo">
+                                    <i class="bi bi-car-front"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="card-body text-center text-muted py-3">
+            <i class="bi bi-calendar-check"></i> Nessuna scadenza passata tra {{ giorni_pass_da }} e {{ giorni_pass_a }} giorni
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

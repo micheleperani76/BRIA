@@ -1,0 +1,157 @@
+<!-- ==============================================================================
+     TRASCRIZIONI CLIENTE - Modal Lista + Upload + Anteprima/Modifica
+     ==============================================================================
+     Versione: 2.0.0
+     Data: 2026-02-04
+     ============================================================================== -->
+
+<!-- Modal principale trascrizioni -->
+<div class="modal fade" id="modalTrascrizioni" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-mic me-2"></i>Trascrizioni Audio
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Area Upload Drag & Drop -->
+                <div id="trascrizioni-drop-zone" class="trascrizioni-drop-zone"
+                     onclick="document.getElementById('trascrizioni-file-input').click()">
+                    <i class="bi bi-cloud-arrow-up" style="font-size: 1.8rem; color: #6c757d;"></i>
+                    <p class="mt-1 mb-0 fw-semibold small">Trascina qui i file audio o clicca per selezionare</p>
+                    <p class="text-muted small mb-0">AAC, MP3, M4A, WAV, OGG, OPUS, WMA, FLAC (max 500 MB)</p>
+                </div>
+                <input type="file" id="trascrizioni-file-input" class="d-none" multiple
+                       accept=".aac,.mp3,.m4a,.wav,.ogg,.opus,.wma,.flac,.amr,.webm,.3gp,.mp4,.caf">
+
+                <!-- Lista file in upload -->
+                <div id="trascrizioni-upload-lista" style="display: none;" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="fw-semibold text-muted">Upload in corso</small>
+                        <small id="trascrizioni-upload-contatore" class="text-muted"></small>
+                    </div>
+                    <div id="trascrizioni-upload-items"></div>
+                </div>
+
+                <hr class="my-2">
+
+                <!-- Barra ricerca -->
+                <div class="trascrizioni-search-box mb-2">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="trascrizioni-cerca" class="form-control form-control-sm"
+                           placeholder="Cerca nel testo delle trascrizioni..."
+                           oninput="cercaTrascrizioni(this.value)">
+                </div>
+
+                <!-- Loading -->
+                <div id="trascrizioni-loading" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                    <span class="ms-2">Caricamento...</span>
+                </div>
+
+                <!-- Vuoto -->
+                <div id="trascrizioni-vuoto" class="text-center py-4 text-muted" style="display: none;">
+                    <i class="bi bi-mic-mute" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">Nessuna trascrizione per questo cliente</p>
+                </div>
+
+                <!-- Risultati ricerca -->
+                <div id="trascrizioni-ricerca-vuoto" class="text-center py-3 text-muted" style="display: none;">
+                    <i class="bi bi-search" style="font-size: 1.5rem;"></i>
+                    <p class="mt-2 mb-0 small">Nessun risultato per la ricerca</p>
+                </div>
+
+                <!-- Lista trascrizioni -->
+                <div id="trascrizioni-lista" style="display: none;">
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>File</th>
+                                <th style="width: 120px;">Data</th>
+                                <th style="width: 80px;">Dim.</th>
+                                <th style="width: 160px;" class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trascrizioni-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Anteprima/Modifica Testo Trascrizione -->
+<div class="modal fade" id="modalAnteprimaTrascrizione" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="anteprima-trascrizione-titolo">
+                    <i class="bi bi-file-text me-2"></i>Anteprima
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Modalit&agrave; lettura -->
+                <div id="anteprima-modo-lettura">
+                    <pre id="anteprima-trascrizione-testo" style="white-space: pre-wrap; font-size: 0.9rem; max-height: 60vh; overflow-y: auto;"></pre>
+                </div>
+                <!-- Modalit&agrave; modifica -->
+                <div id="anteprima-modo-modifica" style="display: none;">
+                    <textarea id="anteprima-trascrizione-testo-edit" class="form-control" style="min-height: 50vh;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <!-- Bottoni lettura -->
+                <div id="anteprima-btn-lettura">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="copiaTrascrizione()">
+                        <i class="bi bi-clipboard"></i> Copia
+                    </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="attivaModificaTrascrizione()">
+                        <i class="bi bi-pencil"></i> Modifica
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                </div>
+                <!-- Bottoni modifica -->
+                <div id="anteprima-btn-modifica" style="display: none;">
+                    <button type="button" class="btn btn-success btn-sm" onclick="salvaTrascrizione()">
+                        <i class="bi bi-check-lg"></i> Salva
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="annullaModificaTrascrizione()">
+                        Annulla
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Rinomina Trascrizione -->
+<div class="modal fade" id="modalRinominaTrascrizione" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="bi bi-pencil-square me-1"></i>Rinomina</h6>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2">
+                <input type="hidden" id="rinomina-trascrizione-vecchio">
+                <label class="form-label small mb-1">Nuovo nome:</label>
+                <input type="text" id="rinomina-trascrizione-nuovo" class="form-control form-control-sm"
+                       onkeydown="if(event.key==='Enter') confermaRinominaTrascrizione()">
+                <small class="text-muted">L'estensione .txt viene aggiunta automaticamente</small>
+            </div>
+            <div class="modal-footer py-1">
+                <button type="button" class="btn btn-primary btn-sm" onclick="confermaRinominaTrascrizione()">
+                    <i class="bi bi-check"></i> Rinomina
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+            </div>
+        </div>
+    </div>
+</div>

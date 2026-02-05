@@ -1,0 +1,84 @@
+{# ================================================
+   INDEX - FILTRI
+   Form filtri: ricerca, forma giuridica, stato, zona, commerciale
+   Versione: 1.5.2 - Aggiunto comando commbr (senza modifiche grafiche)
+   ================================================ #}
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center" id="formFiltri">
+            <!-- Ricerca intelligente -->
+            <div class="col position-relative">
+                <input type="text" class="form-control form-control-sm" name="search" id="inputRicercaSmart" placeholder="&#128269; Ricerca Smart: nome, P.IVA, C.F., telefono, PEC, referente, driver, targa, capogruppo, note..." value="{{ search }}" autocomplete="off">
+                <!-- Dropdown risultati commbr (nascosto di default) -->
+                <div id="commbrDropdown" class="position-absolute bg-white border rounded shadow-sm" style="display: none; top: 100%; left: 0; right: 0; z-index: 1050; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <!-- Forma Giuridica -->
+            <div class="col-auto" style="width: 140px;">
+                <select class="form-select form-select-sm" name="forma" style="width: 140px;">
+                    <option value="">Forma Giuridica</option>
+                    {% for fg in forme_giuridiche %}
+                    <option value="{{ fg.descrizione }}" {% if forma == fg.descrizione %}selected{% endif %}>{{ fg.codice }} - {{ fg.descrizione }}</option>
+                    {% endfor %}
+                    <option value="__NULL__" {% if forma == '__NULL__' %}selected{% endif %}>N/D - Non definita</option>
+                </select>
+            </div>
+            <!-- Stato Cliente -->
+            <div class="col-auto" style="width: 140px;">
+                <select class="form-select form-select-sm" name="stato_cliente">
+                    <option value="">Stato Cliente</option>
+                    {% for stato in stati_cliente_usati %}
+                    <option value="{{ stato }}" {% if stato_cliente == stato %}selected{% endif %}>{{ stato }}</option>
+                    {% endfor %}
+                    <option value="__NULL__" {% if stato_cliente == '__NULL__' %}selected{% endif %}>Non definito (N/D)</option>
+                </select>
+            </div>
+            <!-- Zone -->
+            <div class="col-auto" style="width: 140px;">
+                <select class="form-select form-select-sm" name="zona">
+                    <option value="">Tutte le zone</option>
+                    <optgroup label="Province">
+                        {% for p in province %}
+                        <option value="P:{{ p }}" {% if zona == 'P:' + p %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Regioni">
+                        {% for r in regioni %}
+                        <option value="R:{{ r }}" {% if zona == 'R:' + r %}selected{% endif %}>{{ r }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <!-- Commerciali -->
+            <div class="col-auto" style="width: 160px;">
+                <select class="form-select form-select-sm" name="commerciale">
+                    <option value="">Tutti i commerciali</option>
+                    <option value="__NULL__" {% if commerciale == '__NULL__' %}selected{% endif %}>Non assegnato</option>
+                    {% for c in commerciali %}
+                    <option value="{{ c.id }}" {% if commerciale|string == c.id|string %}selected{% endif %}>{{ c.display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Tasto Cerca -->
+            <div class="col-auto" style="width: 80px;">
+                <button type="submit" class="btn btn-success btn-sm w-100" style="height: 31px;">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            
+            <!-- Mantieni parametri nascosti -->
+            <input type="hidden" name="lettera" value="{{ lettera }}">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+        </form>
+    </div>
+</div>
+
+<style>
+/* Dropdown Forma Giuridica - box fisso ma dropdown espanso */
+select[name="forma"] {
+    text-overflow: ellipsis;
+}
+select[name="forma"] option {
+    white-space: nowrap;
+}
+</style>

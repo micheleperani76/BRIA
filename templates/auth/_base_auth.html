@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gestione Flotta{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 1rem;
+        }
+        
+        .auth-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 2.5rem;
+        }
+        
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .auth-logo img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1rem;
+        }
+        
+        .auth-logo h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin: 0;
+        }
+        
+        .auth-logo p {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin: 0.25rem 0 0;
+        }
+        
+        .auth-title {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .auth-title h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0;
+        }
+        
+        .auth-title p {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin: 0.5rem 0 0;
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-control.is-invalid {
+            border-color: #ef4444;
+        }
+        
+        .invalid-feedback {
+            color: #ef4444;
+            font-size: 0.875rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 1rem;
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        
+        .btn-primary:disabled {
+            background: #93c5fd;
+            border-color: #93c5fd;
+        }
+        
+        .alert {
+            border: none;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert-danger {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+        
+        .alert-success {
+            background: #f0fdf4;
+            color: #16a34a;
+        }
+        
+        .alert-warning {
+            background: #fffbeb;
+            color: #d97706;
+        }
+        
+        .alert-info {
+            background: #eff6ff;
+            color: #2563eb;
+        }
+        
+        .input-group-text {
+            background: #f9fafb;
+            border-color: #d1d5db;
+            color: #6b7280;
+        }
+        
+        .password-toggle {
+            cursor: pointer;
+            border-left: none;
+        }
+        
+        .password-toggle:hover {
+            color: var(--primary-color);
+        }
+        
+        .form-text {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+        
+        .required-star {
+            color: #ef4444;
+        }
+        
+        /* Steps indicator */
+        .steps-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+        
+        .step.active .step-number {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+        
+        .step-line {
+            width: 40px;
+            height: 2px;
+            background: #e5e7eb;
+            margin: 0 0.5rem;
+        }
+        
+        .step.completed + .step .step-line,
+        .step.active .step-line {
+            background: var(--primary-color);
+        }
+        
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <!-- Logo -->
+            <div class="auth-logo">
+                <img src="https://www.brcarservice.it/wp-content/uploads/2025/08/logo-brcarservice-bianco-150x150.png" 
+                     alt="BR CAR SERVICE"
+                     style="background: #1e3a5f; border-radius: 12px; padding: 10px;">
+                <h1>BR CAR SERVICE</h1>
+                <p>Gestione Flotta</p>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; letter-spacing: 1px;">PROGETTO BRIA</p>
+            </div>
+            
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <i class="bi {% if category == 'danger' %}bi-exclamation-circle{% elif category == 'success' %}bi-check-circle{% elif category == 'warning' %}bi-exclamation-triangle{% else %}bi-info-circle{% endif %} me-2"></i>
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

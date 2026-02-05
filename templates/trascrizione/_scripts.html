@@ -1,0 +1,772 @@
+<!-- ==========================================================================
+     TRASCRIZIONE - Scripts JavaScript
+     ========================================================================== -->
+<script>
+// ==============================================================================
+// VARIABILI GLOBALI
+// ==============================================================================
+
+let fileSelezionato = null;
+let intervalloAggiornamentoCoda = null;
+const ruoloUtente = "{{ session.get('ruolo_base', 'viewer') }}";
+
+// ==============================================================================
+// INIZIALIZZAZIONE
+// ==============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Carica lista trascrizioni
+    caricaMieTrascrizioni();
+    
+    // Setup drag & drop
+    setupDropZone();
+    
+    // Setup input file
+    document.getElementById('file-audio').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            selezionaFile(e.target.files[0]);
+        }
+    });
+    
+    // Setup ricerca clienti nel modal sposta
+    setupRicercaClienti();
+    
+    // Aggiorna coda ogni 15 secondi
+    aggiornaCoda();
+    intervalloAggiornamentoCoda = setInterval(aggiornaCoda, 15000);
+});
+
+
+// ==============================================================================
+// DRAG & DROP
+// ==============================================================================
+
+function setupDropZone() {
+    const dropZone = document.getElementById('drop-zone');
+    
+    ['dragenter', 'dragover'].forEach(ev => {
+        dropZone.addEventListener(ev, function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(ev => {
+        dropZone.addEventListener(ev, function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            selezionaFile(files[0]);
+        }
+    });
+}
+
+
+// ==============================================================================
+// GESTIONE FILE
+// ==============================================================================
+
+function selezionaFile(file) {
+    // Validazione formato
+    const ext = file.name.split('.').pop().toLowerCase();
+    const formatiOk = ['aac','mp3','m4a','wav','ogg','opus','wma','flac','amr','webm','3gp','mp4','caf'];
+    
+    if (!formatiOk.includes(ext)) {
+        alert('Formato .' + ext + ' non supportato.\nFormati accettati: ' + formatiOk.join(', '));
+        return;
+    }
+    
+    // Validazione dimensione (500 MB)
+    if (file.size > 500 * 1024 * 1024) {
+        alert('File troppo grande (' + (file.size / (1024*1024)).toFixed(0) + ' MB). Massimo: 500 MB');
+        return;
+    }
+    
+    fileSelezionato = file;
+    
+    // Mostra info file
+    document.getElementById('file-nome').textContent = file.name;
+    document.getElementById('file-dimensione').textContent = formatBytes(file.size);
+    document.getElementById('file-info').style.display = 'block';
+    document.getElementById('btn-upload').disabled = false;
+    
+    // Nascondi risultato precedente
+    document.getElementById('upload-risultato').style.display = 'none';
+}
+
+function rimuoviFile() {
+    fileSelezionato = null;
+    document.getElementById('file-audio').value = '';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('btn-upload').disabled = true;
+    document.getElementById('upload-risultato').style.display = 'none';
+}
+
+
+// ==============================================================================
+// UPLOAD AUDIO
+// ==============================================================================
+
+function inviaAudio(tipo, clienteId) {
+    if (!fileSelezionato) return;
+    
+    tipo = tipo || 'dashboard';
+    
+    const formData = new FormData();
+    formData.append('file', fileSelezionato);
+    formData.append('tipo', tipo);
+    if (clienteId) formData.append('cliente_id', clienteId);
+    
+    // Mostra progress
+    const btnUpload = document.getElementById('btn-upload');
+    const progressDiv = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('upload-bar');
+    const progressText = document.getElementById('upload-text');
+    
+    btnUpload.disabled = true;
+    btnUpload.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Invio in corso...';
+    progressDiv.style.display = 'block';
+    
+    const xhr = new XMLHttpRequest();
+    
+    // Progress upload
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressText.textContent = 'Caricamento... ' + pct + '%';
+        }
+    };
+    
+    xhr.onload = function() {
+        progressDiv.style.display = 'none';
+        const risultatoDiv = document.getElementById('upload-risultato');
+        
+        try {
+            const data = JSON.parse(xhr.responseText);
+            
+            if (data.success) {
+                risultatoDiv.innerHTML = `
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-check-circle me-1"></i>
+                        <strong>File inviato!</strong> Posizione in coda: <strong>#${data.posizione_coda}</strong>
+                        ${data.tempo_stimato_secondi > 0 
+                            ? '<br>Tempo stimato: <strong>' + Math.ceil(data.tempo_stimato_secondi / 60) + ' minuti</strong>' 
+                            : ''}
+                        ${data.avviso ? '<br><small class="text-muted">' + data.avviso + '</small>' : ''}
+                    </div>
+                `;
+                
+                // Reset
+                rimuoviFile();
+                
+                // Aggiorna lista e coda
+                setTimeout(() => {
+                    caricaMieTrascrizioni();
+                    aggiornaCoda();
+                }, 1000);
+            } else {
+                risultatoDiv.innerHTML = `
+                    <div class="alert alert-danger mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>${data.error || 'Errore sconosciuto'}
+                    </div>
+                `;
+            }
+        } catch (e) {
+            risultatoDiv.innerHTML = `
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Errore di comunicazione con il server
+                </div>
+            `;
+        }
+        
+        risultatoDiv.style.display = 'block';
+        btnUpload.disabled = false;
+        btnUpload.innerHTML = '<i class="bi bi-send me-1"></i>Invia per Trascrizione';
+    };
+    
+    xhr.onerror = function() {
+        progressDiv.style.display = 'none';
+        document.getElementById('upload-risultato').innerHTML = `
+            <div class="alert alert-danger mb-0">Errore di rete. Riprova.</div>
+        `;
+        document.getElementById('upload-risultato').style.display = 'block';
+        btnUpload.disabled = false;
+        btnUpload.innerHTML = '<i class="bi bi-send me-1"></i>Invia per Trascrizione';
+    };
+    
+    xhr.open('POST', '/trascrizione/upload');
+    xhr.send(formData);
+}
+
+
+// ==============================================================================
+// LISTA MIE TRASCRIZIONI
+// ==============================================================================
+
+function caricaMieTrascrizioni() {
+    const loading = document.getElementById('lista-loading');
+    const vuota = document.getElementById('lista-vuota');
+    const lista = document.getElementById('lista-trascrizioni');
+    
+    loading.style.display = 'block';
+    vuota.style.display = 'none';
+    lista.style.display = 'none';
+    
+    fetch('/trascrizione/mie')
+        .then(r => r.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if (!data.success || !data.trascrizioni || data.trascrizioni.length === 0) {
+                vuota.style.display = 'block';
+                return;
+            }
+            
+            lista.innerHTML = '';
+            lista.style.display = 'block';
+            
+            data.trascrizioni.forEach(t => {
+                lista.innerHTML += renderTrascrizione(t);
+            });
+        })
+        .catch(() => {
+            loading.style.display = 'none';
+            vuota.style.display = 'block';
+        });
+}
+
+function renderTrascrizione(t) {
+    // Badge stato
+    let statoBadge = '';
+    switch(t.stato) {
+        case 'completato':
+            statoBadge = '<span class="stato-badge stato-completato">Completato</span>';
+            break;
+        case 'lavorazione':
+            statoBadge = '<span class="stato-badge stato-lavorazione">In elaborazione ' + t.progresso + '%</span>';
+            break;
+        case 'attesa':
+            statoBadge = '<span class="stato-badge stato-attesa">In coda</span>';
+            break;
+        case 'errore':
+            statoBadge = '<span class="stato-badge stato-errore">Errore</span>';
+            break;
+    }
+    
+    // Info
+    let info = [];
+    if (t.durata) info.push(t.durata);
+    if (t.dimensione_mb) info.push(t.dimensione_mb + ' MB');
+    if (t.modello) info.push(t.modello);
+    
+    // Retention
+    let retention = '';
+    if (t.giorni_residui !== null && t.giorni_residui <= 7) {
+        retention = `<span class="retention-warning"><i class="bi bi-clock me-1"></i>Scade tra ${t.giorni_residui} giorni</span>`;
+    }
+    
+    // Data formattata
+    let dataStr = '';
+    if (t.data_completamento) {
+        dataStr = formatData(t.data_completamento);
+    } else if (t.data_inserimento) {
+        dataStr = formatData(t.data_inserimento);
+    }
+    
+    // Azioni
+    let azioni = '';
+    if (t.stato === 'completato' && t.testo_disponibile) {
+        azioni = `
+            <div class="trascrizione-azioni mt-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="anteprimaTesto(${t.id}, '${escapeHtml(t.nome_file)}')" title="Visualizza">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <a href="/trascrizione/mie/${t.id}/testo?download=1" class="btn btn-outline-success btn-sm" title="Scarica">
+                    <i class="bi bi-download"></i>
+                </a>
+                <button class="btn btn-outline-info btn-sm" onclick="apriModalSposta(${t.id})" title="Sposta su cliente">
+                    <i class="bi bi-arrow-right-circle"></i>
+                </button>
+                <button class="btn btn-outline-warning btn-sm" onclick="rinominaTrascrizione(${t.id})" title="Rinomina">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-outline-danger btn-sm" onclick="eliminaTrascrizione(${t.id})" title="Elimina">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        `;
+    } else if (t.stato === 'errore') {
+        azioni = `
+            <div class="mt-1">
+                <small class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${escapeHtml(t.errore || 'Errore sconosciuto')}</small>
+            </div>
+        `;
+    }
+    
+    // Progress bar per lavorazione
+    let progressBar = '';
+    if (t.stato === 'lavorazione') {
+        progressBar = `
+            <div class="progress trascrizione-progress">
+                <div class="progress-bar bg-warning" style="width: ${t.progresso}%;"></div>
+            </div>
+        `;
+    }
+    
+    return `
+        <div class="trascrizione-item" id="trascrizione-${t.id}">
+            <div class="d-flex justify-content-between align-items-start">
+                <div style="min-width: 0; flex: 1;">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <i class="bi bi-file-earmark-music text-primary"></i>
+                        <span class="fw-semibold text-truncate" style="max-width: 250px;" title="${escapeHtml(t.nome_file)}">${escapeHtml(t.nome_file)}</span>
+                        ${statoBadge}
+                    </div>
+                    <div class="text-muted small mt-1">
+                        ${info.join(' &middot; ')}
+                        ${dataStr ? ' &middot; ' + dataStr : ''}
+                    </div>
+                    ${retention}
+                    ${progressBar}
+                </div>
+            </div>
+            ${azioni}
+        </div>
+    `;
+}
+
+
+// ==============================================================================
+// CODA TRASCRIZIONI
+// ==============================================================================
+
+function mostraCoda() {
+    const modal = new bootstrap.Modal(document.getElementById('modalCoda'));
+    modal.show();
+    aggiornaCodaModal();
+}
+
+function aggiornaCoda() {
+    fetch('/trascrizione/coda')
+        .then(r => r.json())
+        .then(data => {
+            // Aggiorna badge header
+            const badge = document.getElementById('badge-coda-header');
+            if (badge) {
+                const totale = data.totale_coda + (data.in_lavorazione ? 1 : 0);
+                if (totale > 0) {
+                    badge.textContent = totale;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+            
+            // Aggiorna badge FAB (se presente)
+            const fabBadge = document.getElementById('fab-badge-coda');
+            if (fabBadge) {
+                const totale = data.totale_coda + (data.in_lavorazione ? 1 : 0);
+                if (totale > 0) {
+                    fabBadge.textContent = totale;
+                    fabBadge.style.display = 'flex';
+                } else {
+                    fabBadge.style.display = 'none';
+                }
+            }
+            
+            // Se ci sono job in lavorazione o i miei in coda, ricarica lista
+            if (data.in_lavorazione && data.in_lavorazione.is_mio) {
+                caricaMieTrascrizioni();
+            }
+        })
+        .catch(() => {});
+}
+
+function aggiornaCodaModal() {
+    fetch('/trascrizione/coda')
+        .then(r => r.json())
+        .then(data => {
+            const body = document.getElementById('coda-body');
+            let html = '';
+            
+            // Nessun job
+            if (!data.in_lavorazione && data.totale_coda === 0) {
+                html = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2 mb-0">Nessuna trascrizione in corso o in coda</p>
+                    </div>
+                `;
+                body.innerHTML = html;
+                return;
+            }
+            
+            // In lavorazione
+            if (data.in_lavorazione) {
+                const l = data.in_lavorazione;
+                html += `
+                    <div class="coda-item in-lavorazione ${l.is_mio ? 'mio' : ''}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="bi bi-gear-wide-connected text-warning me-1 spin-slow"></i>
+                                <strong>${escapeHtml(l.nome_utente)}</strong>
+                                ${l.is_mio ? '<span class="badge bg-primary ms-1">Tu</span>' : ''}
+                            </div>
+                            <span class="text-muted small">${l.tempo_restante_min} min restanti</span>
+                        </div>
+                        <div class="progress mt-2" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: ${l.progresso}%;"></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Coda
+            if (data.coda.length > 0) {
+                html += '<div class="mt-2"><small class="text-muted fw-semibold">IN CODA</small></div>';
+                
+                data.coda.forEach(item => {
+                    html += `
+                        <div class="coda-item in-attesa ${item.is_mio ? 'mio' : ''}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-secondary me-1">#${item.posizione}</span>
+                                    <span>${escapeHtml(item.nome_utente)}</span>
+                                    ${item.is_mio ? '<span class="badge bg-primary ms-1">Tu</span>' : ''}
+                                </div>
+                                <span class="d-flex align-items-center gap-1">
+                                    <span class="text-muted small">In attesa</span>
+                                    ${(item.is_mio || ruoloUtente === "admin") ? `<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="eliminaJobCoda(${item.id})" title="Rimuovi dalla coda"><i class="bi bi-x-lg"></i></button>` : ""}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Il mio job specifico
+            if (data.mio_job) {
+                html += `
+                    <div class="alert alert-info mt-3 mb-0 small">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Il tuo file &egrave; in posizione <strong>#${data.mio_job.posizione}</strong>.
+                        Tempo stimato: <strong>${data.mio_job.tempo_formattato}</strong>.
+                    </div>
+                `;
+            }
+            
+            body.innerHTML = html;
+        })
+        .catch(() => {
+            document.getElementById('coda-body').innerHTML = `
+                <div class="text-center py-3 text-danger">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Errore caricamento coda
+                </div>
+            `;
+        });
+}
+
+
+// ==============================================================================
+// ANTEPRIMA TESTO
+// ==============================================================================
+
+function anteprimaTesto(jobId, nomeFile) {
+    const modal = new bootstrap.Modal(document.getElementById('modalAnteprima'));
+    document.getElementById('anteprima-titolo').textContent = nomeFile;
+    document.getElementById('anteprima-loading').style.display = 'block';
+    document.getElementById('anteprima-contenuto').style.display = 'none';
+    
+    modal.show();
+    
+    fetch('/trascrizione/mie/' + jobId + '/testo')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('anteprima-loading').style.display = 'none';
+            
+            if (data.success) {
+                document.getElementById('anteprima-testo').textContent = data.testo;
+                document.getElementById('anteprima-contenuto').style.display = 'block';
+                document.getElementById('btn-scarica-testo').href = '/trascrizione/mie/' + jobId + '/testo?download=1';
+            } else {
+                document.getElementById('anteprima-contenuto').innerHTML = `
+                    <div class="alert alert-danger">${data.error || 'Errore'}</div>
+                `;
+                document.getElementById('anteprima-contenuto').style.display = 'block';
+            }
+        })
+        .catch(() => {
+            document.getElementById('anteprima-loading').style.display = 'none';
+            document.getElementById('anteprima-contenuto').innerHTML = `
+                <div class="alert alert-danger">Errore di comunicazione</div>
+            `;
+            document.getElementById('anteprima-contenuto').style.display = 'block';
+        });
+}
+
+function copiaTesto() {
+    const testo = document.getElementById('anteprima-testo').textContent;
+    navigator.clipboard.writeText(testo).then(() => {
+        const btn = document.getElementById('btn-copia-testo');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i>Copiato!';
+        btn.classList.add('btn-success');
+        btn.classList.remove('btn-outline-primary');
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    });
+}
+
+
+// ==============================================================================
+// SPOSTAMENTO SU CLIENTE
+// ==============================================================================
+
+function apriModalSposta(jobId) {
+    document.getElementById('sposta-job-id').value = jobId;
+    document.getElementById('sposta-cerca').value = '';
+    document.getElementById('sposta-nuovo-nome').value = '';
+    document.getElementById('sposta-risultati').style.display = 'none';
+    document.getElementById('sposta-selezionato').style.display = 'none';
+    document.getElementById('btn-conferma-sposta').disabled = true;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalSposta'));
+    modal.show();
+    
+    setTimeout(() => document.getElementById('sposta-cerca').focus(), 300);
+}
+
+function setupRicercaClienti() {
+    let timer = null;
+    const input = document.getElementById('sposta-cerca');
+    
+    if (!input) return;
+    
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        const q = this.value.trim();
+        
+        if (q.length < 2) {
+            document.getElementById('sposta-risultati').style.display = 'none';
+            return;
+        }
+        
+        timer = setTimeout(() => {
+            fetch('/trascrizione/api/cerca-clienti?q=' + encodeURIComponent(q))
+                .then(r => r.json())
+                .then(data => {
+                    const container = document.getElementById('sposta-risultati');
+                    
+                    if (!data.success || !data.clienti || data.clienti.length === 0) {
+                        container.innerHTML = '<div class="list-group-item text-muted small">Nessun cliente trovato</div>';
+                        container.style.display = 'block';
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    data.clienti.forEach(c => {
+                        container.innerHTML += `
+                            <a href="#" class="list-group-item list-group-item-action py-2" 
+                               onclick="selezioneCliente(${c.id}, '${escapeHtml(c.nome)}', '${escapeHtml(c.piva)}'); return false;">
+                                <span class="fw-semibold">${escapeHtml(c.nome)}</span>
+                                <span class="text-muted small ms-2">${escapeHtml(c.piva)}</span>
+                            </a>
+                        `;
+                    });
+                    container.style.display = 'block';
+                })
+                .catch(() => {});
+        }, 300);
+    });
+}
+
+function selezioneCliente(id, nome, piva) {
+    document.getElementById('sposta-cliente-id').value = id;
+    document.getElementById('sposta-cliente-nome').textContent = nome;
+    document.getElementById('sposta-cliente-piva').textContent = piva;
+    document.getElementById('sposta-selezionato').style.display = 'block';
+    document.getElementById('sposta-risultati').style.display = 'none';
+    document.getElementById('sposta-cerca').value = '';
+    document.getElementById('btn-conferma-sposta').disabled = false;
+}
+
+function deselezioneCliente() {
+    document.getElementById('sposta-selezionato').style.display = 'none';
+    document.getElementById('sposta-cliente-id').value = '';
+    document.getElementById('btn-conferma-sposta').disabled = true;
+    document.getElementById('sposta-cerca').focus();
+}
+
+function confermaSpostamento() {
+    const jobId = document.getElementById('sposta-job-id').value;
+    const clienteId = document.getElementById('sposta-cliente-id').value;
+    const nuovoNome = document.getElementById('sposta-nuovo-nome').value.trim();
+    
+    if (!clienteId) return;
+    
+    const btn = document.getElementById('btn-conferma-sposta');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Spostamento...';
+    
+    fetch('/trascrizione/sposta/' + jobId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            cliente_id: parseInt(clienteId),
+            nuovo_nome: nuovoNome
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalSposta')).hide();
+            caricaMieTrascrizioni();
+            
+            // Feedback
+            const item = document.getElementById('trascrizione-' + jobId);
+            if (item) {
+                item.innerHTML = `
+                    <div class="alert alert-success mb-0 small">
+                        <i class="bi bi-check-circle me-1"></i>${data.messaggio}
+                    </div>
+                `;
+                setTimeout(() => item.remove(), 3000);
+            }
+        } else {
+            alert(data.error || 'Errore spostamento');
+        }
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-right-circle me-1"></i>Sposta';
+    })
+    .catch(() => {
+        alert('Errore di comunicazione');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-right-circle me-1"></i>Sposta';
+    });
+}
+
+
+// ==============================================================================
+// RINOMINA
+// ==============================================================================
+
+function rinominaTrascrizione(jobId) {
+    const nuovoNome = prompt('Nuovo nome per la trascrizione (senza estensione):');
+    if (!nuovoNome || !nuovoNome.trim()) return;
+    
+    fetch('/trascrizione/rinomina/' + jobId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ nuovo_nome: nuovoNome.trim() })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            caricaMieTrascrizioni();
+        } else {
+            alert(data.error || 'Errore rinomina');
+        }
+    })
+    .catch(() => alert('Errore di comunicazione'));
+}
+
+
+// ==============================================================================
+// ELIMINA
+// ==============================================================================
+
+function eliminaTrascrizione(jobId) {
+    if (!confirm('Eliminare questa trascrizione? L\'operazione non e\' reversibile.')) return;
+    
+    fetch('/trascrizione/elimina/' + jobId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const item = document.getElementById('trascrizione-' + jobId);
+            if (item) {
+                item.style.opacity = '0.3';
+                setTimeout(() => {
+                    item.remove();
+                    // Se lista vuota
+                    const lista = document.getElementById('lista-trascrizioni');
+                    if (lista && lista.children.length === 0) {
+                        lista.style.display = 'none';
+                        document.getElementById('lista-vuota').style.display = 'block';
+                    }
+                }, 300);
+            }
+        } else {
+            alert(data.error || 'Errore eliminazione');
+        }
+    })
+    .catch(() => alert('Errore di comunicazione'));
+}
+
+
+// ==============================================================================
+// UTILITY
+// ==============================================================================
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatData(isoStr) {
+    try {
+        const d = new Date(isoStr);
+        return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch(e) {
+        return isoStr;
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+// ==============================================================================
+// ELIMINA JOB IN CODA
+// ==============================================================================
+function eliminaJobCoda(jobId) {
+    if (!confirm("Vuoi rimuovere questo file dalla coda di trascrizione?")) return;
+    fetch(`/trascrizione/elimina-coda/${jobId}`, {method: "POST"})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                aggiornaCoda();
+                aggiornaCodaModal();
+            } else {
+                alert("Errore: " + (data.error || "eliminazione fallita"));
+            }
+        })
+        .catch(() => alert("Errore di connessione"));
+}
+</script>
+
+<!-- CSS animazione gear -->
+<style>
+    @keyframes spin-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    .spin-slow { animation: spin-slow 3s linear infinite; display: inline-block; }
+</style>

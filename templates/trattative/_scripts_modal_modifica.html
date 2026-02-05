@@ -1,0 +1,74 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Modal Modifica
+     Versione: 1.0
+     ============================================================ -->
+<script>
+// ==============================================================================
+// MODAL MODIFICA TRATTATIVA
+// ==============================================================================
+function apriModalModifica(trattativaId) {
+    fetch('/trattative/api/' + trattativaId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                popolaModalModifica(data.trattativa);
+                new bootstrap.Modal(document.getElementById('modalModificaTrattativa')).show();
+            } else {
+                mostraErrore('Errore caricamento: ' + data.error);
+            }
+        })
+        .catch(err => mostraErrore('Errore di rete: ' + err.message));
+}
+
+function popolaModalModifica(t) {
+    document.getElementById('modificaTrattativaId').value = t.id;
+    document.getElementById('modificaTrattativaIdDisplay').textContent = t.id;
+    document.getElementById('modificaClienteNome').textContent = t.ragione_sociale || 'N/D';
+    document.getElementById('modificaNoleggiatore').value = t.noleggiatore || '';
+    document.getElementById('modificaTipoTrattativa').value = t.tipo_trattativa || '';
+    document.getElementById('modificaMarca').value = t.marca || '';
+    document.getElementById('modificaDescrizioneVeicolo').value = t.descrizione_veicolo || '';
+    document.getElementById('modificaTipologiaVeicolo').value = t.tipologia_veicolo || '';
+    document.getElementById('modificaNumPezzi').value = t.num_pezzi || 1;
+    document.getElementById('modificaNote').value = t.note || '';
+    document.getElementById('modificaProvvigione').value = t.provvigione || '';
+    document.getElementById('modificaQPercentuale').value = t.q_percentuale || '';
+    document.getElementById('modificaMesi').value = t.mesi || '';
+    document.getElementById('modificaKmTotali').value = t.km_totali || '';
+}
+
+function salvaModificaTrattativa() {
+    const trattativaId = document.getElementById('modificaTrattativaId').value;
+    
+    const dati = {
+        noleggiatore: document.getElementById('modificaNoleggiatore').value,
+        tipo_trattativa: document.getElementById('modificaTipoTrattativa').value,
+        marca: document.getElementById('modificaMarca').value,
+        descrizione_veicolo: document.getElementById('modificaDescrizioneVeicolo').value,
+        tipologia_veicolo: document.getElementById('modificaTipologiaVeicolo').value,
+        num_pezzi: parseInt(document.getElementById('modificaNumPezzi').value) || 1,
+        note: document.getElementById('modificaNote').value,
+        provvigione: parseFloat(document.getElementById('modificaProvvigione').value) || null,
+        q_percentuale: parseFloat(document.getElementById('modificaQPercentuale').value) || null,
+        mesi: parseInt(document.getElementById('modificaMesi').value) || null,
+        km_totali: parseInt(document.getElementById('modificaKmTotali').value) || null
+    };
+    
+    fetch('/trattative/api/' + trattativaId + '/modifica', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dati)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalModificaTrattativa')).hide();
+            caricaTrattative();
+            mostraSuccesso('Trattativa modificata con successo');
+        } else {
+            mostraErrore('Errore: ' + data.error);
+        }
+    })
+    .catch(err => mostraErrore('Errore di rete: ' + err.message));
+}
+</script>

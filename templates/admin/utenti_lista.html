@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Gestione Utenti - Amministrazione{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sortable { cursor: pointer; user-select: none; }
+    .sortable:hover { background-color: #e9ecef; }
+    .sortable i { margin-left: 5px; opacity: 0.5; }
+    .sortable.asc i.bi-sort-up { opacity: 1; }
+    .sortable.desc i.bi-sort-down { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1"><i class="bi bi-people-fill me-2"></i>Gestione Utenti</h1>
+        <p class="text-muted mb-0">Crea, modifica e gestisci gli utenti del sistema</p>
+    </div>
+    <div>
+        <a href="/admin/utenti/storico-assegnazioni" class="btn btn-outline-info me-2">
+            <i class="bi bi-arrow-left-right me-1"></i>Storico Assegnazioni
+        </a>
+        <a href="/admin/utenti/log" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-clock-history me-1"></i>Log Globale
+        </a>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuovoUtente">
+            <i class="bi bi-plus-lg me-1"></i>Nuovo Utente
+        </button>
+    </div>
+</div>
+
+<!-- Statistiche rapide -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-primary">{{ utenti|length }}</div>
+            <div class="stat-label">Utenti Totali</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-success">{{ utenti|selectattr('attivo', 'equalto', 1)|list|length }}</div>
+            <div class="stat-label">Utenti Attivi</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-warning">{{ utenti|selectattr('pwd_temporanea', 'equalto', 1)|list|length }}</div>
+            <div class="stat-label">Password da Cambiare</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-danger">{{ utenti|selectattr('bloccato', 'equalto', 1)|list|length }}</div>
+            <div class="stat-label">Utenti Bloccati</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabella utenti -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table me-2"></i>Elenco Utenti</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tabellaUtenti">
+                <thead class="table-light">
+                    <tr>
+                        <th class="sortable" data-sort="codice">Codice <i class="bi bi-sort-down"></i></th>
+                        <th class="sortable" data-sort="username">Username <i class="bi bi-sort-down"></i></th>
+                        <th class="sortable" data-sort="nome">Nome Completo <i class="bi bi-sort-down"></i></th>
+                        <th class="sortable" data-sort="ruolo">Ruolo <i class="bi bi-sort-down"></i></th>
+                        <th class="sortable" data-sort="stato">Stato <i class="bi bi-sort-down"></i></th>
+                        <th class="sortable" data-sort="accesso">Ultimo Accesso <i class="bi bi-sort-down"></i></th>
+                        <th class="text-center">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for utente in utenti %}
+                    <tr {% if not utente.attivo %}class="table-secondary"{% endif %}
+                        data-codice="{{ utente.codice_utente or '%06d'|format(utente.id) }}"
+                        data-username="{{ utente.username }}"
+                        data-nome="{{ utente.nome or '' }} {{ utente.cognome or '' }}"
+                        data-ruolo="{{ utente.ruolo_base }}"
+                        data-stato="{{ 'bloccato' if utente.bloccato else ('disattivato' if not utente.attivo else ('pwd_temp' if utente.pwd_temporanea else ('incompleto' if not utente.profilo_completo else 'attivo'))) }}"
+                        data-accesso="{{ utente.data_ultimo_accesso or '0000-00-00' }}">
+                        <td><code>{{ utente.codice_utente or '%06d'|format(utente.id) }}</code></td>
+                        <td>
+                            <strong>{{ utente.username }}</strong>
+                            {% if utente.non_cancellabile %}
+                            <i class="bi bi-shield-fill text-warning ms-1" title="Utente di sistema"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if utente.nome and utente.cognome %}
+                                {{ utente.nome }} {{ utente.cognome }}
+                                {% if utente.email %}
+                                <br><small class="text-muted">{{ utente.email }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Non compilato</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if utente.ruolo_base == 'admin' %}
+                                <span class="badge bg-danger">Admin</span>
+                            {% elif utente.ruolo_base == 'commerciale' %}
+                                <span class="badge bg-primary">Commerciale</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ utente.ruolo_base|capitalize }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if utente.bloccato %}
+                                <span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Bloccato</span>
+                            {% elif not utente.attivo %}
+                                <span class="badge bg-secondary">Disattivato</span>
+                            {% elif utente.pwd_temporanea %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-key"></i> Pwd temp</span>
+                            {% elif not utente.profilo_completo %}
+                                <span class="badge bg-info">Profilo incompleto</span>
+                            {% else %}
+                                <span class="badge bg-success"><i class="bi bi-check"></i> Attivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if utente.ultimo_accesso %}
+                                <div>
+                                    <small>{{ utente.ultimo_accesso.data_ora[:16] }}</small>
+                                </div>
+                                <div>
+                                    {% if utente.ultimo_accesso.rete.riconosciuto %}
+                                        <span class="badge bg-light text-dark" title="{{ utente.ultimo_accesso.ip }}">
+                                            <i class="bi bi-wifi me-1"></i>{{ utente.ultimo_accesso.rete.nome }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary" title="IP: {{ utente.ultimo_accesso.ip }}">
+                                            <i class="bi bi-question-circle me-1"></i>{{ utente.ultimo_accesso.ip }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% elif utente.data_ultimo_accesso %}
+                                <small>{{ utente.data_ultimo_accesso[:16] }}</small>
+                            {% else %}
+                                <small class="text-muted">Mai</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/admin/utenti/{{ utente.id }}" class="btn btn-outline-primary" title="Gestisci Utente">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="/admin/utenti/{{ utente.id }}/log" class="btn btn-outline-info" title="Log Accessi">
+                                    <i class="bi bi-clock-history"></i>
+                                </a>
+                                {% if utente.bloccato %}
+                                <button class="btn btn-outline-success" title="Sblocca"
+                                        onclick="sblocca({{ utente.id }}, '{{ utente.username }}')">
+                                    <i class="bi bi-unlock"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuovo Utente -->
+<div class="modal fade" id="modalNuovoUtente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="/admin/utenti/nuovo">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Nuovo Utente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        L'utente ricevera una <strong>password temporanea</strong> che dovra cambiare al primo accesso.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username" 
+                               placeholder="es: m.rossi" required pattern="[a-z0-9._]+"
+                               title="Solo lettere minuscole, numeri, punti e underscore">
+                        <div class="form-text">Solo lettere minuscole, numeri, punti e underscore</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="ruolo_base" class="form-label">Ruolo</label>
+                        <select class="form-select" id="ruolo_base" name="ruolo_base">
+                            <option value="operatore">Operatore</option>
+                            <option value="commerciale">Commerciale</option>
+                            <option value="admin">Amministratore</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i>Crea Utente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Password Generata -->
+<div class="modal fade" id="modalPassword" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Password Generata</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Attenzione!</strong> Questa password non sara piu visibile dopo la chiusura.
+                </div>
+                
+                <p class="mb-2">Username: <strong id="pwdUsername"></strong></p>
+                
+                <p class="mb-1 text-muted small">Clicca sul codice per selezionarlo, poi copia con Ctrl+C:</p>
+                
+                <div class="input-group input-group-lg mb-3">
+                    <input type="text" class="form-control form-control-lg text-center font-monospace fw-bold" 
+                           id="pwdGenerata" readonly onclick="this.select();" 
+                           style="font-size: 1.5rem; letter-spacing: 2px; cursor: pointer;">
+                    <button class="btn btn-outline-secondary" type="button" onclick="selezionaCodice()" title="Seleziona tutto">
+                        <i class="bi bi-cursor-text"></i>
+                    </button>
+                </div>
+                
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Seleziona il codice e premi <kbd>Ctrl</kbd>+<kbd>C</kbd> per copiare
+                </p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success btn-lg" onclick="chiudiConConferma()">
+                    <i class="bi bi-check-lg me-2"></i>Ho copiato, Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Sblocca utente
+function sblocca(id, username) {
+    if (confirm('Vuoi sbloccare l\'utente ' + username + '?')) {
+        fetch('/admin/utenti/' + id + '/sblocca', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        });
+    }
+}
+
+// Seleziona il codice password
+function selezionaCodice() {
+    var input = document.getElementById('pwdGenerata');
+    input.select();
+    input.setSelectionRange(0, 99999); // Per mobile
+}
+
+// Chiudi modal con conferma
+function chiudiConConferma() {
+    if (confirm('Hai copiato la password?\n\nSe chiudi questa finestra non potrai piu vederla.')) {
+        var modal = bootstrap.Modal.getInstance(document.getElementById('modalPassword'));
+        if (modal) modal.hide();
+    }
+}
+
+// Ordinamento tabella
+document.addEventListener('DOMContentLoaded', function() {
+    var headers = document.querySelectorAll('.sortable');
+    var currentSort = { column: null, direction: 'asc' };
+    
+    headers.forEach(function(header) {
+        header.addEventListener('click', function() {
+            var sortKey = this.getAttribute('data-sort');
+            var tbody = document.querySelector('#tabellaUtenti tbody');
+            var rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Aggiorna direzione
+            if (currentSort.column === sortKey) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = sortKey;
+                currentSort.direction = 'asc';
+            }
+            
+            // Rimuovi classi da tutte le intestazioni
+            headers.forEach(function(h) {
+                h.classList.remove('asc', 'desc');
+            });
+            this.classList.add(currentSort.direction);
+            
+            // Ordina le righe
+            rows.sort(function(a, b) {
+                var aVal = a.getAttribute('data-' + sortKey) || '';
+                var bVal = b.getAttribute('data-' + sortKey) || '';
+                
+                // Confronto
+                var result = aVal.localeCompare(bVal, 'it', {numeric: true, sensitivity: 'base'});
+                return currentSort.direction === 'asc' ? result : -result;
+            });
+            
+            // Ricostruisci tbody
+            rows.forEach(function(row) {
+                tbody.appendChild(row);
+            });
+        });
+    });
+});
+
+// Se c'e una password da mostrare
+{% if nuova_password %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('pwdUsername').textContent = '{{ nuovo_username }}';
+    document.getElementById('pwdGenerata').value = '{{ nuova_password }}';
+    new bootstrap.Modal(document.getElementById('modalPassword')).show();
+});
+{% endif %}
+</script>
+{% endblock %}

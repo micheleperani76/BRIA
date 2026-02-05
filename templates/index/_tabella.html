@@ -1,0 +1,276 @@
+{# ================================================
+   INDEX - TABELLA
+   Tabella clienti con thead e tbody
+   Versione: 1.0.0
+   ================================================ #}
+
+<!-- Tabella clienti -->
+<div class="table-responsive">
+    <table class="table table-hover table-resizable mb-0" id="clienti-table">
+        <thead class="table-light">
+            <tr>
+                <!-- Cliente (FISSA: sempre visibile, allineata a sinistra) -->
+                <th class="col-cliente sortable-header" onclick="ordinaPer('nome_cliente')">
+                    Cliente
+                    <div class="resizer"></div>
+                </th>
+                <!-- Stato (collassabile, ordinabile, allineato a destra) -->
+                <th class="col-stato sortable-header" data-col="stato" onclick="clickHeader(event, 'stato', 'stato_cliente')">
+                    <span class="col-content">Stato <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('stato')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Stato"><i class="bi bi-card-checklist"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- P.IVA/CF -->
+                <th class="col-piva sortable-header" data-col="piva" onclick="clickHeader(event, 'piva', 'p_iva')">
+                    <span class="col-content">P.IVA/CF <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('piva')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare P.IVA/CF"><i class="bi bi-upc-scan"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Score -->
+                <th class="col-score sortable-header" data-col="score" onclick="clickHeader(event, 'score', 'score')">
+                    <span class="col-content">Score <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('score')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Score"><i class="bi bi-graph-up"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Telefono -->
+                <th class="col-telefono sortable-header" data-col="telefono" onclick="clickHeader(event, 'telefono', 'telefono')">
+                    <span class="col-content">Telefono <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('telefono')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Telefono"><i class="bi bi-telephone"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Provincia -->
+                <th class="col-provincia sortable-header" data-col="provincia" onclick="clickHeader(event, 'provincia', 'provincia')">
+                    <span class="col-content">Prov. <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('provincia')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Provincia"><i class="bi bi-geo-alt"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Flotta -->
+                <th class="col-flotta sortable-header" data-col="flotta" onclick="clickHeader(event, 'flotta', 'flotta')">
+                    <span class="col-content">Flotta <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('flotta')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Flotta"><i class="bi bi-car-front"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Commerciale -->
+                <th class="col-commerciale sortable-header" data-col="commerciale" onclick="clickHeader(event, 'commerciale', 'commerciale')">
+                    <span class="col-content">Commerciale <i class="bi bi-eye-slash col-toggle-btn" onclick="event.stopPropagation(); toggleColonna('commerciale')" title="Nascondi colonna"></i></span>
+                    <span class="col-icon" title="Clicca per mostrare Commerciale"><i class="bi bi-person-badge"></i></span>
+                    <div class="resizer"></div>
+                </th>
+                <!-- Azioni (FISSA: non collassabile, non ridimensionabile, allineata a destra) -->
+                <th class="col-azioni-header">
+                    <span>Azioni</span>
+                    <i class="bi bi-eye-fill ms-2" onclick="toggleTutteColonne()" title="Mostra/Nascondi tutte le colonne" style="cursor: pointer; opacity: 0.6;"></i>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in clienti %}
+            <tr>
+                <!-- Cliente -->
+                <td>
+                    <a href="{{ url_cliente(c) }}" class="text-decoration-none">
+                        <strong>{{ c.nome_cliente or c.ragione_sociale }}</strong>
+                    </a>
+                    {% if c.forma_giuridica %}
+                    <br><small class="text-muted">{{ c.forma_giuridica }}</small>
+                    {% endif %}
+                    {% if search and search_matches_per_cliente and search_matches_per_cliente.get(c.id) %}
+                    <br>
+                    <small>
+                    {% for tipo, valori in search_matches_per_cliente[c.id].items() %}
+                        {% if tipo == 'referente' %}
+                        <span class="badge bg-primary" style="font-size: 0.65rem;" title="Referente: {{ valori|join(', ') }}"><i class="bi bi-person"></i> {{ valori[0][:15] }}</span>
+                        {% elif tipo == 'driver' %}
+                        <span class="badge bg-success" style="font-size: 0.65rem;" title="Driver: {{ valori|join(', ') }}"><i class="bi bi-car-front"></i> {{ valori[0][:15] }}</span>
+                        {% elif tipo == 'targa' %}
+                        <span class="badge bg-warning text-dark" style="font-size: 0.65rem;" title="Targa: {{ valori|join(', ') }}"><i class="bi bi-card-text"></i> {{ valori[0] }}</span>
+                        {% elif tipo == 'capogruppo' %}
+                        <span class="badge bg-secondary" style="font-size: 0.65rem;" title="Capogruppo: {{ valori|join(', ') }}"><i class="bi bi-building"></i> Capogr.</span>
+                        {% elif tipo == 'note' %}
+                        <span class="badge bg-info" style="font-size: 0.65rem;" title="Trovato in nota"><i class="bi bi-chat-text"></i> Nota</span>
+                        {% elif tipo == 'contatto' %}
+                        <span class="badge bg-dark" style="font-size: 0.65rem;" title="Tel/PEC cliente"><i class="bi bi-telephone"></i> Tel/PEC</span>
+                        {% endif %}
+                    {% endfor %}
+                    </small>
+                    {% endif %}
+                </td>
+                <!-- Stato (allineato a sinistra) -->
+                <td class="td-stato" data-col="stato">
+                    <span class="col-content">
+                    {% if c.stato_cliente %}
+                    <span class="badge" style="background-color: {{ get_stato_cliente_colore(c.stato_cliente) }}; font-size: 0.7rem;">{{ c.stato_cliente }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary" style="font-size: 0.7rem;">N/D</span>
+                    {% endif %}
+                    </span>
+                    {% if c.stato_cliente %}
+                    <span class="col-icon" title="Stato: {{ c.stato_cliente }}" style="color: {{ get_stato_cliente_colore(c.stato_cliente) }};"><i class="bi bi-card-checklist"></i></span>
+                    {% else %}
+                    <span class="col-icon" style="display: none !important;"></span>
+                    {% endif %}
+                </td>
+                <!-- P.IVA/CF -->
+                <td class="td-piva" data-col="piva">
+                    <span class="col-content">
+                    {% if c.p_iva %}
+                    <code>{{ c.p_iva }}</code>
+                    {% elif c.cod_fiscale %}
+                    <code class="text-info">{{ c.cod_fiscale }}</code>
+                    {% else %}
+                    <code>-</code>
+                    {% endif %}
+                    </span>
+                    <span class="col-icon" title="{{ c.p_iva or c.cod_fiscale or 'N/D' }}"><i class="bi bi-upc-scan"></i></span>
+                </td>
+                <!-- Score -->
+                <td class="td-score" data-col="score">
+                    <span class="col-content">
+                    {% if c.score %}
+                    <span class="score-badge score-{{ c.score }}">{{ c.score }}</span>
+                    {% else %}
+                    <span class="score-badge-ns">NS</span>
+                    {% endif %}
+                    </span>
+                    <span class="col-icon" title="Score: {{ c.score or 'NS' }}" style="color: {% if c.score == 'A' %}#28a745{% elif c.score == 'B' %}#4472C4{% elif c.score == 'C' %}#fd7e14{% elif c.score == 'D' %}#dc3545{% elif c.score == 'E' %}#343a40{% else %}#6c757d{% endif %};"><i class="bi bi-graph-up"></i></span>
+                </td>
+                <!-- Telefono -->
+                <td class="td-telefono" data-col="telefono">
+                    <span class="col-content">
+                    {% if c.telefono %}
+                    <a href="tel:{{ c.telefono }}" class="text-decoration-none">
+                        <i class="bi bi-telephone"></i> {{ c.telefono }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                    </span>
+                    <span class="col-icon" title="{{ c.telefono or 'N/D' }}"><i class="bi bi-telephone"></i></span>
+                </td>
+                <!-- Provincia -->
+                <td class="td-provincia" data-col="provincia">
+                    <span class="col-content">
+                    {% if c.provincia %}
+                    <a href="/?provincia={{ c.provincia }}" class="badge bg-secondary text-decoration-none">{{ c.provincia }}</a>
+                    {% else %}
+                    -
+                    {% endif %}
+                    </span>
+                    <span class="col-icon" title="{{ c.provincia or 'N/D' }}"><i class="bi bi-geo-alt"></i></span>
+                </td>
+                <!-- Flotta -->
+                <td class="td-flotta" data-col="flotta">
+                    <span class="col-content">
+                    {% if c.num_veicoli > 0 %}
+                    <a href="/flotta/cliente/{{ c.nome_cliente|urlencode }}" class="badge bg-success text-decoration-none">
+                        <i class="bi bi-car-front"></i> {{ c.num_veicoli }}
+                    </a>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                    </span>
+                    {% set colore_flotta = get_colore_flotta(c.num_veicoli) %}
+                    {% if colore_flotta %}
+                    <span class="col-icon" title="Veicoli: {{ c.num_veicoli }}" style="color: {{ colore_flotta }};"><i class="bi bi-car-front"></i></span>
+                    {% else %}
+                    <span class="col-icon" style="display: none !important;"></span>
+                    {% endif %}
+                </td>
+                <!-- Commerciale -->
+                <td class="td-commerciale" data-col="commerciale">
+                    <span class="col-content">{{ c.commerciale_display }}</span>
+                    {% if c.commerciale_id %}
+                    <span class="col-icon" title="{{ c.commerciale_display }}" style="color: #28a745;"><i class="bi bi-person-badge"></i></span>
+                    {% else %}
+                    <span class="col-icon" style="display: none !important;"></span>
+                    {% endif %}
+                </td>
+                <!-- Azioni (FISSA: allineata a destra) -->
+                <td class="td-azioni">
+                    <div class="col-azioni">
+                        {# === SLOT 1: Car Policy === #}
+                        <div class="slot-icona">
+                            {% if indicatori_cliente[c.id].car_policy.presente %}
+                            <a href="{{ url_cliente(c) }}" title="Car Policy presente">
+                                <i class="bi bi-file-earmark-text text-primary"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 2: Documenti Scadenza === #}
+                        <div class="slot-icona">
+                            {% set stato_doc = indicatori_cliente[c.id].documenti_scadenza.stato %}
+                            {% if stato_doc == 'scaduto' %}
+                            <a href="{{ url_cliente(c) }}" title="Documenti scaduti">
+                                <i class="bi bi-file-earmark-x text-danger"></i>
+                            </a>
+                            {% elif stato_doc == 'in_scadenza' %}
+                            <a href="{{ url_cliente(c) }}" title="Documenti in scadenza">
+                                <i class="bi bi-file-earmark-excel text-warning"></i>
+                            </a>
+                            {% elif stato_doc == 'ok' %}
+                            <a href="{{ url_cliente(c) }}" title="Documenti in regola">
+                                <i class="bi bi-file-earmark-check text-success"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 3: Collegamenti === #}
+                        <div class="slot-icona">
+                            {% if indicatori_cliente[c.id].collegamenti.presente %}
+                            <a href="{{ url_cliente(c) }}" title="Ha collegamenti con altri clienti">
+                                <span class="badge bg-success rounded-circle">C</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 4: Trattative in corso === #}
+                        <div class="slot-icona">
+                            {% if indicatori_cliente[c.id].trattativa.presente %}
+                            <a href="/trattative/?cliente_id={{ c.id }}" class="text-decoration-none" title="Trattative in corso: {{ indicatori_cliente[c.id].trattativa.count }}">
+                                <span class="badge bg-info rounded-circle">T</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 5: Riservato === #}
+                        <div class="slot-icona"></div>
+                        {# === SLOT 6: Top Prospect === #}
+                        <div class="slot-icona">
+                            {% if indicatori_cliente[c.id].top_prospect.presente %}
+                            {% set tp_stato = indicatori_cliente[c.id].top_prospect.stato %}
+                            <a href="/top-prospect/" title="{{ 'Candidato' if tp_stato == 'candidato' else 'Top Prospect' }}">
+                                <i class="bi bi-trophy{% if tp_stato == 'confermato' %}-fill text-warning{% else %} text-secondary{% endif %}"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 7: Referente Principale === #}
+                        <div class="slot-icona">
+                            {% if c.has_referente_principale %}
+                            <button class="btn btn-sm btn-star-ref p-0" onclick="mostraReferente({{ c.id }})" title="Referente principale">
+                                <i class="bi bi-star-fill"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        
+                        {# === SLOT 8: Dettaglio === #}
+                        <div class="slot-icona">
+                            <a href="{{ url_cliente(c) }}" class="btn btn-sm btn-outline-primary p-0" title="Dettaglio cliente">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Nessun cliente trovato</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

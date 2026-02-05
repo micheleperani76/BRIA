@@ -1,0 +1,139 @@
+{# === MODAL AGGIUNGI COLLEGAMENTO === #}
+<div class="modal fade" id="modalCollegamenti" tabindex="-1" aria-labelledby="modalCollegamentiLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalCollegamentiLabel">
+                    <i class="bi bi-diagram-3"></i> Aggiungi Collegamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtro Personale/Globale -->
+                <div class="mb-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtroClienti" id="filtroPersonale" value="personale" checked>
+                        <label class="form-check-label" for="filtroPersonale">
+                            <i class="bi bi-person"></i> Solo miei clienti
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="filtroClienti" id="filtroGlobale" value="globale">
+                        <label class="form-check-label" for="filtroGlobale">
+                            <i class="bi bi-globe"></i> Tutti i clienti
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Tabs Ricerca / Lista -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-ricerca" data-bs-toggle="tab" data-bs-target="#panelRicerca" type="button">
+                            <i class="bi bi-search"></i> Ricerca
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-lista" data-bs-toggle="tab" data-bs-target="#panelLista" type="button">
+                            <i class="bi bi-list-ul"></i> Lista Completa
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content">
+                    <!-- Panel Ricerca -->
+                    <div class="tab-pane fade show active" id="panelRicerca" role="tabpanel">
+                        <div class="mb-3">
+                            <input type="text" class="form-control form-control-lg" id="cercaClienteCollegamento" 
+                                   placeholder="Cerca per nome, P.IVA o C.F. (min. 2 caratteri)">
+                            <div id="risultatiRicercaCollegamento" class="list-group mt-2" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Panel Lista -->
+                    <div class="tab-pane fade" id="panelLista" role="tabpanel">
+                        <div class="mb-2">
+                            <input type="text" class="form-control" id="filtroListaClienti" placeholder="Filtra lista...">
+                        </div>
+                        <div id="listaClientiGuidata" class="list-group" style="max-height: 250px; overflow-y: auto;">
+                            <div class="text-center py-3 text-muted">Caricamento...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cliente selezionato -->
+                <div class="mb-3 mt-3" id="clienteSelezionatoBox" style="display: none;">
+                    <label class="form-label">Cliente selezionato</label>
+                    <div class="alert alert-success py-2 mb-0 d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong id="clienteSelezionatoNome"></strong>
+                            <br><small class="text-muted" id="clienteSelezionatoId"></small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="deselezionaCliente()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                        <input type="hidden" id="clienteSelezionatoIdValue">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <!-- Tipo relazione -->
+                    <div class="col-md-6 mb-3">
+                        <label for="tipoRelazione" class="form-label">Tipo relazione</label>
+                        <select class="form-select form-select-lg" id="tipoRelazione">
+                            <option value="">Caricamento...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Note -->
+                    <div class="col-md-6 mb-3">
+                        <label for="noteCollegamento" class="form-label">Note (opzionale)</label>
+                        <input type="text" class="form-control form-control-lg" id="noteCollegamento" maxlength="200" placeholder="Note brevi...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success btn-lg" id="btnSalvaCollegamento" disabled>
+                    <i class="bi bi-check-lg"></i> Salva Collegamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# === MODAL MODIFICA COLLEGAMENTO === #}
+<div class="modal fade" id="modalModificaCollegamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil"></i> Modifica Collegamento
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modCollegamentoId">
+                <div class="mb-3">
+                    <label class="form-label">Cliente collegato</label>
+                    <div class="form-control-plaintext fw-bold" id="modCollegamentoCliente"></div>
+                </div>
+                <div class="mb-3">
+                    <label for="modTipoRelazione" class="form-label">Tipo relazione</label>
+                    <select class="form-select" id="modTipoRelazione">
+                        <option value="">Caricamento...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="modNoteCollegamento" class="form-label">Note</label>
+                    <input type="text" class="form-control" id="modNoteCollegamento" maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="btnSalvaModificaCollegamento">
+                    <i class="bi bi-check-lg"></i> Salva Modifiche
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

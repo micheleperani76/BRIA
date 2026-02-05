@@ -1,0 +1,83 @@
+<!-- ============================================================
+     TRATTATIVE - Modal Nuovo Avanzamento
+     Versione: 1.0
+     ============================================================ -->
+
+<div class="modal fade" id="modalAvanzamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-right-circle me-2"></i>Nuovo Avanzamento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAvanzamento">
+                    <input type="hidden" id="avanzamentoTrattativaId">
+                    
+                    <!-- Info Trattativa -->
+                    <div class="alert alert-light mb-3">
+                        <strong>Cliente:</strong> <span id="avanzamentoClienteNome"></span>
+                        <br>
+                        <strong>Stato attuale:</strong> 
+                        <span id="avanzamentoStatoAttuale" class="badge"></span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nuovo Stato <span class="text-danger">*</span></label>
+                        <select class="form-select" id="avanzamentoNuovoStato" name="stato" required>
+                            <option value="">-- Seleziona nuovo stato --</option>
+                            {% for codice, etichetta in stati %}
+                            <option value="{{ etichetta }}" data-colore="{{ colori_stati.get(etichetta, '#6c757d') }}">
+                                {{ etichetta }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Note Avanzamento</label>
+                        <textarea class="form-control" id="avanzamentoNote" name="note" rows="3" 
+                                  placeholder="Descrivi cosa &egrave; successo..."></textarea>
+                    </div>
+                    
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-info text-white" onclick="salvaAvanzamento()">
+                    <i class="bi bi-check-lg me-1"></i>Registra Avanzamento
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Conferma Eliminazione -->
+<div class="modal fade" id="modalConfermaElimina" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Conferma
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Sei sicuro di voler eliminare questa trattativa?</p>
+                <p class="text-danger small mb-0">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    L'operazione non pu&ograve; essere annullata.
+                </p>
+                <input type="hidden" id="eliminaTrattativaId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" onclick="confermaEliminaTrattativa()">
+                    <i class="bi bi-trash me-1"></i>Elimina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

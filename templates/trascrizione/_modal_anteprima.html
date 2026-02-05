@@ -1,0 +1,35 @@
+<!-- ==========================================================================
+     TRASCRIZIONE - Modal Anteprima Testo
+     ========================================================================== -->
+
+<div class="modal fade" id="modalAnteprima" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-text me-2"></i><span id="anteprima-titolo">Trascrizione</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="anteprima-loading" class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+                    <span class="text-muted ms-2">Caricamento testo...</span>
+                </div>
+                <div id="anteprima-contenuto" style="display: none;">
+                    <pre id="anteprima-testo" class="bg-light p-3 rounded" 
+                         style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem; max-height: 60vh; overflow-y: auto;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-primary" id="btn-copia-testo" onclick="copiaTesto()">
+                    <i class="bi bi-clipboard me-1"></i>Copia
+                </button>
+                <a id="btn-scarica-testo" href="#" class="btn btn-primary" download>
+                    <i class="bi bi-download me-1"></i>Scarica .txt
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>

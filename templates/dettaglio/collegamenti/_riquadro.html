@@ -1,0 +1,46 @@
+{# === RIQUADRO COLLEGAMENTI CLIENTI === #}
+<div class="card mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-diagram-3"></i> Collegamenti
+            <span class="badge bg-secondary ms-1" id="badge-count-collegamenti">{{ collegamenti|length if collegamenti else 0 }}</span>
+        </span>
+        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalCollegamenti">
+            <i class="bi bi-plus-lg"></i> Aggiungi
+        </button>
+    </div>
+    <div class="card-body py-2">
+        {% if collegamenti and collegamenti|length > 0 %}
+        <ul class="list-group list-group-flush" id="lista-collegamenti">
+            {% for col in collegamenti %}
+            <li class="list-group-item px-0 py-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <a href="{{ col.url }}" class="text-decoration-none fw-bold">
+                            {{ col.altro_cliente_nome }}
+                        </a>
+                        <span class="badge bg-info ms-2">{{ col.tipo_relazione_desc or col.tipo_relazione }}</span>
+                        {% if col.note %}
+                        <i class="bi bi-chat-left-text text-muted ms-1" title="{{ col.note }}" style="cursor: help;"></i>
+                        {% endif %}
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary py-0 px-1" 
+                                onclick="apriModificaCollegamento({{ col.id }}, '{{ col.altro_cliente_nome|e }}', '{{ col.tipo_relazione }}', '{{ col.note|e if col.note else '' }}')" 
+                                title="Modifica">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger py-0 px-1" 
+                                onclick="rimuoviCollegamento({{ col.id }})" title="Rimuovi">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted mb-0 small" id="no-collegamenti">Nessun collegamento</p>
+        {% endif %}
+    </div>
+</div>

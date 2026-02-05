@@ -1,0 +1,506 @@
+<!-- ==============================================================================
+     TRASCRIZIONI CLIENTE - Scripts
+     ==============================================================================
+     Versione: 2.0.0
+     Data: 2026-02-04
+     Descrizione: Upload drag&drop multiplo, rinomina, modifica testo, ricerca
+     ============================================================================== -->
+
+<script>
+// === TRASCRIZIONI CLIENTE - VARIABILI ===
+
+let trascrizioni_dati_cache = [];
+let trascrizione_file_corrente = '';
+
+// === APERTURA MODAL E CARICAMENTO LISTA ===
+
+function apriModalTrascrizioni() {
+    const modal = new bootstrap.Modal(document.getElementById('modalTrascrizioni'));
+    modal.show();
+    document.getElementById('trascrizioni-cerca').value = '';
+    caricaTrascrizioni();
+}
+
+function caricaTrascrizioni() {
+    const loading = document.getElementById('trascrizioni-loading');
+    const vuoto = document.getElementById('trascrizioni-vuoto');
+    const lista = document.getElementById('trascrizioni-lista');
+    const tbody = document.getElementById('trascrizioni-tbody');
+    const ricercaVuoto = document.getElementById('trascrizioni-ricerca-vuoto');
+
+    loading.style.display = '';
+    vuoto.style.display = 'none';
+    lista.style.display = 'none';
+    ricercaVuoto.style.display = 'none';
+
+    fetch(`/trascrizione/cliente/${clienteId}/lista`)
+        .then(r => r.json())
+        .then(data => {
+            loading.style.display = 'none';
+
+            if (!data.success || !data.files || data.files.length === 0) {
+                vuoto.style.display = '';
+                trascrizioni_dati_cache = [];
+                aggiornaBadgeTrascrizioni(0);
+                return;
+            }
+
+            trascrizioni_dati_cache = data.files;
+            renderTrascrizioni(data.files);
+            aggiornaBadgeTrascrizioni(data.files.length);
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            vuoto.style.display = '';
+            console.error('Errore caricamento trascrizioni:', err);
+        });
+}
+
+function renderTrascrizioni(files) {
+    const lista = document.getElementById('trascrizioni-lista');
+    const tbody = document.getElementById('trascrizioni-tbody');
+    const vuoto = document.getElementById('trascrizioni-vuoto');
+    const ricercaVuoto = document.getElementById('trascrizioni-ricerca-vuoto');
+
+    tbody.innerHTML = '';
+
+    if (files.length === 0) {
+        lista.style.display = 'none';
+        const cerca = document.getElementById('trascrizioni-cerca').value.trim();
+        if (cerca) {
+            ricercaVuoto.style.display = '';
+            vuoto.style.display = 'none';
+        } else {
+            vuoto.style.display = '';
+            ricercaVuoto.style.display = 'none';
+        }
+        return;
+    }
+
+    vuoto.style.display = 'none';
+    ricercaVuoto.style.display = 'none';
+
+    files.forEach(file => {
+        const nomeDisplay = file.nome_display || file.nome;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>
+                <i class="bi bi-file-text text-primary me-1"></i>
+                <span class="small">${escapeHtml(nomeDisplay)}</span>
+            </td>
+            <td class="small text-muted">${file.data || '-'}</td>
+            <td class="small text-muted">${file.dimensione || '-'}</td>
+            <td class="text-end text-nowrap">
+                <button class="btn btn-outline-primary btn-sm py-0 px-1 me-1"
+                        onclick="anteprimaTrascrizione('${file.nome_codificato}')"
+                        title="Visualizza/Modifica">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-outline-secondary btn-sm py-0 px-1 me-1"
+                        onclick="apriRinominaTrascrizione('${file.nome_codificato}', '${escapeHtml(nomeDisplay)}')"
+                        title="Rinomina">
+                    <i class="bi bi-pencil-square"></i>
+                </button>
+                <a href="/trascrizione/cliente/${clienteId}/scarica/${file.nome_codificato}"
+                   class="btn btn-outline-success btn-sm py-0 px-1 me-1"
+                   title="Scarica" download>
+                    <i class="bi bi-download"></i>
+                </a>
+                <button class="btn btn-outline-danger btn-sm py-0 px-1"
+                        onclick="eliminaTrascrizione('${file.nome_codificato}')"
+                        title="Elimina">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    lista.style.display = '';
+}
+
+function aggiornaBadgeTrascrizioni(count) {
+    const badge = document.getElementById('badge-trascrizioni-count');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? '' : 'none';
+    }
+}
+
+// === UPLOAD DRAG & DROP ===
+
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        const dropZone = document.getElementById('trascrizioni-drop-zone');
+        const fileInput = document.getElementById('trascrizioni-file-input');
+        if (!dropZone || !fileInput) return;
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            dropZone.addEventListener(evt, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+            });
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadMultiploTrascrizioni(files);
+            }
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                uploadMultiploTrascrizioni(this.files);
+                this.value = '';
+            }
+        });
+    });
+})();
+
+function uploadMultiploTrascrizioni(files) {
+    const listaUpload = document.getElementById('trascrizioni-upload-lista');
+    const itemsContainer = document.getElementById('trascrizioni-upload-items');
+    const contatore = document.getElementById('trascrizioni-upload-contatore');
+    const dropZone = document.getElementById('trascrizioni-drop-zone');
+
+    listaUpload.style.display = '';
+    dropZone.classList.add('uploading');
+
+    let completati = 0;
+    const totale = files.length;
+    contatore.textContent = `0 / ${totale} completati`;
+
+    itemsContainer.innerHTML = '';
+    Array.from(files).forEach((file, index) => {
+        const div = document.createElement('div');
+        div.className = 'trascrizioni-upload-item';
+        div.id = `upload-item-${index}`;
+        div.innerHTML = `
+            <i class="bi bi-file-earmark-music text-primary me-1"></i>
+            <span class="small text-truncate" style="max-width: 200px;" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+            <div class="progress"><div class="progress-bar" style="width: 0%"></div></div>
+            <span class="upload-status text-muted">In attesa...</span>
+        `;
+        itemsContainer.appendChild(div);
+    });
+
+    let chain = Promise.resolve();
+    Array.from(files).forEach((file, index) => {
+        chain = chain.then(() => {
+            return uploadSingoloTrascrizione(file, index).then(() => {
+                completati++;
+                contatore.textContent = `${completati} / ${totale} completati`;
+            });
+        });
+    });
+
+    chain.then(() => {
+        setTimeout(() => {
+            listaUpload.style.display = 'none';
+            dropZone.classList.remove('uploading');
+            caricaTrascrizioni();
+        }, 1500);
+    });
+}
+
+function uploadSingoloTrascrizione(file, index) {
+    return new Promise((resolve) => {
+        const item = document.getElementById(`upload-item-${index}`);
+        const progressBar = item.querySelector('.progress-bar');
+        const statusSpan = item.querySelector('.upload-status');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('tipo', 'cliente');
+        formData.append('cliente_id', clienteId);
+
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progressBar.style.width = pct + '%';
+                statusSpan.textContent = pct + '%';
+                statusSpan.className = 'upload-status text-primary';
+            }
+        });
+
+        xhr.addEventListener('load', function() {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    progressBar.classList.add('bg-success');
+                    progressBar.style.width = '100%';
+                    statusSpan.innerHTML = '<i class="bi bi-check text-success"></i> In coda';
+                    statusSpan.className = 'upload-status text-success';
+                } else {
+                    progressBar.classList.add('bg-danger');
+                    statusSpan.textContent = data.error || 'Errore';
+                    statusSpan.className = 'upload-status text-danger';
+                }
+            } catch(e) {
+                progressBar.classList.add('bg-danger');
+                statusSpan.textContent = 'Errore';
+                statusSpan.className = 'upload-status text-danger';
+            }
+            resolve();
+        });
+
+        xhr.addEventListener('error', function() {
+            progressBar.classList.add('bg-danger');
+            statusSpan.textContent = 'Errore rete';
+            statusSpan.className = 'upload-status text-danger';
+            resolve();
+        });
+
+        xhr.open('POST', '/trascrizione/upload');
+        statusSpan.textContent = 'Caricamento...';
+        statusSpan.className = 'upload-status text-primary';
+        xhr.send(formData);
+    });
+}
+
+// === ANTEPRIMA E MODIFICA TESTO ===
+
+function anteprimaTrascrizione(nomeCodificato) {
+    const titolo = document.getElementById('anteprima-trascrizione-titolo');
+    const testo = document.getElementById('anteprima-trascrizione-testo');
+
+    trascrizione_file_corrente = nomeCodificato;
+    testo.textContent = 'Caricamento...';
+    titolo.innerHTML = '<i class="bi bi-file-text me-2"></i>Anteprima';
+
+    document.getElementById('anteprima-modo-lettura').style.display = '';
+    document.getElementById('anteprima-modo-modifica').style.display = 'none';
+    document.getElementById('anteprima-btn-lettura').style.display = '';
+    document.getElementById('anteprima-btn-modifica').style.display = 'none';
+
+    bootstrap.Modal.getInstance(document.getElementById('modalTrascrizioni')).hide();
+    const modalAnteprima = new bootstrap.Modal(document.getElementById('modalAnteprimaTrascrizione'));
+    modalAnteprima.show();
+
+    fetch(`/trascrizione/cliente/${clienteId}/testo/${nomeCodificato}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                titolo.innerHTML = `<i class="bi bi-file-text me-2"></i>${escapeHtml(data.nome || 'Anteprima')}`;
+                testo.textContent = data.testo;
+            } else {
+                testo.textContent = 'Errore: ' + (data.error || 'impossibile caricare');
+            }
+        })
+        .catch(() => {
+            testo.textContent = 'Errore di connessione';
+        });
+}
+
+function attivaModificaTrascrizione() {
+    const testoOriginale = document.getElementById('anteprima-trascrizione-testo').textContent;
+    const textarea = document.getElementById('anteprima-trascrizione-testo-edit');
+    textarea.value = testoOriginale;
+
+    document.getElementById('anteprima-modo-lettura').style.display = 'none';
+    document.getElementById('anteprima-modo-modifica').style.display = '';
+    document.getElementById('anteprima-btn-lettura').style.display = 'none';
+    document.getElementById('anteprima-btn-modifica').style.display = '';
+
+    textarea.focus();
+}
+
+function annullaModificaTrascrizione() {
+    document.getElementById('anteprima-modo-lettura').style.display = '';
+    document.getElementById('anteprima-modo-modifica').style.display = 'none';
+    document.getElementById('anteprima-btn-lettura').style.display = '';
+    document.getElementById('anteprima-btn-modifica').style.display = 'none';
+}
+
+function salvaTrascrizione() {
+    const testoNuovo = document.getElementById('anteprima-trascrizione-testo-edit').value;
+    const btn = event.target.closest('button');
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+
+    fetch(`/trascrizione/cliente/${clienteId}/modifica/${trascrizione_file_corrente}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({testo: testoNuovo})
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        if (data.success) {
+            document.getElementById('anteprima-trascrizione-testo').textContent = testoNuovo;
+            annullaModificaTrascrizione();
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Salvato!';
+            setTimeout(() => { btn.innerHTML = origHtml; }, 1500);
+        } else {
+            btn.innerHTML = origHtml;
+            alert('Errore: ' + (data.error || 'salvataggio fallito'));
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        alert('Errore di connessione');
+    });
+}
+
+function copiaTrascrizione() {
+    const testo = document.getElementById('anteprima-trascrizione-testo').textContent;
+    navigator.clipboard.writeText(testo).then(() => {
+        const btn = event.target.closest('button');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check"></i> Copiato';
+        setTimeout(() => btn.innerHTML = orig, 1500);
+    });
+}
+
+// === RINOMINA ===
+
+function apriRinominaTrascrizione(nomeCodificato, nomeDisplay) {
+    document.getElementById('rinomina-trascrizione-vecchio').value = nomeCodificato;
+    let nomeSenza = nomeDisplay.replace(/\.txt$/i, '');
+    document.getElementById('rinomina-trascrizione-nuovo').value = nomeSenza;
+
+    const modalRinomina = new bootstrap.Modal(document.getElementById('modalRinominaTrascrizione'));
+    modalRinomina.show();
+
+    setTimeout(() => {
+        const input = document.getElementById('rinomina-trascrizione-nuovo');
+        input.focus();
+        input.select();
+    }, 300);
+}
+
+function confermaRinominaTrascrizione() {
+    const vecchio = document.getElementById('rinomina-trascrizione-vecchio').value;
+    const nuovoNome = document.getElementById('rinomina-trascrizione-nuovo').value.trim();
+
+    if (!nuovoNome) {
+        alert('Inserisci un nome valido');
+        return;
+    }
+
+    fetch(`/trascrizione/cliente/${clienteId}/rinomina-file`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            nome_vecchio: vecchio,
+            nome_nuovo: nuovoNome
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalRinominaTrascrizione')).hide();
+            caricaTrascrizioni();
+        } else {
+            alert('Errore: ' + (data.error || 'rinomina fallita'));
+        }
+    })
+    .catch(() => alert('Errore di connessione'));
+}
+
+// === ELIMINAZIONE ===
+
+function eliminaTrascrizione(nomeCodificato) {
+    if (!confirm("Vuoi eliminare questa trascrizione?")) return;
+    fetch(`/trascrizione/cliente/${clienteId}/elimina/${nomeCodificato}`, {method: "DELETE"})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                caricaTrascrizioni();
+            } else {
+                alert("Errore: " + (data.error || "eliminazione fallita"));
+            }
+        })
+        .catch(() => alert("Errore di connessione"));
+}
+
+// === RICERCA ===
+
+let _cercaTimeout = null;
+function cercaTrascrizioni(query) {
+    clearTimeout(_cercaTimeout);
+    const q = query.trim().toLowerCase();
+
+    if (!q) {
+        renderTrascrizioni(trascrizioni_dati_cache);
+        return;
+    }
+
+    _cercaTimeout = setTimeout(() => {
+        const loading = document.getElementById('trascrizioni-loading');
+        loading.style.display = '';
+        document.getElementById('trascrizioni-lista').style.display = 'none';
+
+        fetch(`/trascrizione/cliente/${clienteId}/cerca?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                loading.style.display = 'none';
+                if (data.success) {
+                    renderTrascrizioni(data.files || []);
+                } else {
+                    renderTrascrizioni([]);
+                }
+            })
+            .catch(() => {
+                loading.style.display = 'none';
+                renderTrascrizioni([]);
+            });
+    }, 400);
+}
+
+// === UTILITY ===
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
+// === RITORNO AL MODAL LISTA DOPO CHIUSURA ANTEPRIMA ===
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modalAnteprima = document.getElementById('modalAnteprimaTrascrizione');
+    if (modalAnteprima) {
+        modalAnteprima.addEventListener('hidden.bs.modal', function() {
+            // Riapri il modal lista trascrizioni
+            const modalLista = new bootstrap.Modal(document.getElementById('modalTrascrizioni'));
+            modalLista.show();
+        });
+    }
+    
+    const modalRinomina = document.getElementById('modalRinominaTrascrizione');
+    if (modalRinomina) {
+        modalRinomina.addEventListener('hidden.bs.modal', function() {
+            // Riapri il modal lista trascrizioni
+            const modalLista = new bootstrap.Modal(document.getElementById('modalTrascrizioni'));
+            modalLista.show();
+        });
+    }
+});
+
+// === CARICAMENTO INIZIALE BADGE ===
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch(`/trascrizione/cliente/${clienteId}/conta`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.count > 0) {
+                aggiornaBadgeTrascrizioni(data.count);
+            }
+        })
+        .catch(() => {});
+});
+</script>

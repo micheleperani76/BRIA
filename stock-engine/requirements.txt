@@ -1,0 +1,35 @@
+# =============================================================================
+# STOCK ENGINE - Dipendenze Python
+# =============================================================================
+# Versione: 1.0.0
+# Data: 28 gennaio 2026
+# =============================================================================
+
+# Framework Web
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+Flask-CORS==4.0.0
+
+# Database
+SQLAlchemy==2.0.23
+# Per PostgreSQL (opzionale): pip install psycopg2-binary
+
+# Excel/CSV Processing
+openpyxl==3.1.2
+pandas==2.1.4
+xlsxwriter==3.1.9
+
+# Scheduler
+APScheduler==3.10.4
+
+# HTTP Requests (per download da portali)
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# Utilities
+python-dotenv==1.0.0
+click==8.1.7
+
+# Production Server
+gunicorn==21.2.0

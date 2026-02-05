@@ -1,0 +1,115 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Modal Avanzamento + Utilities
+     Versione: 1.0
+     ============================================================ -->
+<script>
+// ==============================================================================
+// MODAL AVANZAMENTO
+// ==============================================================================
+function apriModalAvanzamento(trattativaId, statoAttuale) {
+    document.getElementById('avanzamentoTrattativaId').value = trattativaId;
+    document.getElementById('avanzamentoStatoAttuale').textContent = statoAttuale || '-';
+    document.getElementById('avanzamentoNuovoStato').value = '';
+    document.getElementById('avanzamentoNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalAvanzamento')).show();
+}
+
+function salvaAvanzamento() {
+    const trattativaId = document.getElementById('avanzamentoTrattativaId').value;
+    const nuovoStato = document.getElementById('avanzamentoNuovoStato').value;
+    
+    if (!nuovoStato) {
+        alert('Seleziona un nuovo stato');
+        return;
+    }
+    
+    const dati = {
+        stato: nuovoStato,
+        note: document.getElementById('avanzamentoNote').value
+    };
+    
+    fetch('/trattative/api/' + trattativaId + '/avanzamento', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dati)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalAvanzamento')).hide();
+            caricaTrattative();
+            mostraSuccesso('Avanzamento registrato');
+        } else {
+            mostraErrore('Errore: ' + data.error);
+        }
+    })
+    .catch(err => mostraErrore('Errore di rete: ' + err.message));
+}
+
+// ==============================================================================
+// ELIMINAZIONE
+// ==============================================================================
+function confermaElimina(trattativaId) {
+    if (confirm('Sei sicuro di voler eliminare questa trattativa?')) {
+        fetch('/trattative/api/' + trattativaId + '/elimina', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Ricarica griglia aperte
+                caricaTrattative();
+                // Ricarica griglia chiuse se era aperta
+                if (paginazioneChiuse && paginazioneChiuse.caricato) {
+                    caricaTrattativeChiuse(true);
+                }
+                // Forza ricarica griglia cancellate (resetta flag caricato)
+                if (typeof paginazioneCancellate !== 'undefined') {
+                    paginazioneCancellate.caricato = false;
+                    // Se la sezione cancellate e' espansa, ricarica subito
+                    var sezioneCancellate = document.getElementById('sezioneTrattativeCancellate');
+                    if (sezioneCancellate && sezioneCancellate.classList.contains('show')) {
+                        caricaTrattativeCancellate();
+                    }
+                }
+                mostraSuccesso('Trattativa eliminata');
+            } else {
+                mostraErrore('Errore: ' + data.error);
+            }
+        })
+        .catch(err => mostraErrore('Errore di rete: ' + err.message));
+    }
+}
+
+// ==============================================================================
+// TOAST NOTIFICHE
+// ==============================================================================
+function mostraSuccesso(messaggio) {
+    mostraToast(messaggio, 'success');
+}
+
+function mostraErrore(messaggio) {
+    mostraToast(messaggio, 'danger');
+}
+
+function mostraToast(messaggio, tipo) {
+    const container = document.getElementById('toastContainer') || createToastContainer();
+    const toast = document.createElement('div');
+    toast.className = 'toast align-items-center text-white bg-' + tipo + ' border-0';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = '<div class="d-flex"><div class="toast-body">' + messaggio + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+    container.appendChild(toast);
+    new bootstrap.Toast(toast, {delay: 3000}).show();
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container position-fixed top-0 end-0 p-3';
+    container.style.zIndex = '1100';
+    document.body.appendChild(container);
+    return container;
+}
+</script>

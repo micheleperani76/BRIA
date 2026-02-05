@@ -1,0 +1,618 @@
+<!-- ==========================================================================
+     NOTIFICHE - Widget Campanella per base.html
+     - Visibile SOLO quando ci sono notifiche non lette
+     - Trascinabile nei 4 angoli dello schermo
+     ========================================================================== -->
+
+{% if current_user %}
+<div class="notifiche-widget" id="notifiche-widget" style="display: none;">
+    <!-- Campanella -->
+    <button class="notifiche-bell" id="notifiche-bell" title="Notifiche" onclick="toggleDropdownNotifiche()">
+        <i class="bi bi-bell"></i>
+        <span class="notifiche-badge" id="notifiche-badge">0</span>
+    </button>
+    
+    <!-- Dropdown -->
+    <div class="notifiche-dropdown" id="notifiche-dropdown" style="display: none;">
+        <!-- Header -->
+        <div class="notifiche-dropdown-header">
+            <span class="notifiche-dropdown-titolo">Notifiche</span>
+            <button class="notifiche-btn-tutte-lette" id="btn-tutte-lette" 
+                    onclick="segnaTutteLette()" title="Segna tutte come lette">
+                <i class="bi bi-check2-all"></i>
+            </button>
+        </div>
+        
+        <!-- Lista notifiche -->
+        <div class="notifiche-dropdown-lista" id="notifiche-lista">
+            <div class="notifiche-vuoto" id="notifiche-vuoto">
+                <i class="bi bi-bell-slash" style="font-size: 1.5rem; color: #cbd5e1;"></i>
+                <div style="margin-top: 0.5rem; color: #94a3b8;">Nessuna notifica</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Indicatori angoli (visibili durante il drag) -->
+<div class="notifiche-corner-hint pos-top-right" id="corner-tr"></div>
+<div class="notifiche-corner-hint pos-top-left" id="corner-tl"></div>
+<div class="notifiche-corner-hint pos-bottom-right" id="corner-br"></div>
+<div class="notifiche-corner-hint pos-bottom-left" id="corner-bl"></div>
+
+<!-- ====================================================================== -->
+<!-- STILI CAMPANELLA -->
+<!-- ====================================================================== -->
+<style>
+    /* Widget container - posizionamento dinamico */
+    .notifiche-widget {
+        position: fixed;
+        z-index: 1060;
+        top: 16px;
+        right: 20px;
+        bottom: auto;
+        left: auto;
+        transition: top 0.35s ease, right 0.35s ease, bottom 0.35s ease, left 0.35s ease, opacity 0.3s ease;
+    }
+    
+    /* 4 posizioni angolari */
+    .notifiche-widget.pos-top-right    { top: 16px; right: 20px; bottom: auto; left: auto; }
+    .notifiche-widget.pos-top-left     { top: 16px; left: var(--notifiche-left, 270px);  bottom: auto; right: auto; }
+    .notifiche-widget.pos-bottom-right { bottom: 80px; right: 20px; top: auto; left: auto; }
+    .notifiche-widget.pos-bottom-left  { bottom: 80px; left: var(--notifiche-left, 270px);  top: auto; right: auto; }
+    
+    /* Campanella */
+    .notifiche-bell {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #ffffff;
+        color: #2563eb;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .notifiche-bell:hover {
+        background: #eff6ff;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+        transform: scale(1.05);
+    }
+    .notifiche-widget.dragging .notifiche-bell {
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+        transform: scale(1.12);
+        cursor: grabbing;
+    }
+    
+    /* Badge contatore */
+    .notifiche-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #dc3545;
+        color: white;
+        font-size: 0.65rem;
+        font-weight: 700;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        padding: 0 5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        border: 2px solid white;
+    }
+    
+    /* Animazione nuova notifica */
+    @keyframes bell-ring {
+        0%, 100% { transform: rotate(0deg); }
+        15% { transform: rotate(14deg); }
+        30% { transform: rotate(-12deg); }
+        45% { transform: rotate(10deg); }
+        60% { transform: rotate(-6deg); }
+        75% { transform: rotate(3deg); }
+    }
+    .notifiche-bell.ring i {
+        animation: bell-ring 0.6s ease-in-out;
+    }
+    
+    /* Dropdown */
+    .notifiche-dropdown {
+        position: absolute;
+        width: 360px;
+        max-height: 480px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    /* Posizione dropdown in base all'angolo */
+    .notifiche-widget.pos-top-right .notifiche-dropdown,
+    .notifiche-widget.pos-top-left .notifiche-dropdown {
+        top: 52px;
+    }
+    .notifiche-widget.pos-bottom-right .notifiche-dropdown,
+    .notifiche-widget.pos-bottom-left .notifiche-dropdown {
+        bottom: 52px;
+        top: auto;
+    }
+    .notifiche-widget.pos-top-right .notifiche-dropdown,
+    .notifiche-widget.pos-bottom-right .notifiche-dropdown {
+        right: 0;
+    }
+    .notifiche-widget.pos-top-left .notifiche-dropdown,
+    .notifiche-widget.pos-bottom-left .notifiche-dropdown {
+        left: 0;
+        right: auto;
+    }
+    
+    /* Header dropdown */
+    .notifiche-dropdown-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        background: #f8fafc;
+    }
+    .notifiche-dropdown-titolo {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1e293b;
+    }
+    .notifiche-btn-tutte-lette {
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 1rem;
+        transition: all 0.15s;
+    }
+    .notifiche-btn-tutte-lette:hover {
+        background: #e2e8f0;
+        color: #2563eb;
+    }
+    
+    /* Lista notifiche */
+    .notifiche-dropdown-lista {
+        max-height: 380px;
+        overflow-y: auto;
+    }
+    
+    /* Singola notifica */
+    .notifica-item {
+        display: flex;
+        gap: 10px;
+        padding: 10px 16px;
+        border-bottom: 1px solid #f8fafc;
+        cursor: pointer;
+        transition: background 0.15s;
+        text-decoration: none;
+        color: inherit;
+    }
+    .notifica-item:hover { background: #f1f5f9; }
+    .notifica-item.non-letta { background: #eff6ff; border-left: 3px solid #2563eb; }
+    .notifica-item.non-letta:hover { background: #dbeafe; }
+    
+    .notifica-icona {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        color: white;
+        margin-top: 2px;
+    }
+    .notifica-corpo { flex: 1; min-width: 0; }
+    .notifica-titolo {
+        font-size: 0.82rem;
+        font-weight: 500;
+        color: #1e293b;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .notifica-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 3px;
+        font-size: 0.72rem;
+        color: #94a3b8;
+    }
+    .notifica-categoria-tag {
+        font-size: 0.65rem;
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    .notifica-archivia {
+        flex-shrink: 0;
+        background: none;
+        border: none;
+        color: #cbd5e1;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        opacity: 0;
+        transition: all 0.15s;
+        align-self: center;
+    }
+    .notifica-item:hover .notifica-archivia { opacity: 1; }
+    .notifica-archivia:hover { color: #ef4444; background: #fee2e2; }
+    
+    .notifiche-vuoto { padding: 40px 20px; text-align: center; }
+    
+    /* Indicatori angoli durante drag */
+    .notifiche-corner-hint {
+        position: fixed;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(37, 99, 235, 0.08);
+        border: 2px dashed rgba(37, 99, 235, 0.25);
+        z-index: 1055;
+        display: none;
+        pointer-events: none;
+        transition: all 0.2s;
+    }
+    .notifiche-corner-hint.attivo {
+        background: rgba(37, 99, 235, 0.15);
+        border-color: rgba(37, 99, 235, 0.5);
+        transform: scale(1.2);
+    }
+    .notifiche-corner-hint.pos-top-right    { top: 10px; right: 14px; }
+    .notifiche-corner-hint.pos-top-left     { top: 10px; left: var(--notifiche-left, 270px); }
+    .notifiche-corner-hint.pos-bottom-right { bottom: 74px; right: 14px; }
+    .notifiche-corner-hint.pos-bottom-left  { bottom: 74px; left: var(--notifiche-left, 270px); }
+    
+    @media (max-width: 576px) {
+        .notifiche-dropdown { width: calc(100vw - 40px); }
+        .notifiche-widget.pos-top-right .notifiche-dropdown,
+        .notifiche-widget.pos-bottom-right .notifiche-dropdown { right: -8px; }
+        .notifiche-widget.pos-top-left .notifiche-dropdown,
+        .notifiche-widget.pos-bottom-left .notifiche-dropdown { left: -8px; }
+    }
+</style>
+
+<!-- ====================================================================== -->
+<!-- SCRIPT CAMPANELLA -->
+<!-- ====================================================================== -->
+<script>
+(function() {
+    const POLLING_SECONDI = {{ config_notifiche_polling|default(30) }};
+    let dropdownAperto = false;
+    let ultimoContatore = -1;
+    let isDragging = false;
+    
+    const widget = document.getElementById('notifiche-widget');
+    const bell = document.getElementById('notifiche-bell');
+    const badge = document.getElementById('notifiche-badge');
+    const cornersIds = ['corner-tr', 'corner-tl', 'corner-br', 'corner-bl'];
+    const posizioni = ['pos-top-right', 'pos-top-left', 'pos-bottom-right', 'pos-bottom-left'];
+    
+    // ===== POSIZIONE SALVATA =====
+    function caricaPosizione() {
+        const pos = localStorage.getItem('notifiche_posizione');
+        return (pos && posizioni.includes(pos)) ? pos : 'pos-top-right';
+    }
+    function salvaPosizione(pos) { localStorage.setItem('notifiche_posizione', pos); }
+    function applicaPosizione(pos) {
+        posizioni.forEach(p => widget.classList.remove(p));
+        widget.classList.add(pos);
+    }
+    applicaPosizione(caricaPosizione());
+    
+    // ===== LEFT DINAMICO (rispetta sidebar) =====
+    function aggiornaLeftSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            const w = sidebar.offsetWidth;
+            document.documentElement.style.setProperty('--notifiche-left', (w + 20) + 'px');
+        }
+    }
+    aggiornaLeftSidebar();
+    // Ricalcola quando la sidebar viene collassata/espansa
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            setTimeout(aggiornaLeftSidebar, 350);
+        });
+    }
+    
+    // ===== VISIBILITA' =====
+    function aggiornaVisibilita(cnt) {
+        if (cnt > 0) {
+            widget.style.display = 'block';
+        } else {
+            if (dropdownAperto) {
+                dropdownAperto = false;
+                document.getElementById('notifiche-dropdown').style.display = 'none';
+            }
+            widget.style.display = 'none';
+        }
+    }
+    
+    // ===== POLLING CONTATORE =====
+    function aggiornaContatore() {
+        fetch('/notifiche/api/contatore')
+            .then(r => r.json())
+            .then(data => {
+                if (!badge || !bell) return;
+                const cnt = data.contatore || 0;
+                badge.textContent = cnt > 99 ? '99+' : cnt;
+                
+                if (cnt > ultimoContatore && ultimoContatore >= 0) {
+                    bell.classList.add('ring');
+                    setTimeout(() => bell.classList.remove('ring'), 700);
+                }
+                aggiornaVisibilita(cnt);
+                ultimoContatore = cnt;
+            })
+            .catch(() => {});
+    }
+    
+    // ===== CARICA NOTIFICHE RECENTI =====
+    function caricaNotificheRecenti() {
+        fetch('/notifiche/api/recenti')
+            .then(r => r.json())
+            .then(data => {
+                renderNotifiche(data.notifiche || []);
+                const cnt = data.contatore || 0;
+                badge.textContent = cnt > 99 ? '99+' : cnt;
+                aggiornaVisibilita(cnt);
+                ultimoContatore = cnt;
+            })
+            .catch(() => {});
+    }
+    
+    // ===== RENDER LISTA =====
+    function renderNotifiche(notifiche) {
+        const lista = document.getElementById('notifiche-lista');
+        const vuoto = document.getElementById('notifiche-vuoto');
+        if (!lista) return;
+        lista.querySelectorAll('.notifica-item').forEach(el => el.remove());
+        
+        if (notifiche.length === 0) {
+            if (vuoto) vuoto.style.display = 'block';
+            return;
+        }
+        if (vuoto) vuoto.style.display = 'none';
+        
+        notifiche.forEach(n => {
+            const item = document.createElement('div');
+            item.className = 'notifica-item' + (n.letta ? '' : ' non-letta');
+            item.setAttribute('data-id', n.id);
+            item.onclick = function(e) {
+                if (e.target.closest('.notifica-archivia')) return;
+                segnaLetta(n.id, n.url_azione);
+            };
+            item.innerHTML = `
+                <div class="notifica-icona" style="background: ${n.colore_categoria};">
+                    <i class="bi ${n.icona_categoria}"></i>
+                </div>
+                <div class="notifica-corpo">
+                    <div class="notifica-titolo">${escapeHtml(n.titolo)}</div>
+                    ${n.messaggio ? `<div class="notifica-messaggio">${escapeHtml(n.messaggio).replace(/\n/g, " \u00b7 ")}</div>` : ""}
+                    <div class="notifica-meta">
+                        <span class="notifica-categoria-tag" 
+                              style="background: ${n.colore_categoria}20; color: ${n.colore_categoria};">
+                            ${escapeHtml(n.etichetta_categoria)}
+                        </span>
+                        <span>${escapeHtml(n.tempo_fa)}</span>
+                    </div>
+                </div>
+                <button class="notifica-archivia" title="Archivia" 
+                        onclick="archiviaNotifica(${n.id}, event)">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            `;
+            lista.appendChild(item);
+        });
+    }
+    
+    // ===== TOGGLE DROPDOWN =====
+    window.toggleDropdownNotifiche = function() {
+        if (isDragging) return;
+        const dropdown = document.getElementById('notifiche-dropdown');
+        if (!dropdown) return;
+        dropdownAperto = !dropdownAperto;
+        dropdown.style.display = dropdownAperto ? 'block' : 'none';
+        if (dropdownAperto) caricaNotificheRecenti();
+    };
+    
+    document.addEventListener('click', function(e) {
+        if (widget && !widget.contains(e.target) && dropdownAperto) {
+            dropdownAperto = false;
+            document.getElementById('notifiche-dropdown').style.display = 'none';
+        }
+    });
+    
+    // ===== DRAG & DROP NEI 4 ANGOLI =====
+    let dragStartX, dragStartY, hasMoved;
+    
+    function getAngoloVicino(x, y) {
+        const sidebar = document.getElementById('sidebar');
+        const sidebarW = sidebar ? sidebar.offsetWidth : 0;
+        const w = window.innerWidth, h = window.innerHeight;
+        if (y <= h / 2 && x > (w + sidebarW) / 2)  return 'pos-top-right';
+        if (y <= h / 2 && x <= (w + sidebarW) / 2) return 'pos-top-left';
+        if (y > h / 2 && x > (w + sidebarW) / 2)   return 'pos-bottom-right';
+        return 'pos-bottom-left';
+    }
+    
+    const mappaCorner = {
+        'pos-top-right': 'corner-tr', 'pos-top-left': 'corner-tl',
+        'pos-bottom-right': 'corner-br', 'pos-bottom-left': 'corner-bl'
+    };
+    
+    function mostraIndicatori(angoloAttivo) {
+        cornersIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = 'block';
+                el.classList.toggle('attivo', id === mappaCorner[angoloAttivo]);
+            }
+        });
+    }
+    function nascondiIndicatori() {
+        cornersIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.style.display = 'none'; el.classList.remove('attivo'); }
+        });
+    }
+    
+    // Mouse drag
+    bell.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        dragStartX = e.clientX; dragStartY = e.clientY; hasMoved = false;
+        
+        function onMove(e) {
+            if (Math.abs(e.clientX - dragStartX) > 8 || Math.abs(e.clientY - dragStartY) > 8) {
+                hasMoved = true; isDragging = true;
+                widget.classList.add('dragging');
+                if (dropdownAperto) {
+                    dropdownAperto = false;
+                    document.getElementById('notifiche-dropdown').style.display = 'none';
+                }
+                mostraIndicatori(getAngoloVicino(e.clientX, e.clientY));
+            }
+        }
+        function onUp(e) {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            widget.classList.remove('dragging');
+            nascondiIndicatori();
+            if (hasMoved) {
+                const ang = getAngoloVicino(e.clientX, e.clientY);
+                applicaPosizione(ang); salvaPosizione(ang);
+                setTimeout(() => { isDragging = false; }, 100);
+            }
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+    
+    // Touch drag
+    bell.addEventListener('touchstart', function(e) {
+        const t = e.touches[0];
+        dragStartX = t.clientX; dragStartY = t.clientY; hasMoved = false;
+        
+        function onMove(e) {
+            const t = e.touches[0];
+            if (Math.abs(t.clientX - dragStartX) > 12 || Math.abs(t.clientY - dragStartY) > 12) {
+                hasMoved = true; isDragging = true;
+                widget.classList.add('dragging');
+                if (dropdownAperto) {
+                    dropdownAperto = false;
+                    document.getElementById('notifiche-dropdown').style.display = 'none';
+                }
+                mostraIndicatori(getAngoloVicino(t.clientX, t.clientY));
+                e.preventDefault();
+            }
+        }
+        function onEnd(e) {
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('touchend', onEnd);
+            widget.classList.remove('dragging');
+            nascondiIndicatori();
+            if (hasMoved) {
+                const t = e.changedTouches[0];
+                const ang = getAngoloVicino(t.clientX, t.clientY);
+                applicaPosizione(ang); salvaPosizione(ang);
+                setTimeout(() => { isDragging = false; }, 100);
+                e.preventDefault();
+            }
+        }
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onEnd);
+    }, { passive: true });
+    
+    // ===== AZIONI =====
+    window.segnaLetta = function(notificaId, urlAzione) {
+        fetch(`/notifiche/api/${notificaId}/letta`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.contatore !== undefined) {
+                    badge.textContent = data.contatore > 99 ? '99+' : data.contatore;
+                    aggiornaVisibilita(data.contatore);
+                    ultimoContatore = data.contatore;
+                }
+                const item = document.querySelector(`.notifica-item[data-id="${notificaId}"]`);
+                if (item) item.classList.remove('non-letta');
+                if (urlAzione) window.location.href = urlAzione;
+            })
+            .catch(() => {});
+    };
+    
+    window.segnaTutteLette = function() {
+        fetch('/notifiche/api/tutte-lette', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                ultimoContatore = 0;
+                aggiornaVisibilita(0);
+                document.querySelectorAll('.notifica-item.non-letta').forEach(el => {
+                    el.classList.remove('non-letta');
+                });
+            })
+            .catch(() => {});
+    };
+    
+    window.archiviaNotifica = function(notificaId, event) {
+        if (event) { event.stopPropagation(); event.preventDefault(); }
+        fetch(`/notifiche/api/${notificaId}/archivia`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                const item = document.querySelector(`.notifica-item[data-id="${notificaId}"]`);
+                if (item) {
+                    item.style.transition = 'all 0.25s';
+                    item.style.opacity = '0';
+                    item.style.maxHeight = '0';
+                    item.style.padding = '0';
+                    item.style.overflow = 'hidden';
+                    setTimeout(() => {
+                        item.remove();
+                        if (!document.querySelectorAll('.notifica-item').length) {
+                            const vuoto = document.getElementById('notifiche-vuoto');
+                            if (vuoto) vuoto.style.display = 'block';
+                        }
+                    }, 250);
+                }
+                if (data.contatore !== undefined) {
+                    badge.textContent = data.contatore > 99 ? '99+' : data.contatore;
+                    aggiornaVisibilita(data.contatore);
+                    ultimoContatore = data.contatore;
+                }
+            })
+            .catch(() => {});
+    };
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+    
+    // ===== AVVIO =====
+    aggiornaContatore();
+    setInterval(aggiornaContatore, POLLING_SECONDI * 1000);
+})();
+</script>
+{% endif %}

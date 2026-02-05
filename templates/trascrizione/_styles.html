@@ -1,0 +1,135 @@
+<!-- ==========================================================================
+     TRASCRIZIONE - Stili CSS
+     ========================================================================== -->
+<style>
+    /* Drop Zone */
+    .drop-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #fafbfc;
+    }
+    
+    .drop-zone:hover {
+        border-color: var(--primary-color);
+        background: #f0f4ff;
+    }
+    
+    .drop-zone.dragover {
+        border-color: var(--primary-color);
+        background: #e8f0fe;
+        transform: scale(1.01);
+    }
+    
+    /* Lista trascrizioni */
+    .trascrizione-item {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+    }
+    
+    .trascrizione-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .trascrizione-item:last-child {
+        border-bottom: none;
+    }
+    
+    .trascrizione-item .stato-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .stato-completato { background: #d4edda; color: #155724; }
+    .stato-lavorazione { background: #fff3cd; color: #856404; }
+    .stato-attesa { background: #e2e3e5; color: #383d41; }
+    .stato-errore { background: #f8d7da; color: #721c24; }
+    
+    /* Azioni trascrizione */
+    .trascrizione-azioni .btn {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+    }
+    
+    /* Progress trascrizione */
+    .trascrizione-progress {
+        height: 4px;
+        border-radius: 2px;
+        margin-top: 0.35rem;
+    }
+    
+    /* Coda items */
+    .coda-item {
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .coda-item.in-lavorazione {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+    }
+    
+    .coda-item.in-attesa {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+    }
+    
+    .coda-item.mio {
+        border-left: 3px solid var(--primary-color);
+    }
+    
+    /* Retention warning */
+    .retention-warning {
+        font-size: 0.75rem;
+        color: #dc3545;
+    }
+    
+    /* Widget flottante */
+    .trascrizione-fab {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1050;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .trascrizione-fab:hover {
+        transform: scale(1.08);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+        background: #1d4ed8;
+    }
+    
+    .trascrizione-fab .badge {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        font-size: 0.65rem;
+        min-width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9px;
+        padding: 0 4px;
+    }
+</style>

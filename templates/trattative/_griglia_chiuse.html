@@ -1,0 +1,53 @@
+<!-- ============================================================
+     TRATTATIVE - Griglia Trattative Chiuse
+     Versione: 1.1
+     Data: 2026-01-28
+     Fix: Stesso stile della griglia principale
+     ============================================================ -->
+
+<div class="card-body p-0">
+    
+    <!-- Tabella Chiuse -->
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0" id="tabellaTrattativeChiuse">
+            <thead class="table-light sticky-top">
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th>Cliente</th>
+                    <th>Noleggiatore</th>
+                    <th>Veicolo</th>
+                    <th>Tipologia</th>
+                    <th>Tipo</th>
+                    <th class="text-center">Pz</th>
+                    <th>Stato</th>
+                    <th class="text-center">Avanz.</th>
+                    <th>Data Inizio</th>
+                    <th>Data Chiusura</th>
+                    <th>Commerciale</th>
+                    <th style="width: 60px;">Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTrattativeChiuse">
+                <!-- Popolato via JavaScript -->
+                <tr id="rigaCaricamentoChiuse">
+                    <td colspan="13" class="text-center py-4 text-muted">
+                        <i class="bi bi-archive me-2"></i>Espandi per vedere le trattative chiuse
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginazione Chiuse -->
+    <div class="d-flex justify-content-between align-items-center p-2 border-top">
+        <div id="infoRisultatiChiuse" class="small text-muted">
+            <!-- Popolato via JS -->
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="paginazioneChiuse">
+                <!-- Popolato via JS -->
+            </ul>
+        </nav>
+    </div>
+    
+</div>

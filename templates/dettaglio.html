@@ -1,0 +1,1801 @@
+{% extends "base.html" %}
+
+{% block title %}{{ cliente.nome_cliente }} - Gestione Flotta{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Layout normale (default) */
+.main-container {
+    padding: 0;
+}
+
+.main-container.notes-hidden .content-area {
+    background: #f8fafc;
+    display: block;
+}
+
+.main-container.notes-hidden .resize-handle,
+.main-container.notes-hidden .notes-panel {
+    display: none;
+}
+
+/* Layout split-screen (quando note attive) */
+.main-container.notes-visible {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 70px);
+    margin: -2rem;
+}
+
+.main-container.notes-visible .content-area {
+    flex: 1 1 60%;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: #f8fafc;
+    min-height: 0;
+}
+
+.main-container.notes-visible .resize-handle {
+    display: flex;
+    height: 10px;
+    background: linear-gradient(to bottom, #dee2e6 0%, #adb5bd 50%, #dee2e6 100%);
+    cursor: ns-resize;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-top: 1px solid #adb5bd;
+    border-bottom: 1px solid #adb5bd;
+}
+
+.main-container.notes-visible .resize-handle:hover {
+    background: linear-gradient(to bottom, #ffc107 0%, #e0a800 50%, #ffc107 100%);
+}
+
+.main-container.notes-visible .resize-handle::after {
+    content: '...';
+    color: #6b7280;
+    font-size: 10px;
+    letter-spacing: 3px;
+}
+
+.main-container.notes-visible .resize-handle:hover::after {
+    color: #333;
+}
+
+.main-container.notes-visible .notes-panel {
+    margin-bottom: -2rem;
+    margin-bottom: -20rem;
+    margin-bottom: -2rem;
+    margin-bottom: -20rem;
+    margin-bottom: -6rem;
+    margin-bottom: -2rem;
+    flex: 1 1 auto;
+    min-height: 100px;
+    
+    overflow-y: auto;
+    padding: 0.5rem 1.5rem 0.25rem 1.5rem;
+    background: #fff;
+    display: block;
+}
+
+/* Header cliente */
+.client-header {
+    background: #f8fafc !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Note styling */
+.note-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fafbfc;
+    transition: all 0.2s;
+}
+
+.note-item:hover {
+    border-color: #3b82f6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.note-item.editing {
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+.note-item.fissata {
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(to right, #fffbeb, #fafbfc);
+}
+
+.btn-pin {
+    color: #6c757d;
+}
+.btn-pin.active {
+    color: #f59e0b;
+}
+
+.search-note-box {
+    padding: 8px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.note-form {
+    background: #f0f9ff;
+    border: 2px dashed #3b82f6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+/* Allegati esistenti */
+.allegato-esistente {
+    display: inline-flex;
+    align-items: center;
+    background: #e9ecef;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.allegato-esistente .btn-rimuovi {
+    margin-left: 5px;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    line-height: 1;
+    color: #dc3545;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.allegato-esistente .btn-rimuovi:hover {
+    color: #fff;
+    background: #dc3545;
+    border-radius: 50%;
+}
+
+/* Score badge */
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+.score-A { background: #10b981; color: white; }
+.score-B { background: #3b82f6; color: white; }
+.score-C { background: #f59e0b; color: white; }
+.score-D { background: #ef4444; color: white; }
+.score-E { background: #1f2937; color: white; }
+
+/* Collapse icon */
+.collapse-icon {
+    transition: transform 0.2s;
+}
+[data-bs-toggle="collapse"][aria-expanded="true"] .collapse-icon,
+[data-bs-toggle="collapse"]:not(.collapsed) .collapse-icon {
+    transform: rotate(90deg);
+}
+
+/* Notes header sticky */
+.notes-header {
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 5;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Pulsante Note attivo */
+.btn-notes-active {
+    animation: pulse-warning 1.5s infinite;
+}
+@keyframes pulse-warning {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container notes-hidden" id="mainContainer">
+    
+    <!-- AREA CONTENUTO (scrollabile) -->
+    <div class="content-area" id="contentArea">
+        
+        <!-- Header cliente -->
+        <div class="client-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-1">
+                            <li class="breadcrumb-item"><a href="/clienti">Clienti</a></li>
+                            <li class="breadcrumb-item active">{{ cliente.nome_cliente }}</li>
+                        </ol>
+                    </nav>
+                    <h4 class="mb-0">
+                        {{ cliente.ragione_sociale or cliente.nome_cliente }}
+                        {% if top_prospect_info and top_prospect_info.presente %}
+                        <a href="/top-prospect/" class="text-decoration-none ms-2" title="{{ 'Candidato Top Prospect' if top_prospect_info.stato == 'candidato' else 'Top Prospect Confermato' }}">
+                            <i class="bi bi-trophy{% if top_prospect_info.stato == 'confermato' %}-fill text-warning{% else %} text-secondary{% endif %}" style="font-size: 1.2rem;"></i>
+                        </a>
+                        {% endif %}
+                        {% if cliente.stato_cliente %}
+                        <span class="badge ms-2" style="background-color: {{ get_stato_cliente_colore(cliente.stato_cliente) }}; color: white; font-size: 0.85rem;">{{ cliente.stato_cliente }}</span>
+                        {% endif %}
+                        {% if commerciale_attuale_display and commerciale_attuale_display != 'Non assegnato' %}
+                        <span class="text-muted ms-3" style="font-size: 0.9rem; font-weight: normal;">di: <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#modalStoricoCommerciali" title="Clicca per vedere lo storico commerciali"><strong>{{ commerciale_attuale_display }}</strong></a>{% if puo_gestire_assegnazioni %}<a href="/admin/utenti/storico-assegnazioni?cliente={{ cliente.p_iva }}" class="ms-1 text-primary" title="Modifica commerciale"><i class="bi bi-pencil-square"></i></a>{% endif %}</span>
+                        {% elif puo_gestire_assegnazioni %}
+                        <span class="text-muted ms-3" style="font-size: 0.9rem; font-weight: normal;">di: <span class="text-warning">Non assegnato</span> <a href="/admin/utenti/storico-assegnazioni?cliente={{ cliente.p_iva }}" class="ms-1 text-primary" title="Assegna commerciale"><i class="bi bi-pencil-square"></i></a></span>
+                        {% endif %}
+                    </h4>
+                </div>
+                <div>
+                    <!-- PULSANTE NOTE -->
+                    <button type="button" class="btn btn-warning btn-sm" id="btnToggleNotes" onclick="toggleNotes()">
+                        <i class="bi bi-journal-text"></i> Note
+                    </button>
+                    
+                    <!-- PULSANTE TRATTATIVA (attivo solo per commerciali/admin) -->
+                    {% if session.get('ruolo_base') in ['admin', 'commerciale'] %}
+                    <a href="/trattative/?cliente_id={{ cliente.id }}&commerciale_id={{ cliente.commerciale_id or 0 }}&apri_modal=1" 
+                       class="btn btn-outline-primary btn-sm" title="Apri nuova trattativa per questo cliente">
+                        <i class="bi bi-briefcase"></i> Trattativa
+                    </a>
+                    {% else %}
+                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Solo i commerciali possono aprire trattative">
+                        <i class="bi bi-briefcase"></i> Trattativa
+                    </button>
+                    {% endif %}
+                    {% if cliente.file_pdf %}
+                    <a href="/{{ cliente.file_pdf }}" class="btn btn-outline-danger btn-sm" target="_blank">
+                        <i class="bi bi-file-pdf"></i> Creditsafe
+                    </a>
+                    {% endif %}
+                    {% if veicoli %}
+                    <a href="/flotta/cliente/{{ cliente.nome_cliente|urlencode }}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-car-front"></i> Flotta ({{ veicoli|length }})
+                    </a>
+                    {% endif %}
+                    <a href="/clienti" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <!-- Colonna sinistra: Dati aziendali -->
+            <div class="col-lg-8">
+                <!-- Dati principali -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-building"></i> Dati Aziendali
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <small class="text-muted">Ragione Sociale</small>
+                                <div class="fw-bold">{{ cliente.ragione_sociale or '-' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">Forma Giuridica</small>
+                                <div>{{ cliente.forma_giuridica or '-' }}</div>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted">P.IVA</small>
+                                <div><code>{{ cliente.p_iva or '-' }}</code></div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">C.F.</small>
+                                <div><code>{{ cliente.cod_fiscale or '-' }}</code></div>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted">N. Reg.</small>
+                                <div><code>{{ cliente.numero_registrazione or '-' }}</code></div>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted">SDI <a href="#" class="ms-1 text-primary" data-bs-toggle="modal" data-bs-target="#modalSDIBIC" title="Modifica SDI/BIC"><i class="bi bi-pencil-square"></i></a></small>
+                                <div><code>{{ cliente.sdi or '-' }}</code></div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">BIC <a href="#" class="ms-1 text-primary" data-bs-toggle="modal" data-bs-target="#modalSDIBIC" title="Modifica SDI/BIC"><i class="bi bi-pencil-square"></i></a></small>
+                                <div><code>{{ cliente.bic or '-' }}</code></div>
+                            </div>
+                            <div class="col-md-9">
+                                <small class="text-muted">Sede Legale 
+                                    {% if cliente.indirizzo_protetto %}<span class="badge bg-warning text-dark" title="Protetto da sovrascrittura automatica"><i class="bi bi-lock-fill"></i></span>{% endif %}
+                                    <a href="#" class="ms-2 text-primary" data-bs-toggle="modal" data-bs-target="#modalIndirizzo" title="Modifica sede legale"><i class="bi bi-pencil-square"></i></a>
+                                </small>
+                                <div>{% if cliente.indirizzo %}<a href="https://www.google.com/maps/search/?api=1&query={{ cliente.indirizzo|urlencode }}" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt"></i> {{ cliente.indirizzo }}</a>{% else %}-{% endif %}</div>
+                                
+                                <!-- Sedi Aggiuntive (collassabile) -->
+                                {% include "dettaglio/sedi/_riquadro.html" %}
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Data Costituzione</small>
+                                <div>{{ cliente.data_costituzione or '-' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                
+                <!-- Riga Capogruppo + Collegamenti -->
+                <div class="row">
+                    <!-- Capogruppo (sinistra) -->
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span>
+                                    {% if cliente.capogruppo_cf and cliente.capogruppo_cf|length == 16 %}<i class="bi bi-person-fill"></i>{% else %}<i class="bi bi-building"></i>{% endif %}
+                                    Capogruppo
+                                    {% if cliente.capogruppo_protetto %}<span class="badge bg-warning text-dark ms-2" title="Protetto da sovrascrittura automatica"><i class="bi bi-lock-fill"></i></span>{% endif %}
+                                </span>
+                                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCapogruppo">
+                                    <i class="bi bi-pencil"></i> Modifica
+                                </button>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="mb-2">
+                                    <small class="text-muted">Nome / Ragione Sociale</small>
+                                    <div>{{ cliente.capogruppo_nome or '-' }}</div>
+                                </div>
+                                <div>
+                                    <small class="text-muted">Codice Fiscale / P.IVA</small>
+                                    <div><code>{{ cliente.capogruppo_cf or '-' }}</code></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Collegamenti (destra) -->
+                    <div class="col-md-6">
+                        {% include "dettaglio/collegamenti/_riquadro.html" %}
+                    </div>
+                </div>
+                <div class="card mb-3">
+                    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-telephone"></i> Contatti Generali</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalContatti">
+                            <i class="bi bi-pencil"></i> Modifica
+                        </button>
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <small class="text-muted">Telefono</small>
+                                <div>{% if cliente.telefono %}<a href="tel:{{ cliente.telefono }}">{{ cliente.telefono }}</a>{% else %}-{% endif %}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Email</small>
+                                <div>{% if cliente.email %}<a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>{% else %}-{% endif %}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">PEC</small>
+                                <div>{% if cliente.pec %}<a href="mailto:{{ cliente.pec }}">{{ cliente.pec }}</a>{% else %}-{% endif %}</div>
+                            </div>
+                            <div class="col-md-3">
+                                <small class="text-muted">Sito Web</small>
+                                <div>{% if cliente.sito_web %}<a href="{{ cliente.sito_web }}" target="_blank">{{ cliente.sito_web }}</a>{% else %}-{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Colonna destra: Rating e info -->
+            <div class="col-lg-4">
+                <!-- Rating (compatto) -->
+                <div class="card mb-3">
+                    <div class="card-body py-2 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-shield-check me-2"></i>
+                            {% if cliente.score %}
+                            <span class="score-badge score-{{ cliente.score }} me-2" style="width: 30px; height: 30px; font-size: 1rem;">{{ cliente.score }}</span>
+                            <span>Rating {{ cliente.score }}{% if cliente.punteggio_rischio %} - Rischio: {{ cliente.punteggio_rischio }}/100{% endif %}</span>
+                            {% else %}
+                            <span class="text-muted">Nessun rating disponibile</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fido Consigliato -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-credit-card"></i> Fido Consigliato
+                    </div>
+                    <div class="card-body text-center py-2">
+                        {% if cliente.credito %}
+                        <div class="h4 text-success mb-0">&euro; {{ cliente.credito|format_numero }}</div>
+                        {% else %}<div class="text-muted">N/D</div>{% endif %}
+                    </div>
+                </div>
+                
+                <!-- Noleggiatori -->
+                {% include "componenti/noleggiatori/_riquadro.html" %}
+                
+                <!-- Modal Storico Commerciali (accessibile cliccando sul nome commerciale in header) -->
+                <div class="modal fade" id="modalStoricoCommerciali" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-clock-history me-2"></i>Storico Commerciali
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                {% if storico_commerciali %}
+                                <div class="timeline">
+                                    {% for s in storico_commerciali %}
+                                    <div class="timeline-item mb-3 pb-3 {% if not loop.last %}border-bottom{% endif %}">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong class="text-success">
+                                                    <i class="bi bi-person-check me-1"></i>{{ s.a }}
+                                                </strong>
+                                                {% if s.da != 'Non assegnato' %}
+                                                <br><small class="text-muted">
+                                                    <i class="bi bi-arrow-right-short"></i> da: {{ s.da }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                            <small class="text-muted">{{ s.data_ora[:10] }}</small>
+                                        </div>
+                                        {% if s.note %}
+                                        <small class="text-muted d-block mt-1">{{ s.note }}</small>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>Nessuno storico disponibile
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Ex-commerciali manuali -->
+                                {% if ex_commerciali %}
+                                <hr>
+                                <h6 class="text-muted mb-2">
+                                    <i class="bi bi-people me-1"></i>Ex-Commerciali
+                                </h6>
+                                {% for ex in ex_commerciali %}
+                                <div class="d-flex justify-content-between align-items-center py-2 {% if not loop.last %}border-bottom{% endif %}">
+                                    <div>
+                                        <i class="bi bi-person text-secondary me-1"></i>
+                                        <strong>{{ ex.nome }}</strong>
+                                        {% if ex.note %}
+                                        <br><small class="text-muted">{{ ex.note }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">
+                                        {{ ex.data_inizio or '?' }} - {{ ex.data_fine or '?' }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                                {% endif %}
+                                
+                                {% if puo_gestire_assegnazioni %}
+                                <hr>
+                                <div class="text-center">
+                                    <a href="/admin/utenti/storico-assegnazioni?cliente={{ cliente.p_iva }}" class="btn btn-outline-primary">
+                                        <i class="bi bi-pencil me-1"></i>Modifica Storico
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Flotta riepilogo -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-car-front"></i> Flotta
+                    </div>
+                    <div class="card-body py-2">
+                        {% if stats_veicoli.totale > 0 %}
+                        <!-- Installato (verde) -->
+                        {% if stats_veicoli.installato > 0 %}
+                        <div class="d-flex justify-content-between" style="color: #28a745;">
+                            <span><i class="bi bi-check-circle-fill"></i> Installato</span>
+                            <span><strong>{{ stats_veicoli.installato }}</strong> &middot; &euro; {{ stats_veicoli.canone_installato|format_numero }}</span>
+                        </div>
+                        {% endif %}
+                        <!-- Extra (arancione) -->
+                        {% if stats_veicoli.extra > 0 %}
+                        <div class="d-flex justify-content-between" style="color: #fd7e14;">
+                            <span><i class="bi bi-arrow-right-circle-fill"></i> Extra</span>
+                            <span><strong>{{ stats_veicoli.extra }}</strong> &middot; &euro; {{ stats_veicoli.canone_extra|format_numero }}</span>
+                        </div>
+                        {% endif %}
+                        <!-- Separatore e Totale -->
+                        {% if stats_veicoli.installato > 0 and stats_veicoli.extra > 0 %}
+                        <hr class="my-1">
+                        <div class="d-flex justify-content-between">
+                            <span><strong>Totale</strong></span>
+                            <span><strong>{{ stats_veicoli.totale }}</strong> &middot; <strong>&euro; {{ stats_veicoli.canone_totale|format_numero }}</strong></span>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <div class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Nessun veicolo caricato</div>
+                        {% endif %}
+                        
+                        <!-- Separatore prima dei campi editabili -->
+                        <hr class="my-2">
+                        
+                        <!-- Parco Potenziale (editabile inline) -->
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted small">Parco Potenziale</span>
+                            <div class="d-flex align-items-center gap-1">
+                                <input type="number" class="form-control form-control-sm text-end" 
+                                       id="inputParcoPotenziale" 
+                                       value="{{ cliente.parco_potenziale or '' }}" 
+                                       style="width: 70px;" 
+                                       placeholder="-"
+                                       onchange="salvaParcoPotenziale(this.value)">
+                            </div>
+                        </div>
+                        
+                        <!-- Veicoli Rilevati (editabile inline con data) -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted small">Veicoli Rilevati</span>
+                            <div class="d-flex align-items-center gap-1">
+                                {% if cliente.data_rilevazione %}
+                                <small class="text-muted" id="dataRilevazione">({{ cliente.data_rilevazione }})</small>
+                                {% else %}
+                                <small class="text-muted" id="dataRilevazione"></small>
+                                {% endif %}
+                                <input type="number" class="form-control form-control-sm text-end" 
+                                       id="inputVeicoliRilevati" 
+                                       value="{{ cliente.veicoli_rilevati or '' }}" 
+                                       style="width: 70px;" 
+                                       placeholder="-"
+                                       onchange="salvaVeicoliRilevati(this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Info -->
+                <div class="card mb-3">
+                    <div class="card-header py-2">
+                        <i class="bi bi-info-circle"></i> Info
+                    </div>
+                    <div class="card-body py-2 small">
+                        {% if cliente.data_import_creditsafe %}
+                        <div class="d-flex justify-content-between"><span class="text-muted">Creditsafe</span><span>{{ cliente.data_import_creditsafe[:10] }}</span></div>
+                        {% endif %}
+                        {% if cliente.data_import_flotta %}
+                        <div class="d-flex justify-content-between"><span class="text-muted">Flotta</span><span>{{ cliente.data_import_flotta[:10] }}</span></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SEZIONE FULL-WIDTH: Referenti -->
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-people"></i> Referenti</span>
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuovoReferente">
+                    <i class="bi bi-plus"></i> Aggiungi
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if referenti %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%">Nome</th>
+                                <th style="width: 10%">Ruolo</th>
+                                <th style="width: 10%">Cellulare</th>
+                                <th style="width: 12%">Telefono</th>
+                                <th style="width: 18%">Email Principale</th>
+                                <th style="width: 15%">Email Secondarie</th>
+                                <th style="width: 5%">in</th>
+                                <th style="width: 5%">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ref in referenti %}
+                            <tr data-referente-id="{{ ref.id }}">
+                                <td>
+                                    {% if ref.principale %}<i class="bi bi-star-fill text-warning me-1" title="Referente principale"></i>{% endif %}
+                                    <strong>{{ ref.cognome or '' }}</strong> {{ ref.nome or '' }}
+                                </td>
+                                <td>{% if ref.ruolo %}<span class="badge bg-info">{{ ref.ruolo }}</span>{% endif %}</td>
+                                <td>{% if ref.cellulare %}<a href="tel:{{ ref.cellulare }}">{{ ref.cellulare }}</a>{% endif %}</td>
+                                <td>
+                                    {% if ref.telefono %}<a href="tel:{{ ref.telefono }}">{{ ref.telefono }}</a>{% endif %}
+                                    {% if ref.interno %}<small class="text-muted">int.{{ ref.interno }}</small>{% endif %}
+                                </td>
+                                <td>{% if ref.email_principale %}<a href="mailto:{{ ref.email_principale }}">{{ ref.email_principale }}</a>{% endif %}</td>
+                                <td><small>{{ ref.email_secondarie or '' }}</small></td>
+                                <td>{% if ref.linkedin %}<a href="{{ ref.linkedin }}" target="_blank" class="text-primary"><i class="bi bi-linkedin"></i></a>{% endif %}</td>
+                                <td>
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1"
+                                            onclick="modificaReferente({{ ref.id }}, '{{ ref.ruolo|default('', true)|replace("'", "\\'")|e }}', '{{ ref.nome|default('', true)|replace("'", "\\'")|e }}', '{{ ref.cognome|default('', true)|replace("'", "\\'")|e }}', '{{ ref.telefono|default('', true)|e }}', '{{ ref.interno|default('', true)|e }}', '{{ ref.cellulare|default('', true)|e }}', '{{ ref.email_principale|default('', true)|e }}', '{{ ref.email_secondarie|default('', true)|replace("'", "\\'")|e }}', '{{ ref.linkedin|default('', true)|e }}', '{{ ref.note|default('', true)|replace("'", "\\'")|replace("\n", " ")|e }}', {{ ref.principale|default(0, true) }})" title="Modifica">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                                            onclick="eliminaReferente({{ ref.id }}, '{{ ref.cognome|default('', true)|e }} {{ ref.nome|default('', true)|e }}')" title="Elimina">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% if ref.note %}
+                            <tr class="table-light">
+                                <td colspan="8" class="py-1 ps-4"><small class="text-muted"><i class="bi bi-chat-left-text"></i> {{ ref.note }}</small></td>
+                            </tr>
+                            {% endif %}
+                            {% if ref.sedi_collegate %}
+                            <tr class="table-light">
+                                <td colspan="8" class="py-1 ps-4">
+                                    <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Sedi:</small>
+                                    {% for sede in ref.sedi_collegate %}
+                                    <span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">{{ sede.tipo_sede }}{% if sede.denominazione %} - {{ sede.denominazione }}{% endif %}{% if sede.citta %} ({{ sede.citta }}){% endif %}</span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-3">
+                    <i class="bi bi-people"></i> Nessun referente inserito
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- SEZIONE FULL-WIDTH: Attivita  e Bilancio affiancati -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header py-2">
+                        <i class="bi bi-briefcase"></i> Descrizione 
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <small class="text-muted">ATECO</small>
+                                <div><code>{{ cliente.codice_ateco or '-' }}</code></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Capitale Sociale</small>
+                                <div>{% if cliente.capitale_sociale %}&euro; {{ cliente.capitale_sociale|format_numero }}{% else %}-{% endif %}</div>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Descrizione ATECO</small>
+                                <div>{{ cliente.desc_ateco or '-' }}</div>
+                            </div>
+                            <div class="col-12">
+                                <small class="text-muted">Descrizione </small>
+                                <div>{{ cliente.desc_attivita or '-' }}</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Dipendenti</small>
+                                <div>{{ cliente.dipendenti or '-' }}</div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Stato</small>
+                                <div>{% if cliente.stato %}<span class="badge {% if 'Attiv' in cliente.stato %}bg-success{% else %}bg-warning{% endif %}">{{ cliente.stato }}</span>{% else %}-{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                {% if cliente.valore_produzione or cliente.utile %}
+                <div class="card h-100">
+                    <div class="card-header py-2">
+                        <i class="bi bi-bar-chart"></i> Bilancio
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Voce</th>
+                                    <th class="text-end">{{ cliente.anno_bilancio or 'Corrente' }}</th>
+                                    <th class="text-end">{{ cliente.anno_bilancio_prec or 'Prec.' }}</th>
+                                    <th class="text-end">Var.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% macro bilancio_row_fw(label, val, val_prec) %}
+                                <tr>
+                                    <td>{{ label }}</td>
+                                    <td class="text-end">{% if val %}&euro; {{ val|format_numero }}{% else %}-{% endif %}</td>
+                                    <td class="text-end">{% if val_prec %}&euro; {{ val_prec|format_numero }}{% else %}-{% endif %}</td>
+                                    <td class="text-end">
+                                        {% if val and val_prec and val_prec != 0 %}
+                                        {% set var = ((val - val_prec) / val_prec * 100) %}
+                                        <span class="{% if var >= 0 %}text-success{% else %}text-danger{% endif %}">{{ "%.1f"|format(var) }}%</span>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                                {% endmacro %}
+                                {{ bilancio_row_fw('Valore Produzione', cliente.valore_produzione, cliente.valore_produzione_prec) }}
+                                {{ bilancio_row_fw('Patrimonio Netto', cliente.patrimonio_netto, cliente.patrimonio_netto_prec) }}
+                                {{ bilancio_row_fw('Utile/Perdita', cliente.utile, cliente.utile_prec) }}
+                                {{ bilancio_row_fw('Debiti', cliente.debiti, cliente.debiti_prec) }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card h-100">
+                    <div class="card-header py-2">
+                        <i class="bi bi-bar-chart"></i> Bilancio
+                    </div>
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="bi bi-file-earmark-x" style="font-size: 2rem;"></i>
+                        <p class="mb-0 mt-2">Dati non disponibili</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Documenti Cliente: Car Policy, Contratti, Quotazioni, Documenti -->
+        {% include "documenti_cliente.html" %}
+
+        <!-- Veicoli -->
+        {% if veicoli %}
+        <div class="card mb-3">
+            <div class="card-header py-2 d-flex align-items-center">
+                <span><i class="bi bi-car-front"></i> Veicoli</span>
+                {% if stats_veicoli.installato > 0 %}
+                <span class="badge ms-2" style="background-color: #28a745;" title="Installato - Gestiti da BR">
+                    <i class="bi bi-check-circle-fill"></i> {{ stats_veicoli.installato }}
+                </span>
+                {% endif %}
+                {% if stats_veicoli.extra > 0 %}
+                <span class="badge ms-2" style="background-color: #fd7e14;" title="Extra - Altri broker">
+                    <i class="bi bi-arrow-right-circle-fill"></i> {{ stats_veicoli.extra }}
+                </span>
+                {% endif %}
+            </div>
+            {% set veicoli_lista = veicoli %}
+            {% include "componenti/veicoli/_tabella.html" %}
+        </div>
+        {% endif %}
+        
+        <!-- Vetture proposte da stock (collassabile) -->
+        <div class="card mb-3">
+            <div class="card-header py-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-vetture-stock">
+                <i class="bi bi-chevron-right me-1 collapse-icon"></i>
+                <i class="bi bi-car-front"></i> Vetture proposte da stock
+            </div>
+            <div class="collapse" id="collapse-vetture-stock">
+                <div class="card-body">
+                    <p class="text-muted text-center mb-0" style="font-size: 1.1em;"><i class="bi bi-exclamation-triangle me-2"></i>FILE STOCK AUTOMATICO NON COLLEGATO</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Storico modifiche (collassabile) -->
+        {% if storico %}
+        <div class="card">
+            <div class="card-header py-2" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#collapse-storico">
+                <i class="bi bi-chevron-right me-1 collapse-icon"></i>
+                <i class="bi bi-clock-history"></i> Storico Modifiche ({{ storico|length }})
+            </div>
+            <div class="collapse" id="collapse-storico">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead class="table-light">
+                            <tr><th>Data</th><th>Campo</th><th>Precedente</th><th>Nuovo</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for s in storico %}
+                            <tr>
+                                <td><small>{{ s.data_modifica[:16] }}</small></td>
+                                <td><code>{{ s.campo_modificato }}</code></td>
+                                <td><small>{{ s.valore_precedente[:30] }}{% if s.valore_precedente|length > 30 %}...{% endif %}</small></td>
+                                <td><small>{{ s.valore_nuovo[:30] }}{% if s.valore_nuovo|length > 30 %}...{% endif %}</small></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+    </div>
+    
+    <!-- RESIZE HANDLE -->
+    <div class="resize-handle" id="resizeHandle"></div>
+    
+    <!-- PANNELLO NOTE -->
+    <div class="notes-panel" id="notesPanel">
+        
+        <div class="notes-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-journal-text text-warning"></i> Note Cliente
+                <span class="badge bg-warning text-dark" id="noteCount">{{ note_cliente|length }}</span>
+            </h5>
+            <div>
+                <a href="/cliente/{{ cliente.id }}/note" class="btn btn-outline-primary btn-sm me-2" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
+                <button class="btn btn-success btn-sm me-2" onclick="mostraFormNuovaNota()">
+                    <i class="bi bi-plus"></i> Nuova
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleNotes()" title="Chiudi note">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Barra ricerca note -->
+        <div class="search-note-box">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" id="searchNoteInput" placeholder="Cerca nelle note..." onkeyup="cercaNote()">
+                <button class="btn btn-outline-secondary" type="button" onclick="resetRicercaNote()" title="Pulisci">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Form nuova nota -->
+        <div id="formNuovaNota" class="note-form" style="display: none;">
+            <form method="post" action="/cliente/{{ cliente.id }}/nota/nuova" enctype="multipart/form-data">
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control form-control-sm" name="titolo" placeholder="Titolo nota *" required>
+                    </div>
+                    <div class="col-md-3">
+                        <!-- Autore automatico da utente loggato -->
+                        <div class="form-control form-control-sm bg-light text-muted">
+                            <i class="bi bi-person-fill me-1"></i>{{ session.cognome or session.username }}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="file" class="form-control form-control-sm" name="allegati" multiple>
+                    </div>
+                    <div class="col-12">
+                        <textarea class="form-control form-control-sm" name="testo" rows="2" placeholder="Descrizione..."></textarea>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="nascondiFormNuovaNota()">Annulla</button>
+                        <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check"></i> Salva</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Lista note -->
+        <div id="listaNote" style="overflow-y: auto;">
+            {% if note_cliente %}
+            {% for nota in note_cliente %}
+            <div class="note-item {% if nota.fissata %}fissata{% endif %}" id="nota-{{ nota.id }}" data-fissata="{{ nota.fissata or 0 }}">
+                <!-- Vista normale -->
+                <div class="nota-view" id="notaView{{ nota.id }}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <strong>{{ nota.titolo }}</strong>
+                            <span class="text-muted ms-2 small">
+                                <i class="bi bi-calendar"></i> {{ nota.data_creazione[:10] }}
+                                {% if nota.autore %}<i class="bi bi-person ms-2"></i> {{ nota.autore }}{% endif %}
+                                {% if nota.data_modifica %}<i class="bi bi-pencil text-warning ms-2" title="Modificata"></i>{% endif %}
+                            </span>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-sm btn-pin {% if nota.fissata %}active{% endif %}" onclick="toggleFissaNota({{ nota.id }})" title="Fissa/Sfissa"><i class="bi bi-pin-fill"></i></button>
+                            <a href="/cliente/{{ cliente.id }}/note?nota={{ nota.id }}" class="btn btn-outline-secondary btn-sm" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="modificaNota({{ nota.id }})" title="Modifica">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="confermaEliminaNota({{ nota.id }}, '{{ nota.titolo|replace("'", "\\'")|e }}')" title="Elimina">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% if nota.testo %}
+                    <div class="mt-1 text-secondary small" style="white-space: pre-wrap;">{{ nota.testo }}</div>
+                    {% endif %}
+                    {% if nota.allegati %}
+                    <div class="mt-1">
+                        {% for allegato in nota.allegati %}
+                        <a href="/allegato/cliente/{{ allegato.id }}" class="badge bg-secondary text-decoration-none me-1" title="Scarica">
+                            <i class="bi bi-paperclip"></i> {{ allegato.nome_originale }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Form modifica -->
+                <div class="nota-edit" id="notaEdit{{ nota.id }}" style="display: none;">
+                    <form method="post" action="/cliente/{{ cliente.id }}/nota/modifica" enctype="multipart/form-data">
+                        <input type="hidden" name="nota_id" value="{{ nota.id }}">
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control form-control-sm" name="titolo" value="{{ nota.titolo }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <!-- Autore originale (non modificabile) -->
+                                <div class="form-control form-control-sm bg-light text-muted">
+                                    <i class="bi bi-person-fill me-1"></i>{{ nota.autore or 'N/D' }}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="file" class="form-control form-control-sm" name="allegati" multiple>
+                            </div>
+                            <div class="col-12">
+                                <textarea class="form-control form-control-sm" name="testo" rows="2">{{ nota.testo or '' }}</textarea>
+                            </div>
+                            {% if nota.allegati %}
+                            <div class="col-12">
+                                <small class="text-muted">Allegati esistenti:</small>
+                                <div class="mt-1">
+                                    {% for allegato in nota.allegati %}
+                                    <span class="allegato-esistente" id="allegato-{{ allegato.id }}">
+                                        <i class="bi bi-paperclip"></i> {{ allegato.nome_originale }}
+                                        <button type="button" class="btn-rimuovi" onclick="rimuoviAllegato({{ allegato.id }}, '{{ allegato.nome_originale|replace("'", "\\'")|e }}')" title="Rimuovi">X</button>
+                                        <input type="hidden" name="allegati_mantieni[]" value="{{ allegato.id }}">
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="col-12 text-end">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="annullaModifica({{ nota.id }})">Annulla</button>
+                                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check"></i> Salva</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="text-center text-muted py-4" id="noNotes">
+                <i class="bi bi-journal-x" style="font-size: 2rem;"></i>
+                <p class="mt-2 mb-0">Nessuna nota per questo cliente</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Form nascosto per eliminazione nota -->
+<form id="formEliminaNota" method="post" action="/cliente/{{ cliente.id }}/nota/elimina" style="display:none;">
+    <input type="hidden" name="nota_id" id="eliminaNotaId">
+</form>
+
+<!-- Form nascosto per eliminazione allegato -->
+<form id="formEliminaAllegato" method="post" action="/cliente/{{ cliente.id }}/allegato/elimina" style="display:none;">
+    <input type="hidden" name="allegato_id" id="eliminaAllegatoId">
+</form>
+
+<!-- Modal Conferma Eliminazione Nota -->
+<div class="modal fade" id="modalElimina" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-trash"></i> Elimina Nota</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-0">Eliminare "<strong id="eliminaNotaTitolo"></strong>"?</p>
+                <small class="text-muted">Gli allegati saranno eliminati.</small>
+            </div>
+            <div class="modal-footer justify-content-center py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">No</button>
+                <button type="button" class="btn btn-sm btn-danger" onclick="eseguiEliminaNota()">
+                    <i class="bi bi-trash"></i> Si, elimina
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuovo Referente -->
+<div class="modal fade" id="modalNuovoReferente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-plus"></i> Nuovo Referente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/cliente/{{ cliente.id }}/referente/nuovo">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Ruolo</label>
+                            <select class="form-select" name="ruolo">
+                                <option value="">-- Seleziona --</option>
+                                <option value="Titolare">Titolare</option>
+                                <option value="Amministratore">Amministratore</option>
+                                <option value="Commerciale">Commerciale</option>
+                                <option value="Fleet Manager">Fleet Manager</option>
+                                <option value="HR">HR</option>
+                                <option value="Segreteria">Segreteria</option>
+                                <option value="Contabilita">Contabilita</option>
+                                <option value="Altro">Altro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" name="nome" placeholder="Mario">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cognome</label>
+                            <input type="text" class="form-control" name="cognome" placeholder="Rossi">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Telefono fisso</label>
+                            <input type="tel" class="form-control" name="telefono" placeholder="030 1234567">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Interno</label>
+                            <input type="text" class="form-control" name="interno" placeholder="123">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cellulare</label>
+                            <input type="tel" class="form-control" name="cellulare" placeholder="333 1234567">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email principale</label>
+                            <input type="email" class="form-control" name="email_principale" placeholder="mario.rossi@azienda.it">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email secondarie</label>
+                            <input type="text" class="form-control" name="email_secondarie" placeholder="info@azienda.it, altro@azienda.it">
+                            <small class="text-muted">Separate da virgola</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">LinkedIn</label>
+                            <input type="url" class="form-control" name="linkedin" placeholder="https://linkedin.com/in/...">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="principale" id="nuovoRefPrincipale">
+                                <label class="form-check-label" for="nuovoRefPrincipale">
+                                    <i class="bi bi-star text-warning"></i> Referente principale
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-control" name="note" rows="2" placeholder="Note sul referente..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-plus"></i> Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Referente -->
+<div class="modal fade" id="modalModificaReferente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Modifica Referente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formModificaReferente">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Ruolo</label>
+                            <select class="form-select" name="ruolo" id="modRefRuolo">
+                                <option value="">-- Seleziona --</option>
+                                <option value="Titolare">Titolare</option>
+                                <option value="Amministratore">Amministratore</option>
+                                <option value="Commerciale">Commerciale</option>
+                                <option value="Fleet Manager">Fleet Manager</option>
+                                <option value="HR">HR</option>
+                                <option value="Segreteria">Segreteria</option>
+                                <option value="Contabilita">Contabilita</option>
+                                <option value="Altro">Altro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" name="nome" id="modRefNome">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cognome</label>
+                            <input type="text" class="form-control" name="cognome" id="modRefCognome">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Telefono fisso</label>
+                            <input type="tel" class="form-control" name="telefono" id="modRefTelefono">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Interno</label>
+                            <input type="text" class="form-control" name="interno" id="modRefInterno">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Cellulare</label>
+                            <input type="tel" class="form-control" name="cellulare" id="modRefCellulare">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email principale</label>
+                            <input type="email" class="form-control" name="email_principale" id="modRefEmailPrinc">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email secondarie</label>
+                            <input type="text" class="form-control" name="email_secondarie" id="modRefEmailSec">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">LinkedIn</label>
+                            <input type="url" class="form-control" name="linkedin" id="modRefLinkedin">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" name="principale" id="modRefPrincipale">
+                                <label class="form-check-label" for="modRefPrincipale">
+                                    <i class="bi bi-star text-warning"></i> Principale
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-control" name="note" id="modRefNote" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Elimina Referente -->
+<div class="modal fade" id="modalEliminaReferente" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white py-2">
+                <h6 class="modal-title"><i class="bi bi-trash"></i> Elimina Referente</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="formEliminaReferente">
+                <div class="modal-body text-center">
+                    <p class="mb-0">Eliminare <strong id="elimRefNome"></strong>?</p>
+                </div>
+                <div class="modal-footer justify-content-center py-2">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Si</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Contatti Generali -->
+<div class="modal fade" id="modalContatti" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-telephone"></i> Modifica Contatti Generali</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/cliente/{{ cliente.id }}/contatti/modifica">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Telefono</label>
+                            <input type="tel" class="form-control" name="telefono" value="{{ cliente.telefono or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" value="{{ cliente.email or '' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">PEC</label>
+                            <input type="email" class="form-control" name="pec" value="{{ cliente.pec or '' }}">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Sito Web</label>
+                            <input type="url" class="form-control" name="sito_web" value="{{ cliente.sito_web or '' }}" placeholder="https://...">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Sede Legale -->
+<div class="modal fade" id="modalIndirizzo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-geo-alt"></i> Modifica Sede Legale</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/cliente/{{ cliente.id }}/indirizzo/modifica">
+                <div class="modal-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="indirizzo_protetto" id="checkProteggiIndirizzo" value="1" {% if cliente.indirizzo_protetto %}checked{% endif %}>
+                        <label class="form-check-label" for="checkProteggiIndirizzo">
+                            <i class="bi bi-lock-fill text-warning"></i> <strong>Proteggi da sovrascrittura</strong>
+                            <small class="text-muted d-block">Se attivo, i prossimi import Creditsafe non modificheranno questo indirizzo</small>
+                        </label>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Via e Civico</label>
+                            <input type="text" class="form-control" name="via" value="{{ cliente.via or '' }}{% if cliente.civico %} {{ cliente.civico }}{% endif %}" placeholder="VIA ROMA 123">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">CAP</label>
+                            <input type="text" class="form-control" name="cap" value="{{ cliente.cap or '' }}" placeholder="25020" maxlength="5">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Citta</label>
+                            <input type="text" class="form-control" name="citta" value="{{ cliente.citta or '' }}" placeholder="BRESCIA">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Provincia</label>
+                            <input type="text" class="form-control" name="provincia" value="{{ cliente.provincia or '' }}" placeholder="BS" maxlength="3" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">Anteprima indirizzo completo:</small>
+                        <div id="anteprimaIndirizzo" class="border rounded p-2 bg-light">{{ cliente.indirizzo or '-' }}</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" onclick="svuotaIndirizzo()"><i class="bi bi-trash"></i> Svuota</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Capogruppo -->
+<div class="modal fade" id="modalCapogruppo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-people"></i> Modifica Capogruppo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/cliente/{{ cliente.id }}/capogruppo/modifica">
+                <div class="modal-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" name="capogruppo_protetto" id="checkProteggiCapogruppo" value="1" {% if cliente.capogruppo_protetto %}checked{% endif %}>
+                        <label class="form-check-label" for="checkProteggiCapogruppo">
+                            <i class="bi bi-lock-fill text-warning"></i> <strong>Proteggi da sovrascrittura</strong>
+                            <small class="text-muted d-block">Se attivo, i prossimi import Creditsafe non modificheranno questi dati</small>
+                        </label>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nome / Ragione Sociale</label>
+                        <input type="text" class="form-control" name="capogruppo_nome" value="{{ cliente.capogruppo_nome or '' }}" placeholder="Nome persona o azienda">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Codice Fiscale / P.IVA</label>
+                        <input type="text" class="form-control" name="capogruppo_cf" value="{{ cliente.capogruppo_cf or '' }}" placeholder="CF persona (16 car.) o P.IVA azienda (11 cifre)">
+                        <small class="text-muted">Persona fisica: 16 caratteri | Azienda: 11 cifre</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Modifica SDI/BIC -->
+<div class="modal fade" id="modalSDIBIC" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-upc-scan"></i> Modifica SDI / BIC</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="/cliente/{{ cliente.id }}/sdibic/modifica">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Codice SDI (Destinatario)</label>
+                        <input type="text" class="form-control" name="sdi" value="{{ cliente.sdi or '' }}" placeholder="Codice 7 caratteri" maxlength="7" style="text-transform: uppercase;">
+                        <small class="text-muted">Codice destinatario per fatturazione elettronica (7 caratteri)</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">BIC / SWIFT</label>
+                        <input type="text" class="form-control" name="bic" value="{{ cliente.bic or '' }}" placeholder="Es: BCITITMM" maxlength="11" style="text-transform: uppercase;">
+                        <small class="text-muted">Codice identificativo banca (8 o 11 caratteri)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// === VARIABILE GLOBALE CLIENTE ===
+const CLIENTE_ID = {{ cliente.id }};
+
+// === SALVATAGGIO PARCO POTENZIALE E VEICOLI RILEVATI ===
+function salvaParcoPotenziale(valore) {
+    fetch(`/api/cliente/${CLIENTE_ID}/parco-potenziale`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Feedback visivo breve
+            const input = document.getElementById('inputParcoPotenziale');
+            input.style.backgroundColor = '#d4edda';
+            setTimeout(() => input.style.backgroundColor = '', 500);
+        }
+    })
+    .catch(err => console.error('Errore salvataggio parco potenziale:', err));
+}
+
+function salvaVeicoliRilevati(valore) {
+    fetch(`/api/cliente/${CLIENTE_ID}/veicoli-rilevati`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Feedback visivo breve
+            const input = document.getElementById('inputVeicoliRilevati');
+            input.style.backgroundColor = '#d4edda';
+            setTimeout(() => input.style.backgroundColor = '', 500);
+            // Aggiorna data rilevazione
+            const dataSpan = document.getElementById('dataRilevazione');
+            if (dataSpan) {
+                if (data.data_rilevazione) {
+                    dataSpan.textContent = `(${data.data_rilevazione})`;
+                } else {
+                    dataSpan.textContent = '';
+                }
+            }
+        }
+    })
+    .catch(err => console.error('Errore salvataggio veicoli rilevati:', err));
+}
+
+// === AGGIORNAMENTO ANTEPRIMA INDIRIZZO ===
+function aggiornaAnteprimaIndirizzo() {
+    const via = document.querySelector('#modalIndirizzo input[name="via"]').value.trim();
+    const cap = document.querySelector('#modalIndirizzo input[name="cap"]').value.trim();
+    const citta = document.querySelector('#modalIndirizzo input[name="citta"]').value.trim().toUpperCase();
+    const provincia = document.querySelector('#modalIndirizzo input[name="provincia"]').value.trim().toUpperCase();
+    
+    let indirizzo = '';
+    if (via) indirizzo = via;
+    if (cap || citta) {
+        if (indirizzo) indirizzo += ', ';
+        if (cap) indirizzo += cap + ' ';
+        if (citta) indirizzo += citta;
+    }
+    if (provincia) indirizzo += ' ' + provincia;
+    
+    document.getElementById('anteprimaIndirizzo').textContent = indirizzo || '-';
+}
+
+function svuotaIndirizzo() {
+    document.querySelector('#modalIndirizzo input[name="via"]').value = '';
+    document.querySelector('#modalIndirizzo input[name="cap"]').value = '';
+    document.querySelector('#modalIndirizzo input[name="citta"]').value = '';
+    document.querySelector('#modalIndirizzo input[name="provincia"]').value = '';
+    aggiornaAnteprimaIndirizzo();
+}
+
+// Aggiungi listener al modal indirizzo quando viene mostrato
+document.addEventListener('DOMContentLoaded', function() {
+    const modalIndirizzo = document.getElementById('modalIndirizzo');
+    if (modalIndirizzo) {
+        const inputs = modalIndirizzo.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('input', aggiornaAnteprimaIndirizzo);
+        });
+    }
+});
+
+// === TOGGLE PANNELLO NOTE ===
+function toggleNotes() {
+    const container = document.getElementById('mainContainer');
+    const btn = document.getElementById('btnToggleNotes');
+    
+    if (container.classList.contains('notes-hidden')) {
+        container.classList.remove('notes-hidden');
+        container.classList.add('notes-visible');
+        btn.classList.add('btn-notes-active');
+        btn.innerHTML = '<i class="bi bi-x-lg"></i> Chiudi Note';
+        
+        // Salva stato in localStorage
+        localStorage.setItem('notesPanelOpen_{{ cliente.id }}', '1');
+        
+        // Inizializza resize dopo attivazione
+        setTimeout(initResize, 100);
+    } else {
+        container.classList.remove('notes-visible');
+        container.classList.add('notes-hidden');
+        btn.classList.remove('btn-notes-active');
+        btn.innerHTML = '<i class="bi bi-journal-text"></i> Note';
+        
+        // Salva stato in localStorage
+        localStorage.setItem('notesPanelOpen_{{ cliente.id }}', '0');
+    }
+}
+
+// Riapri pannello note se era aperto prima del reload
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('notesPanelOpen_{{ cliente.id }}') === '1') {
+        toggleNotes();
+    }
+});
+
+// === RESIZE PANNELLO ===
+var isResizing = false;
+
+function initResize() {
+    const resizeHandle = document.getElementById('resizeHandle');
+    const contentArea = document.getElementById('contentArea');
+    const notesPanel = document.getElementById('notesPanel');
+    const container = document.getElementById('mainContainer');
+    
+    // Rimuovi listener esistenti per evitare duplicati
+    resizeHandle.onmousedown = function(e) {
+        if (!container.classList.contains('notes-visible')) return;
+        isResizing = true;
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    };
+}
+
+document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    
+    const container = document.getElementById('mainContainer');
+    const contentArea = document.getElementById('contentArea');
+    const notesPanel = document.getElementById('notesPanel');
+    
+    const containerRect = container.getBoundingClientRect();
+    const mouseY = e.clientY - containerRect.top;
+    const totalHeight = containerRect.height;
+    
+    let contentPercent = (mouseY / totalHeight) * 100;
+    contentPercent = Math.max(20, Math.min(80, contentPercent));
+    let notesPercent = 100 - contentPercent;
+    
+    contentArea.style.flex = '1 1 ' + contentPercent + '%';
+    notesPanel.style.flex = '0 0 ' + notesPercent + '%';
+    notesPanel.style.minHeight = notesPercent + '%';
+});
+
+document.addEventListener('mouseup', function() {
+    if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    }
+});
+
+// === GESTIONE NOTE ===
+function mostraFormNuovaNota() {
+    document.getElementById('formNuovaNota').style.display = 'block';
+    document.getElementById('formNuovaNota').querySelector('input[name="titolo"]').focus();
+}
+
+function nascondiFormNuovaNota() {
+    document.getElementById('formNuovaNota').style.display = 'none';
+}
+
+function modificaNota(id) {
+    document.getElementById('notaView' + id).style.display = 'none';
+    document.getElementById('notaEdit' + id).style.display = 'block';
+    document.getElementById('nota-' + id).classList.add('editing');
+}
+
+function annullaModifica(id) {
+    document.getElementById('notaView' + id).style.display = 'block';
+    document.getElementById('notaEdit' + id).style.display = 'none';
+    document.getElementById('nota-' + id).classList.remove('editing');
+}
+
+// === ELIMINAZIONE NOTA ===
+var notaIdDaEliminare = null;
+
+function confermaEliminaNota(id, titolo) {
+    notaIdDaEliminare = id;
+    document.getElementById('eliminaNotaTitolo').textContent = titolo;
+    new bootstrap.Modal(document.getElementById('modalElimina')).show();
+}
+
+function eseguiEliminaNota() {
+    if (notaIdDaEliminare) {
+        document.getElementById('eliminaNotaId').value = notaIdDaEliminare;
+        document.getElementById('formEliminaNota').submit();
+    }
+}
+
+
+// === FISSA/SFISSA NOTA ===
+function toggleFissaNota(id) {
+    fetch('/cliente/{{ cliente.id }}/nota/fissa', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'nota_id=' + id
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const noteItem = document.getElementById('nota-' + id);
+            const pinBtn = noteItem.querySelector('.btn-pin');
+            
+            if (data.fissata) {
+                noteItem.classList.add('fissata');
+                noteItem.dataset.fissata = '1';
+                pinBtn.classList.add('active');
+                pinBtn.title = 'Sfissa';
+            } else {
+                noteItem.classList.remove('fissata');
+                noteItem.dataset.fissata = '0';
+                pinBtn.classList.remove('active');
+                pinBtn.title = 'Fissa in alto';
+            }
+            
+            // Riordina le note: fissate in alto
+            riordinaNote();
+        }
+    })
+    .catch(err => console.error('Errore:', err));
+}
+
+function riordinaNote() {
+    const container = document.getElementById('listaNote');
+    const notes = Array.from(container.querySelectorAll('.note-item'));
+    
+    // Ordina: fissate prima, poi per posizione originale
+    notes.sort((a, b) => {
+        const aFissata = parseInt(a.dataset.fissata) || 0;
+        const bFissata = parseInt(b.dataset.fissata) || 0;
+        return bFissata - aFissata;
+    });
+    
+    // Rimuovi e riaggiungi in ordine
+    notes.forEach(note => container.appendChild(note));
+}
+
+// === RICERCA NOTE ===
+var searchTimeout = null;
+
+function cercaNote() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(eseguiRicercaNote, 300);
+}
+
+function eseguiRicercaNote() {
+    const query = document.getElementById('searchNoteInput').value.trim();
+    
+    if (query.length < 2 && query.length > 0) {
+        return; // Aspetta almeno 2 caratteri
+    }
+    
+    fetch('/cliente/{{ cliente.id }}/note/cerca?q=' + encodeURIComponent(query))
+    .then(response => response.json())
+    .then(data => {
+        aggiornaListaNote(data.note, query);
+        document.getElementById('noteCount').textContent = data.count;
+    })
+    .catch(err => console.error('Errore ricerca:', err));
+}
+
+function resetRicercaNote() {
+    document.getElementById('searchNoteInput').value = '';
+    eseguiRicercaNote();
+}
+
+function aggiornaListaNote(note, query) {
+    const container = document.getElementById('listaNote');
+    
+    if (note.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-4">' +
+            '<i class="bi bi-search" style="font-size: 2rem;"></i>' +
+            '<p class="mt-2 mb-0">Nessuna nota trovata' + (query ? ' per "' + query + '"' : '') + '</p></div>';
+        return;
+    }
+    
+    let html = '';
+    note.forEach(nota => {
+        const fissataClass = nota.fissata ? 'fissata' : '';
+        const pinActiveClass = nota.fissata ? 'active' : '';
+        const pinTitle = nota.fissata ? 'Sfissa' : 'Fissa in alto';
+        
+        html += '<div class="note-item ' + fissataClass + '" id="nota-' + nota.id + '" data-fissata="' + (nota.fissata || 0) + '">';
+        html += '<div class="nota-view" id="notaView' + nota.id + '">';
+        html += '<div class="d-flex justify-content-between align-items-start">';
+        html += '<div class="flex-grow-1">';
+        html += '<i class="bi bi-pin-fill"></i></button>';
+        
+        // Evidenzia match nel titolo
+        let titolo = nota.titolo;
+        if (query) {
+            const regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            titolo = titolo.replace(regex, '<mark>$1</mark>');
+        }
+        html += '<strong>' + titolo + '</strong>';
+        
+        html += '<span class="text-muted ms-2 small">';
+        html += '<i class="bi bi-calendar"></i> ' + nota.data_creazione.substring(0, 10);
+        if (nota.autore) html += '<i class="bi bi-person ms-2"></i> ' + nota.autore;
+        if (nota.data_modifica) html += '<i class="bi bi-pencil text-warning ms-2" title="Modificata"></i>';
+        html += '</span></div>';
+        
+        html += '<div class="btn-group btn-group-sm">';
+        html += '<button type="button" class="btn btn-outline-primary btn-sm" onclick="modificaNota(' + nota.id + ')" title="Modifica"><i class="bi bi-pencil"></i></button>';
+        html += '<button type="button" class="btn btn-outline-danger btn-sm" onclick="confermaEliminaNota(' + nota.id + ', \'' + nota.titolo.replace(/'/g, "\\'") + '\')" title="Elimina"><i class="bi bi-trash"></i></button>';
+        html += '</div></div>';
+        
+        if (nota.testo) {
+            let testo = nota.testo;
+            if (query) {
+                const regex = new RegExp('(' + query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                testo = testo.replace(regex, '<mark>$1</mark>');
+            }
+            html += '<div class="mt-1 text-secondary small" style="white-space: pre-wrap;">' + testo + '</div>';
+        }
+        
+        if (nota.allegati && nota.allegati.length > 0) {
+            html += '<div class="mt-1">';
+            nota.allegati.forEach(allegato => {
+                html += '<a href="/allegato/cliente/' + allegato.id + '" class="badge bg-secondary text-decoration-none me-1" title="Scarica">';
+                html += '<i class="bi bi-paperclip"></i> ' + allegato.nome_originale + '</a>';
+            });
+            html += '</div>';
+        }
+        
+        html += '</div></div></div>';
+    });
+    
+    container.innerHTML = html;
+}
+
+// === ELIMINAZIONE ALLEGATO ===
+function rimuoviAllegato(id, nome) {
+    if (confirm('Rimuovere allegato "' + nome + '"?')) {
+        // Rimuove visivamente l'elemento
+        const el = document.getElementById('allegato-' + id);
+        if (el) {
+            el.style.opacity = '0.5';
+            el.style.textDecoration = 'line-through';
+        }
+        
+        // Invia richiesta AJAX al server
+        fetch('/cliente/{{ cliente.id }}/allegato/elimina', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'allegato_id=' + id
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Rimuove completamente l'elemento
+                if (el) el.remove();
+            } else {
+                alert('Errore eliminazione allegato');
+                if (el) {
+                    el.style.opacity = '1';
+                    el.style.textDecoration = 'none';
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Errore:', err);
+            // Rimuove comunque visivamente (potrebbe essere gia eliminato)
+            if (el) el.remove();
+        });
+    }
+}
+
+// Debug: verifica commerciali disponibili
+console.log('Commerciali disponibili: {% for c in commerciali %}{{ c }}, {% endfor %}');
+
+// === GESTIONE DROPDOWN AGENTI ===
+document.getElementById('selectAutoreNuovo').addEventListener('change', function() {
+    const input = document.getElementById('inputAutoreNuovo');
+    if (this.value === '__ALTRO__') {
+        input.style.display = 'block';
+        input.focus();
+        input.required = true;
+    } else {
+        input.style.display = 'none';
+        input.value = '';
+        input.required = false;
+    }
+});
+
+function toggleAutoreManuale(select, inputId) {
+    const input = document.getElementById(inputId);
+    if (select.value === '__ALTRO__') {
+        input.style.display = 'block';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = '';
+    }
+}
+
+// === GESTIONE REFERENTI ===
+function modificaReferente(id, ruolo, nome, cognome, telefono, interno, cellulare, emailPrinc, emailSec, linkedin, note, principale) {
+    document.getElementById('formModificaReferente').action = '/cliente/{{ cliente.id }}/referente/' + id + '/modifica';
+    document.getElementById('modRefRuolo').value = ruolo;
+    document.getElementById('modRefNome').value = nome;
+    document.getElementById('modRefCognome').value = cognome;
+    document.getElementById('modRefTelefono').value = telefono;
+    document.getElementById('modRefInterno').value = interno;
+    document.getElementById('modRefCellulare').value = cellulare;
+    document.getElementById('modRefEmailPrinc').value = emailPrinc;
+    document.getElementById('modRefEmailSec').value = emailSec;
+    document.getElementById('modRefLinkedin').value = linkedin;
+    document.getElementById('modRefNote').value = note;
+    document.getElementById('modRefPrincipale').checked = principale == 1;
+    new bootstrap.Modal(document.getElementById('modalModificaReferente')).show();
+}
+
+function eliminaReferente(id, nome) {
+    document.getElementById('formEliminaReferente').action = '/cliente/{{ cliente.id }}/referente/' + id + '/elimina';
+    document.getElementById('elimRefNome').textContent = nome;
+    new bootstrap.Modal(document.getElementById('modalEliminaReferente')).show();
+}
+</script>
+{% include "dettaglio/collegamenti/_modal.html" %}
+{% include "dettaglio/collegamenti/_scripts.html" %}
+{% endblock %}

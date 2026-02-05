@@ -1,0 +1,62 @@
+<!-- ==========================================================================
+     TRASCRIZIONE - Modal Sposta su Cliente
+     ========================================================================== -->
+
+<div class="modal fade" id="modalSposta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-right-circle me-2"></i>Sposta su Cliente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sposta-job-id">
+                
+                <!-- Ricerca cliente -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cerca cliente</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="sposta-cerca" class="form-control" 
+                               placeholder="Digita nome, ragione sociale o P.IVA..."
+                               autocomplete="off">
+                    </div>
+                    <div id="sposta-risultati" class="list-group mt-1" style="display: none; max-height: 200px; overflow-y: auto;">
+                        <!-- Risultati ricerca -->
+                    </div>
+                </div>
+                
+                <!-- Cliente selezionato -->
+                <div id="sposta-selezionato" class="mb-3" style="display: none;">
+                    <label class="form-label fw-semibold">Cliente selezionato</label>
+                    <div class="d-flex align-items-center p-2 bg-success bg-opacity-10 rounded border border-success">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                        <span id="sposta-cliente-nome" class="fw-semibold"></span>
+                        <span id="sposta-cliente-piva" class="text-muted ms-2 small"></span>
+                        <input type="hidden" id="sposta-cliente-id">
+                        <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="deselezioneCliente()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Rinomina (opzionale) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        Rinomina file <span class="text-muted fw-normal">(opzionale)</span>
+                    </label>
+                    <input type="text" id="sposta-nuovo-nome" class="form-control" 
+                           placeholder="Lascia vuoto per mantenere il nome originale">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" id="btn-conferma-sposta" onclick="confermaSpostamento()" disabled>
+                    <i class="bi bi-arrow-right-circle me-1"></i>Sposta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

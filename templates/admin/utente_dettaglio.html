@@ -1,0 +1,598 @@
+{% extends "base.html" %}
+{% block title %}Dettaglio Utente - {{ utente.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-header-custom {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .permesso-card {
+        border-left: 4px solid #667eea;
+    }
+    .permesso-card .card-header {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    .badge-ruolo-admin { background-color: #dc3545; }
+    .badge-ruolo-commerciale { background-color: #28a745; }
+    .badge-ruolo-operatore { background-color: #17a2b8; }
+    .badge-ruolo-viewer { background-color: #6c757d; }
+    .supervisione-card {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    .subordinato-card {
+        background-color: #d4edda;
+        border-left: 4px solid #28a745;
+    }
+    .utente-protetto {
+        opacity: 0.8;
+        pointer-events: none;
+    }
+    .form-check-input:checked {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+    .btn-back {
+        border: 2px solid #6c757d;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .stato-badge {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .btn-edit-small {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-person-gear me-2"></i>{{ utente.username }}
+                {% if utente.non_modificabile %}
+                <span class="badge bg-secondary ms-2"><i class="bi bi-lock"></i> Protetto</span>
+                {% endif %}
+            </h2>
+            <p class="text-muted mb-0">
+                {{ utente.nome or '' }} {{ utente.cognome or '' }}
+                {% if "%06d"|format(utente.id) %}
+                <span class="badge bg-light text-dark">{{ "%06d"|format(utente.id) }}</span>
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            <a href="{{ url_for('admin_utenti.lista_utenti') }}" class="btn btn-outline-secondary btn-back">
+                <i class="bi bi-arrow-left me-1"></i> Torna alla lista
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Colonna Sinistra: Info Utente -->
+        <div class="col-lg-4 mb-4">
+            
+            <!-- Card Info Base -->
+            <div class="card mb-4">
+                <div class="card-header card-header-custom">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Informazioni</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Username con possibilita di modifica -->
+                    <div class="mb-3">
+                        <label class="info-label d-block">Username:</label>
+                        <div id="usernameDisplay">
+                            <strong>{{ utente.username }}</strong>
+                            {% if not utente.non_modificabile %}
+                            <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraFormUsername()">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {% if not utente.non_modificabile %}
+                        <form id="usernameForm" method="POST" action="{{ url_for('admin_utenti.modifica_username', utente_id=utente.id) }}" style="display: none;">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" name="nuovo_username" value="{{ utente.username }}" 
+                                       pattern="[a-z0-9._]+" title="Solo lettere minuscole, numeri, punti e underscore" required>
+                                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check"></i></button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiFormUsername()"><i class="bi bi-x"></i></button>
+                            </div>
+                            <small class="text-muted">Solo lettere minuscole, numeri, punti e underscore</small>
+                        </form>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Form unico per modificare tutti i dati anagrafici -->
+                    <form method="POST" action="{{ url_for('admin_utenti.modifica_anagrafica', utente_id=utente.id) }}" id="formAnagrafica">
+                        <table class="table table-borderless mb-0">
+                            <tr>
+                                <td class="info-label" style="width: 40%;">Codice:</td>
+                                <td>
+                                    <div id="codiceDisplay">
+                                        <code>{{ utente.codice_utente or '%06d'|format(utente.id) }}</code>
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('codice')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="codiceEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" name="codice_utente" 
+                                                   value="{{ utente.codice_utente or '%06d'|format(utente.id) }}" 
+                                                   pattern="[0-9]{6}" maxlength="6" title="6 cifre numeriche">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('codice')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Nome:</td>
+                                <td>
+                                    <div id="nomeDisplay">
+                                        {{ utente.nome or '-' }}
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('nome')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="nomeEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" name="nome" value="{{ utente.nome or '' }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('nome')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Cognome:</td>
+                                <td>
+                                    <div id="cognomeDisplay">
+                                        {{ utente.cognome or '-' }}
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('cognome')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="cognomeEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" class="form-control" name="cognome" value="{{ utente.cognome or '' }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('cognome')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Data nascita:</td>
+                                <td>
+                                    <div id="data_nascitaDisplay">
+                                        {{ utente.data_nascita or '-' }}
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('data_nascita')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="data_nascitaEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="date" class="form-control" name="data_nascita" value="{{ utente.data_nascita or '' }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('data_nascita')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Email:</td>
+                                <td>
+                                    <div id="emailDisplay">
+                                        {{ utente.email or '-' }}
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('email')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="emailEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="email" class="form-control" name="email" value="{{ utente.email or '' }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('email')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Cellulare:</td>
+                                <td>
+                                    <div id="cellulareDisplay">
+                                        {{ utente.cellulare or '-' }}
+                                        {% if not utente.non_modificabile %}
+                                        <button type="button" class="btn btn-outline-primary btn-edit-small ms-2" onclick="mostraEditCampo('cellulare')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div id="cellulareEdit" style="display: none;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="tel" class="form-control" name="cellulare" value="{{ utente.cellulare or '' }}">
+                                            <button type="button" class="btn btn-secondary btn-sm" onclick="nascondiEditCampo('cellulare')"><i class="bi bi-x"></i></button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Creato il:</td>
+                                <td>{{ utente.data_creazione[:10] if utente.data_creazione else '-' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Ultimo accesso:</td>
+                                <td>{{ utente.data_ultimo_accesso[:16] if utente.data_ultimo_accesso else 'Mai' }}</td>
+                            </tr>
+                        </table>
+                        
+                        {% if not utente.non_modificabile %}
+                        <!-- Pulsante Salva visibile solo se ci sono modifiche -->
+                        <div id="btnSalvaAnagrafica" style="display: none;" class="mt-3">
+                            <button type="submit" class="btn btn-success btn-sm w-100">
+                                <i class="bi bi-check-lg me-1"></i>Salva Modifiche
+                            </button>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card Ruolo e Stato -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield me-2"></i>Ruolo e Stato</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Stato attuale -->
+                    <div class="mb-3">
+                        <span class="info-label">Stato:</span>
+                        {% if utente.attivo %}
+                        <span class="badge bg-success stato-badge ms-2"><i class="bi bi-check-circle"></i> Attivo</span>
+                        {% else %}
+                        <span class="badge bg-danger stato-badge ms-2"><i class="bi bi-x-circle"></i> Disattivato</span>
+                        {% endif %}
+                        {% if utente.bloccato %}
+                        <span class="badge bg-warning text-dark stato-badge ms-2"><i class="bi bi-lock"></i> Bloccato</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Form Ruolo -->
+                    {% if not utente.non_modificabile %}
+                    <form method="POST" action="{{ url_for('admin_utenti.modifica_ruolo', utente_id=utente.id) }}">
+                        <label class="form-label info-label">Ruolo Base:</label>
+                        <div class="input-group">
+                            <select name="ruolo_base" class="form-select">
+                                <option value="admin" {% if utente.ruolo_base == 'admin' %}selected{% endif %}>Admin</option>
+                                <option value="commerciale" {% if utente.ruolo_base == 'commerciale' %}selected{% endif %}>Commerciale</option>
+                                <option value="operatore" {% if utente.ruolo_base == 'operatore' %}selected{% endif %}>Operatore</option>
+                                <option value="viewer" {% if utente.ruolo_base == 'viewer' %}selected{% endif %}>Viewer (sola lettura)</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check"></i>
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div>
+                        <span class="info-label">Ruolo:</span>
+                        <span class="badge badge-ruolo-{{ utente.ruolo_base }} ms-2">{{ utente.ruolo_base|upper }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Azioni -->
+                    <hr>
+                    <div class="d-grid gap-2">
+                        {% if not utente.non_modificabile %}
+                        <!-- Reset Password -->
+                        <form method="POST" action="{{ url_for('admin_utenti.reset_password_utente') }}" 
+                              onsubmit="return confirm('Sei sicuro di voler resettare la password?');">
+                            <input type="hidden" name="utente_id" value="{{ utente.id }}">
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="bi bi-key me-1"></i> Reset Password
+                            </button>
+                        </form>
+                        
+                        <!-- Toggle Attivo - con form hidden -->
+                        <form id="formToggleAttivo" method="POST" action="{{ url_for('admin_utenti.toggle_attivo_form', utente_id=utente.id) }}">
+                            <button type="submit" class="btn btn-{% if utente.attivo %}danger{% else %}success{% endif %} w-100"
+                                    onclick="return confirm('Sei sicuro di voler {% if utente.attivo %}disattivare{% else %}attivare{% endif %} questo utente?');">
+                                <i class="bi bi-{% if utente.attivo %}x-circle{% else %}check-circle{% endif %} me-1"></i>
+                                {% if utente.attivo %}Disattiva{% else %}Attiva{% endif %} Utente
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if utente.bloccato %}
+                        <form method="POST" action="{{ url_for('admin_utenti.sblocca_utente_form', utente_id=utente.id) }}">
+                            <button type="submit" class="btn btn-info w-100">
+                                <i class="bi bi-unlock me-1"></i> Sblocca Utente
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        <!-- Link Log -->
+                        <a href="{{ url_for('admin_utenti.log_utente', utente_id=utente.id) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-clock-history me-1"></i> Vedi Log Accessi
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Collegamento Flotta -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-car-front me-2"></i>Collegamento Flotta</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Collega questo utente a un commerciale nella gestione flotta. 
+                        Questo determina quali clienti e veicoli puo vedere.
+                    </p>
+                    
+                    {% if not utente.non_modificabile %}
+                    <form method="POST" action="{{ url_for('admin_utenti.modifica_commerciale_flotta', utente_id=utente.id) }}">
+                        <label class="form-label info-label">Nome Commerciale Flotta:</label>
+                        <div class="input-group">
+                            <select name="nome_commerciale_flotta" class="form-select">
+                                <option value="">-- Nessuno --</option>
+                                {% for comm in commerciali_flotta %}
+                                <option value="{{ comm }}" {% if utente.nome_commerciale_flotta == comm %}selected{% endif %}>
+                                    {{ comm }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Seleziona il commerciale associato a questo utente dalla lista flotta.
+                        </small>
+                    </form>
+                    
+                    <!-- Oppure inserisci nuovo -->
+                    <div class="mt-3">
+                        <details>
+                            <summary class="text-primary" style="cursor: pointer;">
+                                <small><i class="bi bi-plus-circle"></i> Oppure inserisci manualmente...</small>
+                            </summary>
+                            <form method="POST" action="{{ url_for('admin_utenti.modifica_commerciale_flotta', utente_id=utente.id) }}" class="mt-2">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="nome_commerciale_flotta" class="form-control" 
+                                           placeholder="NOME COMMERCIALE (MAIUSCOLO)" 
+                                           pattern="[A-Z0-9 ]+" title="Solo lettere maiuscole e numeri">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-check"></i> Salva
+                                    </button>
+                                </div>
+                            </form>
+                        </details>
+                    </div>
+                    {% else %}
+                    <div>
+                        <span class="info-label">Commerciale Flotta:</span>
+                        {% if utente.nome_commerciale_flotta %}
+                        <span class="badge bg-primary ms-2">{{ utente.nome_commerciale_flotta }}</span>
+                        {% else %}
+                        <span class="text-muted ms-2">Non assegnato</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if utente.nome_commerciale_flotta %}
+                    <div class="alert alert-info mt-3 mb-0 py-2">
+                        <small>
+                            <i class="bi bi-info-circle"></i> 
+                            Questo utente e collegato al commerciale <strong>{{ utente.nome_commerciale_flotta }}</strong> nella flotta.
+                        </small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Card Supervisioni -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Supervisioni</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Supervisori (chi supervisiona questo utente) -->
+                    <h6 class="text-muted mb-2"><i class="bi bi-arrow-up-circle me-1"></i>Supervisionato da:</h6>
+                    {% if supervisori %}
+                    <div class="mb-3">
+                        {% for sup in supervisori %}
+                        <div class="d-flex justify-content-between align-items-center supervisione-card p-2 rounded mb-2">
+                            <span>
+                                <strong>{{ sup.nome }} {{ sup.cognome }}</strong>
+                                <small class="text-muted">({{ sup.username }})</small>
+                            </span>
+                            {% if not utente.non_modificabile %}
+                            <form method="POST" action="{{ url_for('admin_utenti.rimuovi_supervisione_route', utente_id=utente.id) }}" class="d-inline">
+                                <input type="hidden" name="tipo" value="supervisore">
+                                <input type="hidden" name="altro_id" value="{{ sup.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Rimuovi">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-3">Nessun supervisore</p>
+                    {% endif %}
+                    
+                    <!-- Subordinati (chi e supervisionato da questo utente) -->
+                    <h6 class="text-muted mb-2"><i class="bi bi-arrow-down-circle me-1"></i>Supervisiona:</h6>
+                    {% if subordinati %}
+                    <div class="mb-3">
+                        {% for sub in subordinati %}
+                        <div class="d-flex justify-content-between align-items-center subordinato-card p-2 rounded mb-2">
+                            <span>
+                                <strong>{{ sub.nome }} {{ sub.cognome }}</strong>
+                                <small class="text-muted">({{ sub.username }})</small>
+                            </span>
+                            {% if not utente.non_modificabile %}
+                            <form method="POST" action="{{ url_for('admin_utenti.rimuovi_supervisione_route', utente_id=utente.id) }}" class="d-inline">
+                                <input type="hidden" name="tipo" value="subordinato">
+                                <input type="hidden" name="altro_id" value="{{ sub.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Rimuovi">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-3">Nessun subordinato</p>
+                    {% endif %}
+                    
+                    <!-- Aggiungi supervisione -->
+                    {% if not utente.non_modificabile and tutti_utenti %}
+                    <hr>
+                    <h6 class="text-muted mb-2"><i class="bi bi-plus-circle me-1"></i>Aggiungi:</h6>
+                    <form method="POST" action="{{ url_for('admin_utenti.aggiungi_supervisione_route', utente_id=utente.id) }}">
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <select name="tipo" class="form-select form-select-sm">
+                                    <option value="supervisore">Supervisore</option>
+                                    <option value="subordinato">Subordinato</option>
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <select name="altro_id" class="form-select form-select-sm" required>
+                                    <option value="">Seleziona...</option>
+                                    {% for u in tutti_utenti if u.id != utente.id %}
+                                    <option value="{{ u.id }}">{{ u.nome }} {{ u.cognome }} ({{ u.username }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-2">
+                                <button type="submit" class="btn btn-sm btn-success w-100">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonna Destra: Permessi -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-shield-check me-2"></i>Permessi</h5>
+                    {% if utente.ruolo_base == 'admin' %}
+                    <span class="badge bg-light text-dark">Admin ha tutti i permessi</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if utente.non_modificabile %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-lock me-2"></i>I permessi di questo utente non sono modificabili.
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('admin_utenti.salva_permessi', utente_id=utente.id) }}"
+                          {% if utente.non_modificabile %}class="utente-protetto"{% endif %}>
+                        <div class="row">
+                            {% for categoria, permessi in permessi_catalogo.items() %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card permesso-card h-100">
+                                    <div class="card-header py-2">
+                                        <i class="bi bi-{% if categoria == 'clienti' %}people{% elif categoria == 'documenti' %}file-earmark{% elif categoria == 'veicoli' %}car-front{% elif categoria == 'strumenti' %}tools{% elif categoria == 'statistiche' %}graph-up{% elif categoria == 'admin' %}gear{% else %}check-square{% endif %} me-2"></i>
+                                        {{ categoria|upper }}
+                                    </div>
+                                    <div class="card-body py-2">
+                                        {% for perm in permessi %}
+                                        <div class="form-check mb-2">
+                                            <input type="checkbox" 
+                                                   class="form-check-input" 
+                                                   name="permessi" 
+                                                   value="{{ perm.codice }}"
+                                                   id="perm_{{ perm.codice }}"
+                                                   {% if permessi_utente.get(perm.codice) %}checked{% endif %}
+                                                   {% if utente.non_modificabile %}disabled{% endif %}>
+                                            <label class="form-check-label small" for="perm_{{ perm.codice }}">
+                                                {{ perm.descrizione }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if not utente.non_modificabile %}
+                        <hr>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle me-1"></i>Salva Permessi
+                            </button>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function mostraFormUsername() {
+    document.getElementById('usernameDisplay').style.display = 'none';
+    document.getElementById('usernameForm').style.display = 'block';
+}
+
+function nascondiFormUsername() {
+    document.getElementById('usernameDisplay').style.display = 'block';
+    document.getElementById('usernameForm').style.display = 'none';
+}
+
+// Funzioni per modifica campi anagrafici
+var campiModificati = new Set();
+
+function mostraEditCampo(campo) {
+    document.getElementById(campo + 'Display').style.display = 'none';
+    document.getElementById(campo + 'Edit').style.display = 'block';
+    campiModificati.add(campo);
+    aggiornaVisibilitaPulsanteSalva();
+}
+
+function nascondiEditCampo(campo) {
+    document.getElementById(campo + 'Display').style.display = 'block';
+    document.getElementById(campo + 'Edit').style.display = 'none';
+    campiModificati.delete(campo);
+    aggiornaVisibilitaPulsanteSalva();
+}
+
+function aggiornaVisibilitaPulsanteSalva() {
+    var btn = document.getElementById('btnSalvaAnagrafica');
+    if (btn) {
+        btn.style.display = campiModificati.size > 0 ? 'block' : 'none';
+    }
+}
+</script>
+{% endblock %}

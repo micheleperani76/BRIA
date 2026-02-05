@@ -1,0 +1,166 @@
+<!-- ============================================================
+     TRATTATIVE - Styles
+     Versione: 1.0
+     ============================================================ -->
+
+<style>
+/* Tabella */
+#tabellaTrattative {
+    font-size: 0.875rem;
+}
+
+#tabellaTrattative th {
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#tabellaTrattative td {
+    vertical-align: middle;
+}
+
+/* Riga trattativa */
+.riga-trattativa {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+
+.riga-trattativa:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+.riga-trattativa.expanded {
+    background-color: rgba(0, 123, 255, 0.08);
+}
+
+/* Toggle espandi */
+.toggle-espandi {
+    transition: transform 0.2s;
+}
+
+.riga-trattativa.expanded .toggle-espandi i {
+    transform: rotate(90deg);
+}
+
+/* Riga espansa (timeline) */
+.riga-espansa {
+    display: none;
+}
+
+.riga-espansa.show {
+    display: table-row;
+}
+
+/* Timeline */
+.timeline-container {
+    padding: 0.5rem;
+    background: white;
+    border-radius: 0.375rem;
+    border: 1px solid #e9ecef;
+}
+
+.timeline-step {
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.timeline-step::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 20px;
+    bottom: -10px;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.timeline-step:last-child::before {
+    display: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 4px;
+}
+
+.timeline-marker .badge {
+    display: inline-block;
+    padding: 0;
+}
+
+/* Badge stato */
+.stato-badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+/* Link cliente */
+.link-cliente {
+    color: #0d6efd;
+}
+
+.link-cliente:hover {
+    text-decoration: underline !important;
+}
+
+/* Autocomplete dropdown */
+#nuovaClienteDropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1050;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+#nuovaClienteDropdown.show {
+    display: block;
+}
+
+#nuovaClienteDropdown .dropdown-item {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+#nuovaClienteDropdown .dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+#nuovaClienteDropdown .dropdown-item:last-child {
+    border-bottom: none;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+    #tabellaTrattative {
+        font-size: 0.8rem;
+    }
+    
+    .td-veicolo .descrizione,
+    .td-commerciale {
+        display: none;
+    }
+}
+
+/* Animazione caricamento */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+#rigaCaricamento {
+    animation: pulse 1.5s infinite;
+}
+
+/* Paginazione */
+.pagination {
+    margin-bottom: 0;
+}
+
+.pagination .page-link {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+</style>

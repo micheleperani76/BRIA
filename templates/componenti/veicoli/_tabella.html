@@ -1,0 +1,122 @@
+{# ==============================================================================
+   COMPONENTE MODULARE: Tabella Veicoli
+   ==============================================================================
+   Versione: 1.0.0
+   Data: 2026-01-26
+   Descrizione: Tabella veicoli riutilizzabile in tutto il programma
+   
+   USO:
+   {% include "componenti/veicoli/_tabella.html" with context %}
+   
+   VARIABILI RICHIESTE:
+   - veicoli_lista: lista di veicoli da visualizzare
+   
+   VARIABILI OPZIONALI:
+   - mostra_cliente: true/false (default: false) - mostra colonna Cliente
+   - mostra_commerciale: true/false (default: false) - mostra colonna Commerciale
+   - mostra_driver: true/false (default: true) - mostra colonna Driver
+   - mostra_canone: true/false (default: true) - mostra colonna Canone
+   - mostra_azioni: true/false (default: true) - mostra colonna Azioni
+   - compact: true/false (default: false) - versione compatta
+   ============================================================================== #}
+
+{# Imposta valori di default per variabili opzionali #}
+{% set show_cliente = mostra_cliente|default(false) %}
+{% set show_commerciale = mostra_commerciale|default(false) %}
+{% set show_driver = mostra_driver|default(true) %}
+{% set show_canone = mostra_canone|default(true) %}
+{% set show_azioni = mostra_azioni|default(true) %}
+{% set is_compact = compact|default(false) %}
+
+{% if veicoli_lista and veicoli_lista|length > 0 %}
+<div class="table-responsive">
+    <table class="table table-hover table-sm mb-0">
+        <thead class="table-light">
+            <tr>
+                {% if show_cliente %}
+                <th>Cliente</th>
+                {% endif %}
+                {% if show_commerciale %}
+                <th>Commerciale</th>
+                {% endif %}
+                <th>Targa</th>
+                <th class="text-center" title="Tipo: I=Installato, E=Extra">T</th>
+                <th>Veicolo</th>
+                <th>Noleggiatore</th>
+                {% if show_driver %}
+                <th>Driver</th>
+                {% endif %}
+                <th class="text-center">Scadenza</th>
+                {% if show_canone %}
+                <th class="text-end">Canone</th>
+                {% endif %}
+                {% if show_azioni %}
+                <th class="text-center">Azioni</th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for v in veicoli_lista %}
+            <tr class="{% if v.giorni_rimasti is defined %}{% if v.giorni_rimasti <= 0 %}table-secondary{% elif v.giorni_rimasti <= 7 %}table-danger{% elif v.giorni_rimasti <= 14 %}table-warning{% endif %}{% endif %}">
+                {% if show_cliente %}
+                <td>
+                    {% set nome = v.NOME_CLIENTE or v.nome_cliente or '-' %}
+                    {% if v.cliente_id_link %}
+                    <a href="/cliente/{{ v.cliente_id_link }}">{{ nome }}</a>
+                    {% else %}
+                    {{ nome }}
+                    {% endif %}
+                </td>
+                {% endif %}
+                {% if show_commerciale %}
+                <td>
+                    {% if v.commerciale %}
+                    <span class="badge bg-primary">{{ v.commerciale }}</span>
+                    {% else %}
+                    <span class="badge bg-warning text-dark">N/A</span>
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td><code>{{ v.targa }}</code></td>
+                <td class="text-center">
+                    <span class="badge" style="background-color: {{ get_tipo_veicolo_colore(v.tipo_veicolo) }};" title="{{ v.tipo_veicolo or 'Extra' }}">{{ (v.tipo_veicolo or 'Extra')[0] }}</span>
+                </td>
+                <td>{{ v.marca }} {{ v.modello }}</td>
+                <td>{{ v.noleggiatore or '-' }}</td>
+                {% if show_driver %}
+                <td>{{ v.driver or '-' }}</td>
+                {% endif %}
+                <td class="text-center">
+                    {{ v.scadenza|format_data }}
+                    {% if not is_compact %}
+                    <br><small class="text-muted">{{ v.scadenza|giorni_scadenza }}</small>
+                    {% endif %}
+                </td>
+                {% if show_canone %}
+                <td class="text-end">&euro; {{ (v.canone or 0)|format_numero }}</td>
+                {% endif %}
+                {% if show_azioni %}
+                <td class="text-center">
+                    <div class="btn-group btn-group-sm">
+                        {% if show_cliente and v.cliente_id_link %}
+                        <a href="/cliente/{{ v.cliente_id_link }}" class="btn btn-outline-primary" title="Scheda cliente">
+                            <i class="bi bi-person"></i>
+                        </a>
+                        {% endif %}
+                        <a href="/veicolo/{{ v.id }}" class="btn btn-outline-secondary" title="Dettaglio veicolo">
+                            <i class="bi bi-{% if is_compact %}car-front{% else %}gear{% endif %}"></i>
+                        </a>
+                    </div>
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="text-center text-muted py-3">
+    <i class="bi bi-car-front" style="font-size: 2rem;"></i>
+    <p class="mb-0 mt-2">Nessun veicolo</p>
+</div>
+{% endif %}

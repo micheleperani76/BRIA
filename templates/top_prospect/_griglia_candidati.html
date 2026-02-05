@@ -1,0 +1,63 @@
+<!-- ============================================================
+     TOP PROSPECT - Griglia Candidati
+     Versione: 1.1.0
+     Data: 2026-01-30
+     Descrizione: Griglia candidati proposti dal sistema
+     Modifiche: Aggiunta colonna CP, tooltip intestazioni
+     ============================================================ -->
+
+<div class="card-body p-0">
+    {% if is_admin %}
+    <div class="p-2 bg-light border-bottom">
+        <small class="text-muted">
+            <i class="bi bi-info-circle me-1"></i>
+            I candidati soddisfano i criteri configurati. Conferma quelli che ritieni Top Prospect.
+        </small>
+    </div>
+    {% endif %}
+    
+    <div class="table-responsive">
+        <table class="table table-hover table-candidati mb-0" id="tabellaCandidati">
+            <thead>
+                <tr>
+                    <th style="width: 40px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Origine: manuale o automatica">Orig.</th>
+                    <th>Azienda</th>
+                    <th style="width: 120px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Commerciale assegnato">Commerciale</th>
+                    <th style="width: 70px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Numero veicoli in flotta">Flotta</th>
+                    <th style="width: 70px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Numero dipendenti">Dip.</th>
+                    <th style="width: 60px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Provincia sede legale">Prov.</th>
+                    <th style="width: 40px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Car Policy presente">CP</th>
+                    <th style="width: 80px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Variazione Valore Produzione anno su anno">Var. VP</th>
+                    <th style="width: 80px;" data-bs-toggle="tooltip" data-bs-placement="top" title="Variazione Patrimonio Netto anno su anno">Var. PN</th>
+                    {% if is_admin %}
+                    <th style="width: 150px;">Azioni</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody id="tbodyCandidati">
+                <!-- Caricato via JavaScript -->
+                <tr>
+                    <td colspan="10" class="text-center py-4 text-muted">
+                        <i class="bi bi-hourglass-split me-2"></i>Caricamento...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Template riga candidato (nascosto) -->
+<template id="templateRigaCandidato">
+    <tr class="candidato-row" data-tp-id="" data-cliente-id="">
+        <td class="origine text-center"></td>
+        <td class="nome-azienda"></td>
+        <td class="commerciale"></td>
+        <td class="flotta text-center"></td>
+        <td class="dipendenti text-center"></td>
+        <td class="provincia text-center"></td>
+        <td class="car-policy text-center"></td>
+        <td class="var-vp text-center"></td>
+        <td class="var-pn text-center"></td>
+        <td class="azioni-admin"></td>
+    </tr>
+</template>

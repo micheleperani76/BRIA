@@ -1,0 +1,224 @@
+<!-- ============================================================
+     TRATTATIVE - Modal Nuova Trattativa
+     Versione: 1.5
+     Data: 2026-01-28
+     Fix: Carica clienti via API quando cambia commerciale
+     ============================================================ -->
+
+<div class="modal fade" id="modalNuovaTrattativa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-lg me-2"></i>Nuova Trattativa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuovaTrattativa">
+                    
+                    <div class="row g-3">
+                        <!-- Selezione Commerciale (solo per supervisori) -->
+                        {% if commerciali|length > 1 %}
+                        <div class="col-12 mb-2">
+                            <label class="form-label">Per chi apri questa trattativa? <span class="text-danger">*</span></label>
+                            <select class="form-select" id="nuovaCommercialeAssegnato" name="commerciale_assegnato" onchange="caricaClientiCommerciale()">
+                                {% for comm in commerciali %}
+                                <option value="{{ comm.id }}" {% if loop.first %}selected{% endif %}>
+                                    {{ comm.nome }}{% if loop.first %} (me stesso){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Se selezioni un tuo collaboratore, la trattativa sar&agrave; affidata a lui</small>
+                        </div>
+                        {% else %}
+                        <input type="hidden" id="nuovaCommercialeAssegnato" value="{{ commerciali[0].id if commerciali else '' }}">
+                        {% endif %}
+                        
+                        
+                        <!-- Cliente (ricerca con dropdown) -->
+                        <div class="col-12">
+                            <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                            <div class="position-relative">
+                                <input type="text" class="form-control" id="nuovaClienteSearch" 
+                                       placeholder="Clicca o digita per cercare..." autocomplete="off">
+                                <input type="hidden" id="nuovaClienteId" name="cliente_id" required>
+                                <div id="nuovaClienteDropdown" class="dropdown-menu w-100" style="max-height: 250px; overflow-y: auto;">
+                                </div>
+                            </div>
+                            <div id="nuovaClienteSelezionato" class="mt-1 small text-success d-none">
+                                <i class="bi bi-check-circle me-1"></i><span class="nome-cliente"></span>
+                            </div>
+                            <div id="nuovaClienteLoading" class="mt-1 small text-muted d-none">
+                                <i class="bi bi-hourglass-split me-1"></i>Caricamento clienti...
+                            </div>
+                        </div>
+                        
+                        <!-- Noleggiatore -->
+                        <div class="col-md-6">
+                            <label class="form-label">Noleggiatore</label>
+                            <select class="form-select" id="nuovaNoleggiatore" name="noleggiatore">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, nome in noleggiatori %}
+                                <option value="{{ codice }}">{{ nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Tipo Trattativa -->
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo Trattativa</label>
+                            <select class="form-select" id="nuovaTipoTrattativa" name="tipo_trattativa">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, etichetta in tipi %}
+                                <option value="{{ etichetta }}">{{ etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Marca -->
+                        <div class="col-md-4">
+                            <label class="form-label">Marca</label>
+                            <input type="text" class="form-control" id="nuovaMarca" name="marca" placeholder="Es: Fiat, BMW...">
+                        </div>
+                        
+                        <!-- Tipologia Veicolo -->
+                        <div class="col-md-4">
+                            <label class="form-label">Tipologia Veicolo</label>
+                            <select class="form-select" id="nuovaTipologiaVeicolo" name="tipologia_veicolo">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, etichetta in tipologie %}
+                                <option value="{{ etichetta }}">{{ etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Numero Pezzi -->
+                        <div class="col-md-4">
+                            <label class="form-label">N. Pezzi</label>
+                            <input type="number" class="form-control" id="nuovaNumPezzi" name="num_pezzi" value="1" min="1">
+                        </div>
+                        
+                        <!-- Descrizione Veicolo (riga intera) -->
+                        <div class="col-12">
+                            <label class="form-label">Descrizione Veicolo</label>
+                            <input type="text" class="form-control" id="nuovaDescrizioneVeicolo" name="descrizione_veicolo" placeholder="Es: Panda 1.0 Hybrid, Serie 3 320d xDrive...">
+                        </div>
+                        
+                        <!-- Provvigione -->
+                        <div class="col-md-3">
+                            <label class="form-label">Provvigione (&euro;)</label>
+                            <input type="number" class="form-control" id="nuovaProvvigione" name="provvigione" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        
+                        <!-- Q% -->
+                        <div class="col-md-3">
+                            <label class="form-label">Q%</label>
+                            <input type="number" class="form-control" id="nuovaQPercentuale" name="q_percentuale" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        
+                        <!-- Mesi -->
+                        <div class="col-md-3">
+                            <label class="form-label">Mesi</label>
+                            <input type="number" class="form-control" id="nuovaMesi" name="mesi" min="1" placeholder="24">
+                        </div>
+                        
+                        <!-- Km Totali -->
+                        <div class="col-md-3">
+                            <label class="form-label">Km Totali</label>
+                            <input type="number" class="form-control" id="nuovaKmTotali" name="km_totali" min="0" placeholder="60000">
+                        </div>
+                        
+                        <!-- Stato Iniziale -->
+                        <div class="col-md-6">
+                            <label class="form-label">Stato Iniziale</label>
+                            <select class="form-select" id="nuovaStato" name="stato">
+                                {% for codice, etichetta in stati %}
+                                <option value="{{ etichetta }}" {% if loop.first %}selected{% endif %}>{{ etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Spazio vuoto per allineamento -->
+                        <div class="col-md-6"></div>
+                        
+                        <!-- Note -->
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-control" id="nuovaNote" name="note" rows="2" placeholder="Note opzionali..."></textarea>
+                        </div>
+                        
+                    </div>
+                    
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success" onclick="salvaTrattativa()">
+                    <i class="bi bi-check-lg me-1"></i>Crea Trattativa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script caricamento clienti via API -->
+<script>
+    // Lista clienti caricata via API
+    window.clientiDisponibili = [];
+    
+    // Carica clienti del commerciale selezionato
+    function caricaClientiCommerciale() {
+        var selectComm = document.getElementById('nuovaCommercialeAssegnato');
+        var commId = selectComm ? selectComm.value : '';
+        
+        if (!commId) {
+            window.clientiDisponibili = [];
+            return;
+        }
+        
+        // Mostra loading
+        var loadingEl = document.getElementById('nuovaClienteLoading');
+        if (loadingEl) loadingEl.classList.remove('d-none');
+        
+        // Resetta selezione cliente
+        var clienteId = document.getElementById('nuovaClienteId');
+        var clienteSearch = document.getElementById('nuovaClienteSearch');
+        if (clienteId) clienteId.value = '';
+        if (clienteSearch) clienteSearch.value = '';
+        
+        var sel = document.getElementById('nuovaClienteSelezionato');
+        if (sel) sel.classList.add('d-none');
+        
+        // Chiama API
+        fetch('/trattative/api/clienti/per_commerciale/' + commId)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (loadingEl) loadingEl.classList.add('d-none');
+                
+                if (data.success) {
+                    // Converti nel formato atteso
+                    window.clientiDisponibili = data.clienti.map(function(c) {
+                        return {
+                            id: c.id,
+                            nome: c.ragione_sociale,
+                            piva: c.p_iva || ''
+                        };
+                    });
+                } else {
+                    window.clientiDisponibili = [];
+                    console.error('Errore caricamento clienti:', data.error);
+                }
+            })
+            .catch(function(err) {
+                if (loadingEl) loadingEl.classList.add('d-none');
+                window.clientiDisponibili = [];
+                console.error('Errore rete:', err);
+            });
+    }
+    
+    // Carica clienti iniziali al caricamento pagina
+    document.addEventListener('DOMContentLoaded', function() {
+        caricaClientiCommerciale();
+    });
+</script>

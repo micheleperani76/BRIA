@@ -1,0 +1,32 @@
+<!-- ==============================================================================
+     SHARED - Modal Duplicati File
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-20
+     Descrizione: Modal per gestione file duplicati, usato da tutti i tipi documento
+     ============================================================================== -->
+
+<div class="modal fade" id="modalDuplicati" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle"></i> File Duplicato</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Esistono già file con nome simile:</p>
+                <ul id="listaDuplicati" class="list-group mb-3"></ul>
+                <p class="mb-0">Cosa vuoi fare?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-warning" id="btnSovrascrivi">
+                    <i class="bi bi-arrow-repeat"></i> Sovrascrivi
+                </button>
+                <button type="button" class="btn btn-primary" id="btnCaricaNuovo">
+                    <i class="bi bi-plus-circle"></i> Tieni entrambi
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

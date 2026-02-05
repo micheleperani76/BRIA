@@ -1,0 +1,274 @@
+{# === SCRIPTS COLLEGAMENTI CLIENTI === #}
+<script>
+const clienteCorrenteId = {{ cliente.id }};
+let timeoutRicerca = null;
+let tipiRelazioneCache = [];
+let listaClientiCache = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    caricaTipiRelazione();
+});
+
+function caricaTipiRelazione() {
+    fetch('/api/collegamenti/tipi-relazione')
+        .then(response => response.json())
+        .then(data => {
+            tipiRelazioneCache = data;
+            aggiornaSelectTipi('tipoRelazione');
+            aggiornaSelectTipi('modTipoRelazione');
+        })
+        .catch(err => console.error('Errore caricamento tipi:', err));
+}
+
+function aggiornaSelectTipi(selectId) {
+    const select = document.getElementById(selectId);
+    if (select && tipiRelazioneCache.length > 0) {
+        select.innerHTML = tipiRelazioneCache.map(t => 
+            `<option value="${t.codice}">${t.descrizione}</option>`
+        ).join('');
+    }
+}
+
+document.getElementById('modalCollegamenti').addEventListener('show.bs.modal', function() {
+    document.getElementById('cercaClienteCollegamento').value = '';
+    document.getElementById('risultatiRicercaCollegamento').innerHTML = '';
+    document.getElementById('filtroListaClienti').value = '';
+    document.getElementById('clienteSelezionatoBox').style.display = 'none';
+    document.getElementById('clienteSelezionatoIdValue').value = '';
+    document.getElementById('tipoRelazione').value = 'COL';
+    document.getElementById('noteCollegamento').value = '';
+    document.getElementById('btnSalvaCollegamento').disabled = true;
+    document.getElementById('filtroPersonale').checked = true;
+    document.getElementById('listaClientiGuidata').innerHTML = '<div class="text-center py-3 text-muted">Clicca su "Lista Completa" per caricare</div>';
+});
+
+function caricaListaClienti() {
+    const soloMiei = document.getElementById('filtroPersonale').checked;
+    const url = `/api/collegamenti/lista-clienti?cliente_id=${clienteCorrenteId}&solo_miei=${soloMiei}`;
+    
+    document.getElementById('listaClientiGuidata').innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span> Caricamento...</div>';
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Errore HTTP: ' + response.status);
+            return response.json();
+        })
+        .then(data => {
+            listaClientiCache = data;
+            renderListaClienti(data);
+        })
+        .catch(err => {
+            console.error('Errore caricamento lista:', err);
+            document.getElementById('listaClientiGuidata').innerHTML = '<div class="text-danger py-2">Errore caricamento: ' + err.message + '</div>';
+        });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function renderListaClienti(clienti) {
+    const container = document.getElementById('listaClientiGuidata');
+    if (!clienti || clienti.length === 0) {
+        container.innerHTML = '<div class="text-muted py-2 text-center">Nessun cliente disponibile</div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    clienti.forEach(c => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action py-2';
+        btn.innerHTML = `<div class="d-flex justify-content-between align-items-center">
+            <span>${escapeHtml(c.ragione_sociale)}</span>
+            <small class="badge bg-secondary">${escapeHtml(c.identificativo)}</small>
+        </div>`;
+        btn.onclick = function() {
+            selezionaClienteCollegamento(c.id, c.ragione_sociale, c.identificativo);
+        };
+        container.appendChild(btn);
+    });
+}
+
+document.getElementById('filtroListaClienti').addEventListener('input', function() {
+    const filtro = this.value.toLowerCase().trim();
+    if (!filtro) {
+        renderListaClienti(listaClientiCache);
+        return;
+    }
+    const filtrati = listaClientiCache.filter(c => 
+        c.ragione_sociale.toLowerCase().includes(filtro) || 
+        (c.identificativo && c.identificativo.toLowerCase().includes(filtro))
+    );
+    renderListaClienti(filtrati);
+});
+
+document.querySelectorAll('input[name="filtroClienti"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        // Ricarica lista se il tab lista e' attivo
+        if (document.getElementById('panelLista').classList.contains('show')) {
+            caricaListaClienti();
+        }
+        const query = document.getElementById('cercaClienteCollegamento').value.trim();
+        if (query.length >= 2) cercaClientiCollegamento(query);
+    });
+});
+
+document.getElementById('cercaClienteCollegamento').addEventListener('input', function() {
+    clearTimeout(timeoutRicerca);
+    const query = this.value.trim();
+    if (query.length < 2) {
+        document.getElementById('risultatiRicercaCollegamento').innerHTML = '';
+        return;
+    }
+    timeoutRicerca = setTimeout(() => cercaClientiCollegamento(query), 300);
+});
+
+function cercaClientiCollegamento(query) {
+    const soloMiei = document.getElementById('filtroPersonale').checked;
+    fetch(`/api/collegamenti/cerca-clienti?q=${encodeURIComponent(query)}&cliente_id=${clienteCorrenteId}&solo_miei=${soloMiei}`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('risultatiRicercaCollegamento');
+            if (data.length === 0) {
+                container.innerHTML = '<div class="list-group-item text-muted">Nessun risultato</div>';
+                return;
+            }
+            container.innerHTML = '';
+            data.forEach(c => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action py-2';
+                btn.innerHTML = `<div class="d-flex justify-content-between align-items-center">
+                    <strong>${escapeHtml(c.ragione_sociale)}</strong>
+                    <span class="badge bg-secondary">${escapeHtml(c.identificativo || 'N/D')}</span>
+                </div>`;
+                btn.onclick = function() {
+                    selezionaClienteCollegamento(c.id, c.ragione_sociale, c.identificativo || 'N/D');
+                };
+                container.appendChild(btn);
+            });
+        })
+        .catch(err => console.error('Errore ricerca:', err));
+}
+
+function selezionaClienteCollegamento(id, nome, identificativo) {
+    document.getElementById('clienteSelezionatoIdValue').value = id;
+    document.getElementById('clienteSelezionatoNome').textContent = nome;
+    document.getElementById('clienteSelezionatoId').textContent = identificativo;
+    document.getElementById('clienteSelezionatoBox').style.display = 'block';
+    document.getElementById('risultatiRicercaCollegamento').innerHTML = '';
+    document.getElementById('cercaClienteCollegamento').value = '';
+    document.getElementById('btnSalvaCollegamento').disabled = false;
+}
+
+function deselezionaCliente() {
+    document.getElementById('clienteSelezionatoBox').style.display = 'none';
+    document.getElementById('clienteSelezionatoIdValue').value = '';
+    document.getElementById('btnSalvaCollegamento').disabled = true;
+}
+
+document.getElementById('btnSalvaCollegamento').addEventListener('click', function() {
+    const clienteBId = document.getElementById('clienteSelezionatoIdValue').value;
+    const tipoRelazione = document.getElementById('tipoRelazione').value;
+    const note = document.getElementById('noteCollegamento').value.trim();
+    
+    if (!clienteBId || !tipoRelazione) {
+        alert('Seleziona cliente e tipo relazione');
+        return;
+    }
+    
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+    
+    fetch('/api/collegamenti/aggiungi', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            cliente_a_id: clienteCorrenteId,
+            cliente_b_id: parseInt(clienteBId),
+            tipo_relazione: tipoRelazione,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check-lg"></i> Salva Collegamento';
+        }
+    })
+    .catch(err => {
+        alert('Errore di connessione');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-check-lg"></i> Salva Collegamento';
+    });
+});
+
+function apriModificaCollegamento(id, clienteNome, tipoRelazione, note) {
+    document.getElementById('modCollegamentoId').value = id;
+    document.getElementById('modCollegamentoCliente').textContent = clienteNome;
+    document.getElementById('modTipoRelazione').value = tipoRelazione;
+    document.getElementById('modNoteCollegamento').value = note || '';
+    new bootstrap.Modal(document.getElementById('modalModificaCollegamento')).show();
+}
+
+document.getElementById('btnSalvaModificaCollegamento').addEventListener('click', function() {
+    const id = document.getElementById('modCollegamentoId').value;
+    const tipoRelazione = document.getElementById('modTipoRelazione').value;
+    const note = document.getElementById('modNoteCollegamento').value.trim();
+    
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+    
+    fetch('/api/collegamenti/modifica', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            collegamento_id: parseInt(id),
+            tipo_relazione: tipoRelazione,
+            note: note
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check-lg"></i> Salva Modifiche';
+        }
+    })
+    .catch(err => {
+        alert('Errore di connessione');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-check-lg"></i> Salva Modifiche';
+    });
+});
+
+function rimuoviCollegamento(collegamentoId) {
+    if (!confirm('Rimuovere questo collegamento?')) return;
+    
+    fetch('/api/collegamenti/rimuovi', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({collegamento_id: collegamentoId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) location.reload();
+        else alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+    })
+    .catch(err => alert('Errore di connessione'));
+}
+
+// Carica lista quando si clicca sul tab Lista Completa
+document.getElementById('tab-lista').addEventListener('shown.bs.tab', function() {
+    caricaListaClienti();
+});
+</script>

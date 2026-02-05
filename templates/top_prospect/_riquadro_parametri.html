@@ -1,0 +1,167 @@
+<!-- ============================================================
+     TOP PROSPECT - Riquadro Parametri Selezione
+     Versione: 1.0.0
+     Data: 2026-01-29
+     Descrizione: Mostra criteri selezione automatica TP
+     ============================================================ -->
+
+<div class="card mt-4">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi bi-cpu me-2"></i>Criteri Selezione Automatica Top Prospect
+        </h6>
+        {% if is_admin %}
+        <button class="btn btn-sm btn-outline-success me-2" onclick="eseguiAnalisiTP()">
+            <i class="bi bi-cpu me-1"></i>Scansiona Ora
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="apriModalParametri()">
+            <i class="bi bi-gear me-1"></i>Modifica Parametri
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <p class="text-muted small mb-3">
+            Il sistema analizza automaticamente i clienti e propone come candidati Top Prospect 
+            quelli che soddisfano <strong>tutti</strong> i seguenti criteri:
+        </p>
+        
+        <div class="row" id="riquadroParametri">
+            <div class="col-md-6">
+                <h6 class="text-primary"><i class="bi bi-graph-up me-1"></i>Criteri Bilancio</h6>
+                <ul class="list-unstyled ms-3">
+                    <li>
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        Variazione Valore Produzione: 
+                        <strong id="param_var_vp">&ge; -10%</strong>
+                    </li>
+                    <li>
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        Variazione Patrimonio Netto: 
+                        <strong id="param_var_pn">&ge; 0%</strong>
+                    </li>
+                </ul>
+                
+                <h6 class="text-primary mt-3"><i class="bi bi-building me-1"></i>Criteri Dimensionali</h6>
+                <ul class="list-unstyled ms-3">
+                    <li>
+                        <i class="bi bi-people me-1 text-info"></i>
+                        Dipendenti: <strong id="param_dipendenti">&ge; 50</strong>
+                    </li>
+                    <li>
+                        <i class="bi bi-car-front me-1 text-info"></i>
+                        Veicoli in flotta: <strong id="param_veicoli">&ge; 50</strong>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-primary"><i class="bi bi-sliders me-1"></i>Criteri Opzionali</h6>
+                <ul class="list-unstyled ms-3">
+                    <li>
+                        <i class="bi bi-currency-euro me-1 text-warning"></i>
+                        Valore Produzione minimo: 
+                        <strong id="param_vp_min">Nessun limite</strong>
+                    </li>
+                    <li>
+                        <i class="bi bi-bank me-1 text-warning"></i>
+                        Patrimonio Netto minimo: 
+                        <strong id="param_pn_min">Nessun limite</strong>
+                    </li>
+                    <li>
+                        <i class="bi bi-shield-check me-1 text-warning"></i>
+                        Score Creditsafe accettati: 
+                        <strong id="param_score">Nessun limite</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <hr>
+        <div class="d-flex align-items-center">
+            <div class="me-4">
+                <i class="bi bi-hand-index-thumb text-primary fs-5 me-1"></i>
+                <small class="text-muted">= Proposta manuale</small>
+            </div>
+            <div>
+                <i class="bi bi-cpu text-secondary fs-5 me-1"></i>
+                <small class="text-muted">= Proposta automatica dal sistema</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica Parametri (solo admin) -->
+{% if is_admin %}
+<div class="modal fade" id="modalParametri" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Modifica Parametri Selezione</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Modifica i criteri di selezione automatica dei Top Prospect.
+                    Le modifiche saranno applicate alla prossima analisi.
+                </div>
+                
+                <h6 class="text-primary mt-3">Criteri Bilancio</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Var. Valore Produzione min (%)</label>
+                        <input type="number" class="form-control" id="edit_var_vp" value="-10">
+                        <small class="text-muted">Es: -10 = accetta calo fino al 10%</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Var. Patrimonio Netto min (%)</label>
+                        <input type="number" class="form-control" id="edit_var_pn" value="0">
+                        <small class="text-muted">Es: 0 = deve essere stabile o positivo</small>
+                    </div>
+                </div>
+                
+                <h6 class="text-primary mt-2">Criteri Dimensionali</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Dipendenti minimi</label>
+                        <input type="number" class="form-control" id="edit_dipendenti" value="50" min="0">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Veicoli minimi</label>
+                        <input type="number" class="form-control" id="edit_veicoli" value="50" min="0">
+                    </div>
+                </div>
+                
+                <h6 class="text-primary mt-2">Criteri Opzionali</h6>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Valore Produzione min (EUR)</label>
+                        <input type="number" class="form-control" id="edit_vp_min" placeholder="Lascia vuoto per nessun limite">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Patrimonio Netto min (EUR)</label>
+                        <input type="number" class="form-control" id="edit_pn_min" placeholder="Lascia vuoto per nessun limite">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label small">Score Creditsafe accettati</label>
+                        <select class="form-select" id="edit_score">
+                            <option value="">Nessun limite</option>
+                            <option value="A">A</option>
+                            <option value="B">A+B</option>
+                            <option value="C">A+B+C</option>
+                            <option value="D">A+B+C+D</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaParametri()">
+                    <i class="bi bi-check-lg me-1"></i>Salva Parametri
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

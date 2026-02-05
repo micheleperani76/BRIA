@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}{{ nome_cliente }} - Flotta{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/flotta">Flotta</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_cliente({'p_iva': p_iva}) }}">{{ nome_cliente }}</a></li>
+            </ol>
+        </nav>
+        <h4 class="mb-0">{{ nome_cliente }}</h4>
+    </div>
+    <div>
+        {% if creditsafe %}
+        <a href="{{ url_cliente(creditsafe) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-building"></i> Scheda Creditsafe
+        </a>
+        {% endif %}
+        <a href="/flotta" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Torna a Flotta
+        </a>
+    </div>
+</div>
+
+<!-- Statistiche -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-primary">{{ stats.totale_veicoli }}</div>
+            <div class="stat-label">Veicoli</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">&euro; {{ stats.canone_totale|format_numero }}</div>
+            <div class="stat-label">Canone Mensile</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">{{ stats.noleggiatori|length }}</div>
+            <div class="stat-label">Noleggiatori</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value">{{ stats.commerciale or '-' }}</div>
+            <div class="stat-label">Commerciale</div>
+        </div>
+    </div>
+</div>
+
+<!-- Info Creditsafe se disponibili -->
+{% if creditsafe %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-shield-check"></i> Dati Creditsafe</span>
+        <span class="score-badge score-{{ creditsafe.score }}">{{ creditsafe.score }}</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <small class="text-muted">P.IVA</small>
+                <div><code>{{ creditsafe.p_iva }}</code></div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Fido Consigliato</small>
+                <div class="text-success fw-bold">&euro; {{ (creditsafe.credito or 0)|format_numero }}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Stato</small>
+                <div>{{ creditsafe.stato or '-' }}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Valore Produzione</small>
+                <div>&euro; {{ (creditsafe.valore_produzione or 0)|format_numero }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif p_iva %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    P.IVA: <code>{{ p_iva }}</code> - Nessun report Creditsafe disponibile
+</div>
+{% endif %}
+
+<!-- Veicoli per noleggiatore -->
+{% for noleggiatore, veicoli_nol in per_noleggiatore.items() %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-buildings"></i> {{ noleggiatore }}
+            <span class="badge bg-primary">{{ veicoli_nol|length }} veicoli</span>
+        </span>
+        <span class="text-success fw-bold">
+            &euro; {{ veicoli_nol|sum(attribute='canone')|format_numero }}/mese
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Targa</th>
+                        <th class="text-center" title="Tipo: I=Installato, E=Extra">T</th>
+                    <th>Veicolo</th>
+                    <th>Tipo</th>
+                    <th>Alimentazione</th>
+                    <th>Driver</th>
+                    <th class="text-center">Inizio</th>
+                    <th class="text-center">Scadenza</th>
+                    <th class="text-center">KM</th>
+                    <th class="text-end">Canone</th>
+                    <th class="text-center">Note</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in veicoli_nol %}
+                <tr>
+                    <td><code>{{ v.targa }}</code></td>
+                        <td class="text-center"><span class="badge" style="background-color: {{ get_tipo_veicolo_colore(v.tipo_veicolo) }};" title="{{ v.tipo_veicolo or 'Extra' }}">{{ (v.tipo_veicolo or 'Extra')[0] }}</span></td>
+                    <td><strong>{{ v.marca }}</strong> {{ v.modello }}</td>
+                    <td>{{ v.tipo or '-' }}</td>
+                    <td>
+                        {% if v.alimentazione %}
+                        <span class="badge bg-{{ alimentazioni_colors.get(v.alimentazione|upper, 'secondary') }}">
+                            {{ v.alimentazione }}
+                        </span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>{{ v.driver or '-' }}</td>
+                    <td class="text-center">{{ v.inizio|format_data }}</td>
+                    <td class="text-center">
+                        {{ v.scadenza|format_data }}
+                        <br><small class="text-muted">{{ v.scadenza|giorni_scadenza }}</small>
+                    </td>
+                    <td class="text-center">{{ "{:,}".format(v.km or 0).replace(",", ".") }}</td>
+                    <td class="text-end">&euro; {{ (v.canone or 0)|format_numero }}</td>
+                    <td class="text-center">
+                        {% if v.num_note %}
+                        <a href="/veicolo/{{ v.id }}" class="text-warning" title="{{ v.num_note }} note">
+                            <i class="bi bi-sticky-fill"></i>
+                            <span class="badge bg-warning text-dark">{{ v.num_note }}</span>
+                        </a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/veicolo/{{ v.id }}" class="btn btn-sm btn-outline-primary" title="Gestione veicolo">
+                            <i class="bi bi-gear"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+                <tr>
+                    <th colspan="10" class="text-end">Totale {{ noleggiatore }}</th>
+                    <th class="text-end">&euro; {{ veicoli_nol|sum(attribute='canone')|format_numero }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

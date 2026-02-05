@@ -1,0 +1,159 @@
+<!-- ============================================================
+     TRATTATIVE - Filtri
+     Versione: 1.1
+     Data: 2026-01-28
+     Fix: Filtri data con dropdown mese/anno separati
+     ============================================================ -->
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+            
+            <!-- Filtro Stato -->
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Stato</label>
+                <select id="filtroStato" class="form-select form-select-sm">
+                    <option value="">Tutti gli stati</option>
+                    {% for codice, etichetta in stati %}
+                    <option value="{{ etichetta }}">{{ etichetta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtro Noleggiatore -->
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Noleggiatore</label>
+                <select id="filtroNoleggiatore" class="form-select form-select-sm">
+                    <option value="">Tutti</option>
+                    {% for codice, nome in noleggiatori %}
+                    <option value="{{ codice }}">{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtro Cliente (dropdown con ricerca) -->
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Cliente</label>
+                <div class="position-relative">
+                    <input type="text" id="filtroCliente" class="form-control form-control-sm" 
+                           placeholder="Cerca cliente..." autocomplete="off">
+                    <input type="hidden" id="filtroClienteId">
+                    <div id="filtroClienteDropdown" class="dropdown-menu w-100" style="max-height: 200px; overflow-y: auto; z-index: 1050; min-width: 350px;"></div>
+                </div>
+            </div>
+            
+            <!-- Filtro Commerciale (solo per supervisori) -->
+            {% if mostra_filtro_commerciale %}
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Commerciale</label>
+                <select id="filtroCommerciale" class="form-select form-select-sm">
+                    <option value="">Tutti</option>
+                    {% for comm in commerciali %}
+                    <option value="{{ comm.id }}">{{ comm.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            
+            <!-- Filtro Periodo DA -->
+            <div class="col-auto">
+                <label class="form-label small mb-1">Dal</label>
+                <div class="d-flex gap-1">
+                    <select id="filtroMeseDa" class="form-select form-select-sm" style="width: 100px;">
+                        <option value="">Mese</option>
+                        <option value="01">Gennaio</option>
+                        <option value="02">Febbraio</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Aprile</option>
+                        <option value="05">Maggio</option>
+                        <option value="06">Giugno</option>
+                        <option value="07">Luglio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Settembre</option>
+                        <option value="10">Ottobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Dicembre</option>
+                    </select>
+                    <select id="filtroAnnoDa" class="form-select form-select-sm" style="width: 85px;">
+                        <option value="">Anno</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Filtro Periodo A -->
+            <div class="col-auto">
+                <label class="form-label small mb-1">Al</label>
+                <div class="d-flex gap-1">
+                    <select id="filtroMeseA" class="form-select form-select-sm" style="width: 100px;">
+                        <option value="">Mese</option>
+                        <option value="01">Gennaio</option>
+                        <option value="02">Febbraio</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Aprile</option>
+                        <option value="05">Maggio</option>
+                        <option value="06">Giugno</option>
+                        <option value="07">Luglio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Settembre</option>
+                        <option value="10">Ottobre</option>
+                        <option value="11">Novembre</option>
+                        <option value="12">Dicembre</option>
+                    </select>
+                    <select id="filtroAnnoA" class="form-select form-select-sm" style="width: 85px;">
+                        <option value="">Anno</option>
+                        <option value="2024">2024</option>
+                        <option value="2025">2025</option>
+                        <option value="2026">2026</option>
+                        <option value="2027">2027</option>
+                        <option value="2028">2028</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Checkbox Solo Aperte -->
+            
+            <!-- Pulsanti -->
+            <div class="col-auto">
+                <button type="button" class="btn btn-primary btn-sm" onclick="caricaTrattative()">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="resetFiltri()">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<!-- Dati clienti con trattative per filtro -->
+<script>
+    window.clientiConTrattative = [
+        {% for cliente in clienti_con_trattative %}
+        {id: {{ cliente.id }}, nome: "{{ cliente.ragione_sociale|e }}", piva: "{{ cliente.p_iva or '' }}"}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Funzione per costruire data dal mese/anno
+    function getDataDaFiltri(meseId, annoId, fineMese) {
+        var mese = document.getElementById(meseId).value;
+        var anno = document.getElementById(annoId).value;
+        
+        if (!anno) return '';
+        if (!mese) mese = fineMese ? '12' : '01';
+        
+        if (fineMese) {
+            // Ultimo giorno del mese
+            var ultimoGiorno = new Date(parseInt(anno), parseInt(mese), 0).getDate();
+            return anno + '-' + mese + '-' + ultimoGiorno;
+        } else {
+            // Primo giorno del mese
+            return anno + '-' + mese + '-01';
+        }
+    }
+</script>

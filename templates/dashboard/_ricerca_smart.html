@@ -1,0 +1,27 @@
+{# ================================================
+   DASHBOARD - RICERCA SMART
+   Barra di ricerca nell'header con dropdown risultati
+   Versione: 1.1.0
+   ================================================ #}
+
+<!-- Ricerca Smart Dashboard - Nell'Header -->
+<div class="dashboard-search-container">
+    <div class="input-group">
+        <span class="input-group-text bg-white border-end-0">
+            <i class="bi bi-search text-muted"></i>
+        </span>
+        <input type="text" 
+               id="dashboardSearchInput" 
+               class="form-control border-start-0 ps-0" 
+               placeholder="Cerca clienti, P.IVA, CF... oppure @com, @ope"
+               autocomplete="off">
+        <button type="button" class="btn btn-outline-secondary" id="dashboardSearchClear" style="display: none;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    
+    <!-- Dropdown risultati -->
+    <div id="dashboardSearchDropdown" class="dashboard-search-dropdown">
+        <!-- Risultati popolati via JS -->
+    </div>
+</div>

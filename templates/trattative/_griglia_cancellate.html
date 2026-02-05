@@ -1,0 +1,52 @@
+<!-- ============================================================
+     TRATTATIVE - Griglia Trattative Cancellate
+     Versione: 1.0
+     Data: 2026-01-29
+     Descrizione: Griglia per trattative cancellate con ripristino admin
+     ============================================================ -->
+
+<div class="card-body p-0">
+    
+    <!-- Tabella Cancellate -->
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0" id="tabellaTrattativeCancellate">
+            <thead class="table-light sticky-top">
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th>Cliente</th>
+                    <th>Noleggiatore</th>
+                    <th>Veicolo</th>
+                    <th>Tipologia</th>
+                    <th>Tipo</th>
+                    <th class="text-center">Pz</th>
+                    <th>Stato</th>
+                    <th>Data Inizio</th>
+                    <th>Data Cancellazione</th>
+                    <th>Commerciale</th>
+                    <th style="width: 80px;">Azioni</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyTrattativeCancellate">
+                <!-- Popolato via JavaScript -->
+                <tr id="rigaCaricamentoCancellate">
+                    <td colspan="12" class="text-center py-4 text-muted">
+                        <i class="bi bi-trash me-2"></i>Espandi per vedere le trattative cancellate
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Paginazione Cancellate -->
+    <div class="d-flex justify-content-between align-items-center p-2 border-top">
+        <div id="infoRisultatiCancellate" class="small text-muted">
+            <!-- Popolato via JS -->
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="paginazioneCancellate">
+                <!-- Popolato via JS -->
+            </ul>
+        </nav>
+    </div>
+    
+</div>

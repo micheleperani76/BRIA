@@ -1,0 +1,129 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Inizializzazione
+     Versione: 1.1
+     ============================================================ -->
+<script>
+// ==============================================================================
+// INIZIALIZZAZIONE
+// ==============================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // =========================================================
+    // PRECOMPILAZIONE FILTRO CLIENTE DA URL (senza modal)
+    // =========================================================
+    {% if precompila_cliente_id and not apri_modal %}
+    (function() {
+        var clienteId = {{ precompila_cliente_id }};
+        var clienti = window.clientiConTrattative || [];
+        var clienteTrovato = clienti.find(function(c) { return c.id == clienteId; });
+        
+        // Precompila campo nascosto
+        var hiddenCliente = document.getElementById('filtroClienteId');
+        if (hiddenCliente) hiddenCliente.value = clienteId;
+        
+        // Precompila campo testo se trovato nome
+        if (clienteTrovato) {
+            var inputCliente = document.getElementById('filtroCliente');
+            if (inputCliente) inputCliente.value = clienteTrovato.nome;
+        }
+    })();
+    {% endif %}
+    
+    // Carica trattative iniziali
+    caricaTrattative();
+    
+    // =========================================================
+    // PRECOMPILAZIONE DA SCHEDA CLIENTE
+    // =========================================================
+    {% if apri_modal and precompila_cliente_id %}
+    setTimeout(function() {
+        // Apri modal nuova trattativa
+        var modal = new bootstrap.Modal(document.getElementById('modalNuovaTrattativa'));
+        modal.show();
+        
+        // Dati precompilazione
+        var clienteId = {{ precompila_cliente_id }};
+        var commercialeId = {{ precompila_commerciale_id or 0 }};
+        
+        // Funzione per precompilare cliente nella lista
+        function precompilaCliente() {
+            var clienti = window.clientiDisponibili || [];
+            var clienteTrovato = clienti.find(function(c) { return c.id == clienteId; });
+            
+            if (clienteTrovato) {
+                var inputCliente = document.getElementById('nuovaClienteSearch');
+                var hiddenCliente = document.getElementById('nuovaClienteId');
+                var divSelezionato = document.getElementById('nuovaClienteSelezionato');
+                
+                if (inputCliente) inputCliente.value = clienteTrovato.nome;
+                if (hiddenCliente) hiddenCliente.value = clienteTrovato.id;
+                if (divSelezionato) {
+                    divSelezionato.innerHTML = '<i class="bi bi-check-circle"></i> ' + clienteTrovato.nome;
+                    divSelezionato.classList.remove('d-none');
+                }
+            }
+        }
+        
+        // Se commerciale diverso, prima seleziona commerciale poi carica i suoi clienti
+        var selectComm = document.getElementById('nuovaCommercialeAssegnato');
+        if (selectComm && commercialeId && commercialeId > 0) {
+            selectComm.value = commercialeId;
+            // Trigger change per caricare clienti del commerciale
+            selectComm.dispatchEvent(new Event('change'));
+            
+            // Aspetta che si carichi la lista clienti, poi precompila
+            setTimeout(precompilaCliente, 800);
+        } else {
+            // Commerciale giÃ  corretto, precompila subito
+            precompilaCliente();
+        }
+        
+        // Imposta stato iniziale "Preso in carico"
+        var selectStato = document.getElementById('nuovaStato');
+        if (selectStato) {
+            for (var i = 0; i < selectStato.options.length; i++) {
+                if (selectStato.options[i].text.toLowerCase().includes('preso in carico')) {
+                    selectStato.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }, 300);
+    {% endif %}
+    
+    // Setup ricerca clienti
+    if (typeof setupRicercaClienti === 'function') {
+        setupRicercaClienti();
+    
+    // Setup filtro cliente lista
+    if (typeof setupFiltroCliente === 'function') {
+        setupFiltroCliente();
+    }
+    }
+    
+    // Event listeners filtri dropdown (con controllo esistenza)
+    document.querySelectorAll('#filtroStato, #filtroNoleggiatore, #filtroCommerciale').forEach(el => {
+        if (el) el.addEventListener('change', () => caricaTrattative());
+    });
+    
+    // Checkbox solo aperte
+    const chkAperte = document.getElementById('filtroSoloAperte');
+    if (chkAperte) chkAperte.addEventListener('change', () => caricaTrattative());
+    
+    // Pulsante cerca
+    const btnCerca = document.getElementById('btnCerca');
+    if (btnCerca) btnCerca.addEventListener('click', () => caricaTrattative());
+    
+    // Pulsante reset
+    const btnReset = document.getElementById('btnResetFiltri');
+    if (btnReset) btnReset.addEventListener('click', resetFiltri);
+    
+    // Enter su campo ricerca cliente
+    const filtroCliente = document.getElementById('filtroCliente');
+    if (filtroCliente) {
+        filtroCliente.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') caricaTrattative();
+        });
+    }
+});
+</script>

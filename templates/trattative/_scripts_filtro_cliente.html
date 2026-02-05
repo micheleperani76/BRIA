@@ -1,0 +1,83 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Filtro Cliente
+     Versione: 1.0
+     ============================================================ -->
+<script>
+// ==============================================================================
+// FILTRO CLIENTE (LISTA TRATTATIVE)
+// ==============================================================================
+function setupFiltroCliente() {
+    const input = document.getElementById('filtroCliente');
+    const dropdown = document.getElementById('filtroClienteDropdown');
+    const hiddenId = document.getElementById('filtroClienteId');
+    
+    if (!input || !dropdown || !window.clientiConTrattative) return;
+    
+    // Click: mostra tutti i clienti con trattative
+    input.addEventListener('focus', function() {
+        renderFiltroClientiDropdown(window.clientiConTrattative);
+        dropdown.classList.add('show');
+    });
+    
+    // Digitazione: filtra clienti
+    input.addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        
+        // Se cancella tutto, resetta il filtro
+        if (query.length === 0) {
+            hiddenId.value = '';
+            renderFiltroClientiDropdown(window.clientiConTrattative);
+        } else {
+            const filtrati = window.clientiConTrattative.filter(c => 
+                c.nome.toLowerCase().includes(query) || 
+                (c.piva && c.piva.toLowerCase().includes(query))
+            );
+            renderFiltroClientiDropdown(filtrati);
+        }
+        dropdown.classList.add('show');
+    });
+    
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+    
+    // Ricarica quando si preme Enter
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            dropdown.classList.remove('show');
+            caricaTrattative();
+        }
+    });
+}
+
+function renderFiltroClientiDropdown(clienti) {
+    const dropdown = document.getElementById('filtroClienteDropdown');
+    if (!dropdown) return;
+    
+    // Aggiungo opzione "Tutti" in cima
+    let html = '<a class="dropdown-item text-primary" href="#" onclick="selezionaFiltroCliente(\'\', \'\'); return false;"><em>Tutti i clienti</em></a>';
+    
+    if (clienti.length === 0) {
+        html += '<div class="dropdown-item text-muted">Nessun cliente trovato</div>';
+    } else {
+        html += clienti.map(c => 
+            '<a class="dropdown-item" href="#" onclick="selezionaFiltroCliente(\'' + c.id + '\', \'' + escapeHtmlAttr(c.nome) + '\'); return false;">' +
+            '<strong>' + escapeHtml(c.nome) + '</strong>' +
+            (c.piva ? '<br><small class="text-muted">' + c.piva + '</small>' : '') +
+            '</a>'
+        ).join('');
+    }
+    
+    dropdown.innerHTML = html;
+}
+
+function selezionaFiltroCliente(id, nome) {
+    document.getElementById('filtroClienteId').value = id;
+    document.getElementById('filtroCliente').value = nome;
+    document.getElementById('filtroClienteDropdown').classList.remove('show');
+    caricaTrattative();
+}
+</script>

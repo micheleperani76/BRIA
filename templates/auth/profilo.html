@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Il Mio Profilo{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-header-profilo {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    .permesso-badge {
+        font-size: 0.85rem;
+        margin: 2px;
+    }
+    .permesso-card {
+        border-left: 4px solid #28a745;
+    }
+    .campo-modificabile {
+        background-color: #fff;
+    }
+    .campo-readonly {
+        background-color: #e9ecef;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    
+    <!-- Header -->
+    <div class="mb-4">
+        <h2 class="mb-1">
+            <i class="bi bi-person-circle me-2"></i>Il Mio Profilo
+        </h2>
+        <p class="text-muted mb-0">Visualizza e modifica i tuoi dati personali</p>
+    </div>
+
+    <div class="row">
+        <!-- Colonna Sinistra: Dati Personali -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header card-header-profilo">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Dati Personali</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('auth.profilo_salva') }}">
+                        
+                        <!-- Username (non modificabile) -->
+                        <div class="mb-3">
+                            <label class="form-label info-label">Username</label>
+                            <input type="text" class="form-control campo-readonly" value="{{ utente.username }}" readonly>
+                        </div>
+                        
+                        <!-- Codice Utente (non modificabile) -->
+                        <div class="mb-3">
+                            <label class="form-label info-label">Codice Utente</label>
+                            <input type="text" class="form-control campo-readonly" value="{{ utente.codice_utente }}" readonly>
+                        </div>
+                        
+                        <hr>
+                        
+                        <!-- Nome -->
+                        <div class="mb-3">
+                            <label for="nome" class="form-label info-label">Nome <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control campo-modificabile" id="nome" name="nome" 
+                                   value="{{ utente.nome or '' }}" required>
+                        </div>
+                        
+                        <!-- Cognome -->
+                        <div class="mb-3">
+                            <label for="cognome" class="form-label info-label">Cognome <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control campo-modificabile" id="cognome" name="cognome" 
+                                   value="{{ utente.cognome or '' }}" required>
+                        </div>
+                        
+                        <!-- Data di Nascita -->
+                        <div class="mb-3">
+                            <label for="data_nascita" class="form-label info-label">Data di Nascita</label>
+                            <input type="date" class="form-control campo-modificabile" id="data_nascita" name="data_nascita" 
+                                   value="{{ utente.data_nascita or '' }}">
+                        </div>
+                        
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label info-label">Email <span class="text-danger">*</span></label>
+                            <input type="email" class="form-control campo-modificabile" id="email" name="email" 
+                                   value="{{ utente.email or '' }}" required>
+                            {% if dominio_richiesto %}
+                            <div class="form-text">Deve essere un indirizzo @{{ dominio_richiesto }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Cellulare -->
+                        <div class="mb-3">
+                            <label for="cellulare" class="form-label info-label">Cellulare <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control campo-modificabile" id="cellulare" name="cellulare" 
+                                   value="{{ utente.cellulare or '' }}" required>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('auth.cambio_password_volontario') }}" class="btn btn-outline-warning">
+                                <i class="bi bi-key me-1"></i>Cambia Password
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i>Salva Modifiche
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonna Destra: Info Account e Permessi -->
+        <div class="col-lg-6 mb-4">
+            
+            <!-- Card Info Account -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-shield me-2"></i>Informazioni Account</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless mb-0">
+                        <tr>
+                            <td class="info-label" style="width: 40%;">Ruolo:</td>
+                            <td>
+                                {% if utente.ruolo_base == 'admin' %}
+                                    <span class="badge bg-danger">Amministratore</span>
+                                {% elif utente.ruolo_base == 'commerciale' %}
+                                    <span class="badge bg-primary">Commerciale</span>
+                                {% elif utente.ruolo_base == 'operatore' %}
+                                    <span class="badge bg-info">Operatore</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ utente.ruolo_base|capitalize }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Account creato:</td>
+                            <td>{{ utente.data_creazione[:10] if utente.data_creazione else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="info-label">Ultimo accesso:</td>
+                            <td>{{ utente.data_ultimo_accesso[:16] if utente.data_ultimo_accesso else 'Mai' }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Card Permessi -->
+            <div class="card permesso-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-key me-2"></i>I Miei Permessi</h5>
+                </div>
+                <div class="card-body">
+                    {% if utente.ruolo_base == 'admin' %}
+                    <div class="alert alert-success mb-0">
+                        <i class="bi bi-shield-check me-2"></i>
+                        <strong>Amministratore</strong> - Hai accesso completo a tutte le funzionalità.
+                    </div>
+                    {% elif permessi_utente %}
+                    <div class="d-flex flex-wrap">
+                        {% for permesso in permessi_utente %}
+                        <span class="badge bg-success permesso-badge">
+                            <i class="bi bi-check me-1"></i>{{ permesso.descrizione }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">Nessun permesso specifico assegnato.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

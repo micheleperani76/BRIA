@@ -1,0 +1,34 @@
+# Database - tutta la cartella
+db/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Log
+logs/
+
+# File temporanei
+*.bak
+*.bak_*
+file_per_ia/
+
+# Cartella clienti (allegati, note, file pesanti)
+clienti/
+
+# Allegati e PDF
+allegati_note/
+pdf/
+storico_pdf/
+
+# Credenziali
+impostazioni/google_calendar/*.json
+*.env
+
+# Export e backup
+exports/
+backup/
+Scaricati/
+
+# Audio trascrizioni
+audio_trascrizioni/

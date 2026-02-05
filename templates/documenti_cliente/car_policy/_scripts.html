@@ -1,0 +1,291 @@
+<!-- ==============================================================================
+     CAR POLICY - JavaScript Dedicato
+     ==============================================================================
+     Versione: 2.0.0
+     Data: 2026-01-27
+     Descrizione: Tutte le funzioni JS per gestione Car Policy
+                  - Apertura modal, caricamento lista, render file
+                  - Toggle fissa, upload con verifica duplicati
+                  - Drag & drop file (incluso Excel), drag modal
+                  - Conversione PDF manuale con pulsante dedicato
+     Dipendenze: Richiede shared/_scripts_comuni.html per getIcona(), verificaDuplicati(), etc.
+     ============================================================================== -->
+
+<script>
+(function() {
+    const clienteId = {{ cliente.id }};
+    const WRITE_EXTENSIONS = ['doc', 'docx', 'odt'];
+    const CONVERTIBLE_EXTENSIONS = ['doc', 'docx', 'odt'];
+    
+    // === APRI MODAL CAR POLICY ===
+    window.apriModalCarPolicy = function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalCarPolicy'));
+        modal.show();
+        caricaCarPolicy();
+    };
+    
+    // === CARICA LISTA CAR POLICY ===
+    function caricaCarPolicy() {
+        const container = document.getElementById('car-policy-file-list');
+        container.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+        
+        fetch(`/api/cliente/${clienteId}/documenti/car-policy`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderCarPolicy(container, data.documenti);
+                } else {
+                    container.innerHTML = '<div class="text-danger text-center py-4">Errore caricamento</div>';
+                }
+            })
+            .catch(err => {
+                container.innerHTML = '<div class="text-danger text-center py-4">Errore connessione</div>';
+            });
+    }
+    
+    // Esponi globalmente per refresh dopo operazioni
+    window.caricaCarPolicy = caricaCarPolicy;
+    
+    // === RENDER LISTA CAR POLICY ===
+    function renderCarPolicy(container, documenti) {
+        if (documenti.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-folder-x" style="font-size: 3rem;"></i>
+                    <p class="mt-3">Nessun documento Car Policy</p>
+                    <p class="small">Carica il primo documento usando il form in basso oppure trascina qui un file</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Ordina: fissati prima, poi scrittura, poi PDF, poi alfabetico
+        documenti.sort((a, b) => {
+            // Fissati prima
+            if (a.fissato && !b.fissato) return -1;
+            if (!a.fissato && b.fissato) return 1;
+            
+            const extA = a.nome.split('.').pop().toLowerCase();
+            const extB = b.nome.split('.').pop().toLowerCase();
+            const isWriteA = WRITE_EXTENSIONS.includes(extA);
+            const isWriteB = WRITE_EXTENSIONS.includes(extB);
+            
+            // Scrittura prima
+            if (isWriteA && !isWriteB) return -1;
+            if (!isWriteA && isWriteB) return 1;
+            
+            // Alfabetico
+            return a.nome_originale.localeCompare(b.nome_originale);
+        });
+        
+        let html = '';
+        documenti.forEach(doc => {
+            const fissatoClass = doc.fissato ? 'fissato' : '';
+            const fissatoIcon = doc.fissato ? 'active' : '';
+            const fissatoTitle = doc.fissato ? 'Sfissa' : 'Fissa in alto';
+            const ext = doc.nome.split('.').pop().toLowerCase();
+            const isConvertible = CONVERTIBLE_EXTENSIONS.includes(ext);
+            
+            html += `
+                <div class="file-item ${fissatoClass}" data-nome="${doc.nome}">
+                    <div class="file-icon">${getIcona(doc.nome)}</div>
+                    <div class="file-info">
+                        <a href="/cliente/${clienteId}/documento/car-policy/${doc.nome}" 
+                           target="_blank" class="file-name text-decoration-none">
+                            ${doc.nome_originale}
+                        </a>
+                        <div class="file-meta">
+                            ${doc.dimensione_fmt || ''} ${doc.data_modifica ? '- ' + doc.data_modifica : ''}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        ${isConvertible ? `
+                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                onclick="convertiPdf('${doc.nome}')" title="Converti in PDF">
+                            <i class="bi bi-filetype-pdf"></i>
+                        </button>
+                        ` : ''}
+                        <button type="button" class="btn btn-sm btn-outline-secondary btn-fissa ${fissatoIcon}" 
+                                onclick="toggleFissa('${doc.nome}')" title="${fissatoTitle}">
+                            <i class="bi bi-pin-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                onclick="apriRinomina('car-policy', '${doc.nome}', '${doc.nome_originale}')" title="Rinomina">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                onclick="eliminaDocumento('car-policy', '${doc.nome}')" title="Elimina">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // === CONVERTI IN PDF ===
+    window.convertiPdf = function(nomeFile) {
+        if (!confirm('Convertire questo file in PDF?')) return;
+        
+        const btn = document.querySelector(`[onclick="convertiPdf('${nomeFile}')"]`);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        }
+        
+        fetch(`/api/cliente/${clienteId}/documenti/car-policy/converti-pdf`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome_file: nomeFile})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                caricaCarPolicy();
+            } else {
+                alert('Errore: ' + data.error);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-filetype-pdf"></i>';
+                }
+            }
+        })
+        .catch(err => {
+            alert('Errore di connessione');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-filetype-pdf"></i>';
+            }
+        });
+    };
+    
+    // === TOGGLE FISSA ===
+    window.toggleFissa = function(nomeFile) {
+        fetch(`/api/cliente/${clienteId}/documenti/car-policy/fissa`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome_file: nomeFile})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                caricaCarPolicy();
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(err => alert('Errore di connessione'));
+    };
+    
+    // === UPLOAD CAR POLICY ===
+    document.getElementById('form-upload-car-policy')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('file-car-policy');
+        if (!fileInput.files.length) {
+            alert('Seleziona un file');
+            return;
+        }
+        verificaDuplicati('car-policy', fileInput.files[0], fileInput);
+    });
+    
+    // === DRAG & DROP CAR POLICY ===
+    (function() {
+        const dropZone = document.getElementById('carPolicyDropZone');
+        if (!dropZone) return;
+        
+        const modal = document.getElementById('modalCarPolicy');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('drag-over');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('drag-over');
+            }, false);
+        });
+        
+        dropZone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const ext = file.name.split('.').pop().toLowerCase();
+                const allowedExt = ['pdf', 'doc', 'docx', 'odt', 'xls', 'xlsx'];
+                
+                if (!allowedExt.includes(ext)) {
+                    alert('Formato non valido. Usa: PDF, DOC, DOCX, ODT, XLS, XLSX');
+                    return;
+                }
+                
+                const fileInput = document.getElementById('file-car-policy');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+                
+                verificaDuplicati('car-policy', file, fileInput);
+            }
+        }, false);
+        
+        document.addEventListener('dragover', function(e) {
+            if (modal.classList.contains('show')) {
+                e.preventDefault();
+            }
+        });
+        document.addEventListener('drop', function(e) {
+            if (modal.classList.contains('show')) {
+                e.preventDefault();
+            }
+        });
+    })();
+    
+    // === DRAG MODAL ===
+    (function() {
+        const modal = document.getElementById('modalCarPolicy');
+        if (!modal) return;
+        
+        const header = modal.querySelector('.modal-header');
+        const dialog = modal.querySelector('.modal-dialog');
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+        
+        header.addEventListener('mousedown', function(e) {
+            if (e.target.classList.contains('btn-close')) return;
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = dialog.getBoundingClientRect();
+            startLeft = rect.left;
+            startTop = rect.top;
+            dialog.style.margin = '0';
+            dialog.style.position = 'fixed';
+            dialog.style.left = startLeft + 'px';
+            dialog.style.top = startTop + 'px';
+            e.preventDefault();
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+            dialog.style.left = (startLeft + dx) + 'px';
+            dialog.style.top = (startTop + dy) + 'px';
+        });
+        
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+        });
+    })();
+    
+})();
+</script>

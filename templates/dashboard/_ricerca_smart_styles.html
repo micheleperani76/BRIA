@@ -1,0 +1,201 @@
+{# ================================================
+   DASHBOARD - RICERCA SMART STYLES
+   CSS per barra di ricerca centrata nell'header
+   Versione: 1.2.0
+   ================================================ #}
+
+<style>
+    /* Layout header a 3 colonne */
+    .dashboard-header-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        gap: 1rem;
+    }
+    
+    .dashboard-header-left {
+        flex: 0 0 auto;
+        min-width: 200px;
+    }
+    
+    .dashboard-header-center {
+        flex: 1 1 auto;
+        display: flex;
+        justify-content: center;
+    }
+    
+    .dashboard-header-right {
+        flex: 0 0 auto;
+        min-width: 200px;
+    }
+    
+    /* Container della ricerca - 65% della zona centrale */
+    .dashboard-search-container {
+        width: 100%;
+        max-width: 600px;
+        position: relative;
+    }
+    
+    /* Input group styling */
+    .dashboard-search-container .input-group {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .dashboard-search-container .input-group-text {
+        border-radius: 8px 0 0 8px;
+    }
+    
+    .dashboard-search-container .form-control {
+        border-radius: 0;
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .dashboard-search-container .form-control:focus {
+        box-shadow: none;
+        border-color: #dee2e6;
+    }
+    
+    .dashboard-search-container .btn-outline-secondary {
+        border-radius: 0 8px 8px 0;
+        border-left: 0;
+    }
+    
+    /* Dropdown risultati */
+    .dashboard-search-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        max-height: 400px;
+        overflow-y: auto;
+        z-index: 1050;
+    }
+    
+    .dashboard-search-dropdown.show {
+        display: block;
+    }
+    
+    /* Header sezione risultati */
+    .search-result-header {
+        padding: 0.5rem 1rem;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-weight: 600;
+    }
+    
+    /* Singolo risultato cliente */
+    .search-result-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    
+    .search-result-item:hover {
+        background: #f8f9fa;
+    }
+    
+    .search-result-item:last-child {
+        border-bottom: none;
+    }
+    
+    .search-result-item .cliente-nome {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 0.25rem;
+    }
+    
+    .search-result-item .cliente-info {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .search-result-item .cliente-info a {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+    
+    .search-result-item .cliente-info a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Risultato utente (@com, @ope) */
+    .search-result-user {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .search-result-user:last-child {
+        border-bottom: none;
+    }
+    
+    .search-result-user .user-nome {
+        font-weight: 600;
+        color: #212529;
+    }
+    
+    .search-result-user .user-contatti {
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+    
+    .search-result-user .user-contatti a {
+        color: #0d6efd;
+        text-decoration: none;
+    }
+    
+    .search-result-user .user-contatti a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Messaggio nessun risultato */
+    .search-no-results {
+        padding: 1.5rem;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    /* Messaggio errore */
+    .search-error {
+        padding: 1rem;
+        text-align: center;
+        color: #dc3545;
+    }
+    
+    /* Hint comandi */
+    .search-hint {
+        padding: 0.75rem 1rem;
+        background: #e7f1ff;
+        border-bottom: 1px solid #b6d4fe;
+        font-size: 0.8rem;
+        color: #084298;
+    }
+    
+    /* Link vai a pagina clienti */
+    .search-view-all {
+        display: block;
+        padding: 0.75rem 1rem;
+        text-align: center;
+        background: #f8f9fa;
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 500;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .search-view-all:hover {
+        background: #e9ecef;
+        color: #0a58ca;
+    }
+</style>

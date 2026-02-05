@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiche - Gestione Flotta{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-graph-up"></i> Statistiche Generali</h4>
+</div>
+
+<div class="row g-4">
+    <!-- Card principali -->
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <i class="bi bi-person text-primary" style="font-size: 2rem;"></i>
+            <div class="stat-value mt-2">{{ stats.totale_clienti }}</div>
+            <div class="stat-label">Clienti Totali</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <i class="bi bi-shield-check text-success" style="font-size: 2rem;"></i>
+            <div class="stat-value mt-2">{{ stats.clienti_con_creditsafe }}</div>
+            <div class="stat-label">Con Dati Creditsafe</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <i class="bi bi-car-front text-info" style="font-size: 2rem;"></i>
+            <div class="stat-value mt-2">{{ stats.totale_veicoli }}</div>
+            <div class="stat-label">Veicoli in Flotta</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <i class="bi bi-currency-euro text-warning" style="font-size: 2rem;"></i>
+            <div class="stat-value mt-2">&euro; {{ stats.canone_totale|format_numero }}</div>
+            <div class="stat-label">Canone Mensile</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-2">
+    <!-- Distribuzione Score -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-pie-chart"></i> Distribuzione Score
+            </div>
+            <div class="card-body">
+                {% if stats.distribuzione_score %}
+                {% set totale_score = stats.distribuzione_score.values()|sum %}
+                {% for score, count in stats.distribuzione_score.items() %}
+                <div class="d-flex align-items-center mb-3">
+                    <span class="score-badge score-{{ score }} me-3">{{ score }}</span>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>{{ score_colors[score].text }}</span>
+                            <span>{{ count }} ({{ "%.1f"|format(count / totale_score * 100) }}%)</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-{{ score_colors[score].bg }}" 
+                                 style="width: {{ count / totale_score * 100 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-muted text-center py-4">
+                    Nessun dato disponibile
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Per Commerciale -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-people"></i> Clienti per Commerciale
+            </div>
+            <div class="card-body">
+                {% if stats.per_commerciale %}
+                {% for c in stats.per_commerciale %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span {% if c.comm == 'Non assegnato' %}class="text-warning"{% endif %}>
+                        {{ c.comm }}
+                    </span>
+                    <span class="badge bg-primary">{{ c.clienti }}</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-muted text-center py-4">
+                    Nessun dato disponibile
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-2">
+    <!-- Province con veicoli -->
+    <div class="col-md-12">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="bi bi-geo-alt"></i> Veicoli per Provincia
+            </div>
+            <div class="card-body">
+                {% if stats.province %}
+                <div class="row">
+                    {% for p in stats.province %}
+                    <div class="col-md-2 col-sm-3 col-4 mb-3">
+                        <a href="/?prov_veicolo={{ p.sigla }}" class="text-decoration-none">
+                            <div class="text-center p-2 border rounded stat-card clickable">
+                                <div class="fw-bold text-primary" style="font-size: 1.5rem;">{{ p.sigla }}</div>
+                                <div class="badge bg-primary mb-1">{{ p.aziende }} aziende</div>
+                                <div class="badge bg-success">{{ p.veicoli }} veicoli</div>
+                            </div>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-3 text-muted">
+                    <small>Totale: {{ stats.province|sum(attribute='aziende') }} aziende e {{ stats.province|sum(attribute='veicoli') }} veicoli in {{ stats.province|length }} province</small>
+                </div>
+                {% else %}
+                <div class="text-muted text-center py-4">
+                    Nessun dato provincia disponibile
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-lightning"></i> Statistiche Rapide
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="h4">{{ ((stats.clienti_con_creditsafe / stats.totale_clienti * 100) if stats.totale_clienti else 0)|round(1) }}%</div>
+                <small class="text-muted">Copertura Creditsafe</small>
+            </div>
+            <div class="col-md-3">
+                <div class="h4">{{ ((stats.totale_veicoli / stats.totale_clienti) if stats.totale_clienti else 0)|round(1) }}</div>
+                <small class="text-muted">Veicoli medi per cliente</small>
+            </div>
+            <div class="col-md-3">
+                <div class="h4">&euro; {{ ((stats.canone_totale / stats.totale_veicoli) if stats.totale_veicoli else 0)|format_numero }}</div>
+                <small class="text-muted">Canone medio per veicolo</small>
+            </div>
+            <div class="col-md-3">
+                <div class="h4">{{ stats.distribuzione_score.get('A', 0) + stats.distribuzione_score.get('B', 0) }}</div>
+                <small class="text-muted">Clienti rating ottimo (A+B)</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

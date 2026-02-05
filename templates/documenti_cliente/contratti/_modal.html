@@ -1,0 +1,48 @@
+<!-- ==============================================================================
+     CONTRATTI - Modal Grande Draggable
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2026-01-27
+     Descrizione: Modal grande, draggable, resizable per gestione Contratti
+                  Supporta drag &amp; drop file
+     ============================================================================== -->
+
+<div class="modal fade modal-documenti" id="modalContratti" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-ruled me-2"></i>Contratti - {{ cliente.ragione_sociale or cliente.nome_cliente }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body drop-zone" id="contrattiDropZone">
+                <!-- Lista file -->
+                <div id="contratti-file-list" class="doc-file-list">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted">Caricamento documenti...</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Area Upload -->
+            <div class="upload-area">
+                <form id="form-upload-contratti" enctype="multipart/form-data">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <div class="input-group">
+                                <input type="file" class="form-control" 
+                                       id="file-contratti" name="file" 
+                                       accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip,.odt">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-1"></i> Carica
+                                </button>
+                            </div>
+                            <small class="text-muted">Formati: PDF, Word, Excel, Immagini, ZIP</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

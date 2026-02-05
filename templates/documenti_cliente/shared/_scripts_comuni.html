@@ -1,0 +1,218 @@
+<!-- ==============================================================================
+     SHARED - JavaScript Funzioni Comuni
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2025-01-20
+     Descrizione: Funzioni JS condivise tra tutti i tipi documento
+                  - getIcona(): icona per tipo file
+                  - apriRinomina/eseguiRinomina(): rinomina file
+                  - eliminaDocumento(): elimina file
+                  - verificaDuplicati/eseguiUpload(): upload con gestione duplicati
+     IMPORTANTE: Questo script DEVE essere incluso PRIMA degli script specifici
+     ============================================================================== -->
+
+<script>
+(function() {
+    const clienteId = {{ cliente.id }};
+    const WRITE_EXTENSIONS = ['doc', 'docx', 'odt'];
+    
+    // Variabili per gestione duplicati
+    let uploadPendente = null;
+    let duplicatiTrovati = [];
+    
+    // === ICONA PER TIPO FILE ===
+    window.getIcona = function(nomeFile) {
+        const ext = nomeFile.split('.').pop().toLowerCase();
+        if (ext === 'pdf') {
+            return '<i class="bi bi-file-pdf text-danger"></i>';
+        } else if (WRITE_EXTENSIONS.includes(ext)) {
+            return '<i class="bi bi-file-text text-primary"></i>';
+        } else if (['xls', 'xlsx'].includes(ext)) {
+            return '<i class="bi bi-file-excel text-success"></i>';
+        } else if (['png', 'jpg', 'jpeg'].includes(ext)) {
+            return '<i class="bi bi-file-image text-info"></i>';
+        }
+        return '<i class="bi bi-file-earmark"></i>';
+    };
+    
+    // === APRI MODAL RINOMINA ===
+    window.apriRinomina = function(tipo, nomeFile, nomeOriginale) {
+        document.getElementById('rinominaTipo').value = tipo;
+        document.getElementById('rinominaNomeFile').value = nomeFile;
+        const nomeSenzaExt = nomeOriginale.replace(/\.[^/.]+$/, '');
+        document.getElementById('rinominaNuovoNome').value = nomeSenzaExt;
+        new bootstrap.Modal(document.getElementById('modalRinomina')).show();
+        setTimeout(() => document.getElementById('rinominaNuovoNome').select(), 300);
+    };
+    
+    // === ESEGUI RINOMINA ===
+    window.eseguiRinomina = function() {
+        const tipo = document.getElementById('rinominaTipo').value;
+        const nomeFile = document.getElementById('rinominaNomeFile').value;
+        const nuovoNome = document.getElementById('rinominaNuovoNome').value.trim();
+        
+        if (!nuovoNome) {
+            alert('Inserisci un nome valido');
+            return;
+        }
+        
+        fetch(`/api/cliente/${clienteId}/documenti/${tipo}/rinomina`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome_file: nomeFile, nuovo_nome: nuovoNome})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalRinomina')).hide();
+                refreshDocumenti(tipo);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(err => alert('Errore di connessione'));
+    };
+    
+    // === ENTER per rinomina ===
+    document.getElementById('rinominaNuovoNome')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            eseguiRinomina();
+        }
+    });
+    
+    // === ELIMINA DOCUMENTO ===
+    window.eliminaDocumento = function(tipo, nomeFile) {
+        if (!confirm('Eliminare questo documento?')) return;
+        
+        fetch(`/api/cliente/${clienteId}/documenti/${tipo}/elimina`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome_file: nomeFile})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                refreshDocumenti(tipo);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        })
+        .catch(err => alert('Errore di connessione'));
+    };
+    
+    // === REFRESH LISTA DOCUMENTI (chiama la funzione specifica) ===
+    function refreshDocumenti(tipo) {
+        if (tipo === 'car-policy' && typeof window.caricaCarPolicy === 'function') {
+            window.caricaCarPolicy();
+        } else if (typeof window.caricaDocumenti === 'function') {
+            window.caricaDocumenti(tipo);
+        }
+    }
+    
+    // === VERIFICA DUPLICATI ===
+    window.verificaDuplicati = function(tipo, file, fileInput) {
+        fetch(`/api/cliente/${clienteId}/documenti/${tipo}/verifica`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({nome_file: file.name})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.duplicati && data.duplicati.length > 0) {
+                uploadPendente = {tipo, file, fileInput, generaPdf: data.genera_pdf};
+                duplicatiTrovati = data.duplicati;
+                mostraModalDuplicati(data.duplicati, data.genera_pdf);
+            } else {
+                eseguiUpload(tipo, file, fileInput, []);
+            }
+        })
+        .catch(err => {
+            eseguiUpload(tipo, file, fileInput, []);
+        });
+    };
+    
+    // === MOSTRA MODAL DUPLICATI ===
+    function mostraModalDuplicati(duplicati, generaPdf) {
+        const lista = document.getElementById('listaDuplicati');
+        lista.innerHTML = '';
+        
+        duplicati.forEach(dup => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            li.innerHTML = `<span>${getIcona(dup.nome_originale)} ${dup.nome_originale}</span>
+                           <span class="badge bg-secondary">${dup.ext.toUpperCase()}</span>`;
+            lista.appendChild(li);
+        });
+        
+        if (generaPdf) {
+            const info = document.createElement('li');
+            info.className = 'list-group-item list-group-item-info small';
+            info.innerHTML = '<i class="bi bi-info-circle"></i> Verrà generato anche un PDF';
+            lista.appendChild(info);
+        }
+        
+        new bootstrap.Modal(document.getElementById('modalDuplicati')).show();
+    }
+    
+    // === ESEGUI UPLOAD ===
+    window.eseguiUpload = function(tipo, file, fileInput, sovrascrivi) {
+        const container = tipo === 'car-policy' 
+            ? document.getElementById('car-policy-file-list')
+            : document.getElementById('lista-' + tipo);
+        
+        if (container) {
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2">Caricamento...</p></div>';
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        if (sovrascrivi.length > 0) {
+            formData.append('sovrascrivi', sovrascrivi.join(','));
+        }
+        
+        fetch(`/api/cliente/${clienteId}/documenti/${tipo}/upload`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fileInput.value = '';
+                refreshDocumenti(tipo);
+                
+                if (data.pdf_errore) {
+                    alert('File caricato ma conversione PDF fallita: ' + data.pdf_errore);
+                }
+            } else {
+                alert('Errore: ' + data.error);
+                refreshDocumenti(tipo);
+            }
+        })
+        .catch(err => {
+            alert('Errore di connessione');
+        });
+    };
+    
+    // === HANDLER BOTTONI MODAL DUPLICATI ===
+    document.getElementById('btnSovrascrivi')?.addEventListener('click', function() {
+        if (uploadPendente) {
+            const nomiDaSovrascrivere = duplicatiTrovati.map(d => d.nome);
+            bootstrap.Modal.getInstance(document.getElementById('modalDuplicati')).hide();
+            eseguiUpload(uploadPendente.tipo, uploadPendente.file, uploadPendente.fileInput, nomiDaSovrascrivere);
+            uploadPendente = null;
+            duplicatiTrovati = [];
+        }
+    });
+    
+    document.getElementById('btnCaricaNuovo')?.addEventListener('click', function() {
+        if (uploadPendente) {
+            bootstrap.Modal.getInstance(document.getElementById('modalDuplicati')).hide();
+            eseguiUpload(uploadPendente.tipo, uploadPendente.file, uploadPendente.fileInput, []);
+            uploadPendente = null;
+            duplicatiTrovati = [];
+        }
+    });
+    
+})();
+</script>

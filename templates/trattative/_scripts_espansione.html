@@ -1,0 +1,93 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Espansione Storico
+     Versione: 1.1
+     ============================================================ -->
+<script>
+// ==============================================================================
+// ESPANSIONE RIGA - STORICO AVANZAMENTI
+// ==============================================================================
+function toggleEspandi(trattativaId) {
+    const rigaPrincipale = document.querySelector('.riga-trattativa[data-id="' + trattativaId + '"]');
+    const rigaEspansa = document.querySelector('.riga-espansa[data-parent="' + trattativaId + '"]');
+    
+    if (rigaEspansa) {
+        // Chiudi
+        if (rigaPrincipale) rigaPrincipale.classList.remove('expanded');
+        rigaEspansa.classList.remove('show');
+        setTimeout(() => rigaEspansa.remove(), 200);
+    } else {
+        // Apri - carica avanzamenti
+        caricaAvanzamenti(trattativaId);
+    }
+}
+
+function caricaAvanzamenti(trattativaId) {
+    fetch('/trattative/api/' + trattativaId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderRigaEspansa(trattativaId, data.avanzamenti);
+            } else {
+                console.error('Errore API:', data.error);
+            }
+        })
+        .catch(err => console.error('Errore caricamento avanzamenti:', err));
+}
+
+function renderRigaEspansa(trattativaId, avanzamenti) {
+    const rigaPrincipale = document.querySelector('.riga-trattativa[data-id="' + trattativaId + '"]');
+    const template = document.getElementById('templateRigaEspansa');
+    const templateStep = document.getElementById('templateTimelineStep');
+    
+    if (!template || !templateStep || !rigaPrincipale) {
+        console.error('Template o riga non trovati', {template, templateStep, rigaPrincipale});
+        return;
+    }
+    
+    const row = template.content.cloneNode(true);
+    const tr = row.querySelector('tr');
+    tr.dataset.parent = trattativaId;
+    
+    const idDisplay = tr.querySelector('.trattativa-id');
+    if (idDisplay) idDisplay.textContent = trattativaId;
+    
+    const container = tr.querySelector('.timeline-items');
+    if (!container) {
+        console.error('Container timeline non trovato');
+        return;
+    }
+    
+    if (avanzamenti && avanzamenti.length > 0) {
+        avanzamenti.forEach(av => {
+            const step = templateStep.content.cloneNode(true);
+            const stepDiv = step.querySelector('.timeline-step');
+            
+            // Usa le classi corrette del template HTML
+            const marker = stepDiv.querySelector('.timeline-marker .badge');
+            if (marker) marker.style.backgroundColor = av.stato_colore || '#6c757d';
+            
+            const statoEl = stepDiv.querySelector('.stato-label');
+            if (statoEl) statoEl.textContent = av.stato || '-';
+            
+            const dataEl = stepDiv.querySelector('.data-avanzamento');
+            if (dataEl) dataEl.textContent = formatData(av.data_avanzamento);
+            
+            const utenteEl = stepDiv.querySelector('.registrato-da');
+            if (utenteEl) utenteEl.textContent = av.registrato_da_nome || '-';
+            
+            const noteEl = stepDiv.querySelector('.note-avanzamento');
+            if (noteEl) noteEl.textContent = av.note_avanzamento || '';
+            
+            container.appendChild(step);
+        });
+    } else {
+        container.innerHTML = '<div class="text-muted">Nessun avanzamento registrato</div>';
+    }
+    
+    rigaPrincipale.classList.add('expanded');
+    rigaPrincipale.after(tr);
+    
+    // Animazione
+    setTimeout(() => tr.classList.add('show'), 10);
+}
+</script>

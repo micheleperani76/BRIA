@@ -1,0 +1,147 @@
+{% extends "auth/_base_auth.html" %}
+
+{% block title %}Completa Profilo - Gestione Flotta{% endblock %}
+
+{% block extra_styles %}
+.auth-card {
+    max-width: 480px;
+}
+{% endblock %}
+
+{% block content %}
+<!-- Steps indicator -->
+<div class="steps-indicator">
+    <div class="step completed">
+        <div class="step-number"><i class="bi bi-check"></i></div>
+    </div>
+    <div class="step completed">
+        <div class="step-line"></div>
+        <div class="step-number"><i class="bi bi-check"></i></div>
+    </div>
+    <div class="step active">
+        <div class="step-line"></div>
+        <div class="step-number">2</div>
+    </div>
+</div>
+
+<div class="auth-title">
+    <h2>Completa il tuo profilo</h2>
+    <p>Inserisci i tuoi dati per completare la registrazione</p>
+</div>
+
+<form method="POST" action="{{ url_for('auth.completa_profilo_submit') }}" id="completaProfiloForm">
+    <div class="row">
+        <!-- Nome -->
+        <div class="col-md-6 mb-3">
+            <label for="nome" class="form-label">
+                Nome <span class="required-star">*</span>
+            </label>
+            <input type="text" 
+                   class="form-control" 
+                   id="nome" 
+                   name="nome" 
+                   placeholder="Mario"
+                   value="{{ request.form.get('nome', '') }}"
+                   required 
+                   autofocus>
+        </div>
+        
+        <!-- Cognome -->
+        <div class="col-md-6 mb-3">
+            <label for="cognome" class="form-label">
+                Cognome <span class="required-star">*</span>
+            </label>
+            <input type="text" 
+                   class="form-control" 
+                   id="cognome" 
+                   name="cognome" 
+                   placeholder="Rossi"
+                   value="{{ request.form.get('cognome', '') }}"
+                   required>
+        </div>
+    </div>
+    
+    <!-- Cellulare -->
+    <div class="mb-3">
+        <label for="cellulare" class="form-label">
+            Cellulare <span class="required-star">*</span>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-phone"></i></span>
+            <input type="tel" 
+                   class="form-control" 
+                   id="cellulare" 
+                   name="cellulare" 
+                   placeholder="333 1234567"
+                   value="{{ request.form.get('cellulare', '') }}"
+                   pattern="[0-9\s\+\-]+"
+                   required>
+        </div>
+    </div>
+    
+    <!-- Email -->
+    <div class="mb-4">
+        <label for="email" class="form-label">
+            Email <span class="required-star">*</span>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input type="email" 
+                   class="form-control" 
+                   id="email" 
+                   name="email" 
+                   placeholder="nome.cognome@brcarservice.it"
+                   value="{{ request.form.get('email', '') }}"
+                   required>
+        </div>
+        {% if dominio_richiesto %}
+        <div class="form-text">
+            <i class="bi bi-info-circle me-1"></i>
+            L'email deve essere del dominio @{{ dominio_richiesto }}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Info box -->
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-shield-check me-2"></i>
+        <small>I tuoi dati saranno utilizzati solo per l'accesso al sistema e per eventuali comunicazioni di servizio.</small>
+    </div>
+    
+    <!-- Submit -->
+    <button type="submit" class="btn btn-primary" id="submitBtn">
+        <i class="bi bi-check-lg me-2"></i>Completa Registrazione
+    </button>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Form validation and submit
+const form = document.getElementById('completaProfiloForm');
+
+form.addEventListener('submit', function(e) {
+    // Validazione campi
+    const nome = document.getElementById('nome').value.trim();
+    const cognome = document.getElementById('cognome').value.trim();
+    const cellulare = document.getElementById('cellulare').value.trim();
+    const email = document.getElementById('email').value.trim();
+    
+    if (!nome || !cognome || !cellulare || !email) {
+        e.preventDefault();
+        alert('Tutti i campi sono obbligatori');
+        return;
+    }
+    
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvataggio...';
+});
+
+// Auto-format cellulare
+document.getElementById('cellulare').addEventListener('input', function(e) {
+    // Rimuove caratteri non validi
+    this.value = this.value.replace(/[^0-9\s\+\-]/g, '');
+});
+</script>
+{% endblock %}

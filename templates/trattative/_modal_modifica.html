@@ -1,0 +1,122 @@
+<!-- ============================================================
+     TRATTATIVE - Modal Modifica Trattativa
+     Versione: 1.1
+     Data: 2026-01-28
+     ============================================================ -->
+
+<div class="modal fade" id="modalModificaTrattativa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil me-2"></i>Modifica Trattativa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formModificaTrattativa">
+                    <input type="hidden" id="modificaTrattativaId">
+                    
+                    <!-- Info Cliente (solo lettura) -->
+                    <div class="alert alert-light mb-3">
+                        <strong>Cliente:</strong> <span id="modificaClienteNome"></span>
+                        <br>
+                        <small class="text-muted">ID Trattativa: <span id="modificaTrattativaIdDisplay"></span></small>
+                    </div>
+                    
+                    <div class="row g-3">
+                        
+                        <!-- Noleggiatore -->
+                        <div class="col-md-6">
+                            <label class="form-label">Noleggiatore</label>
+                            <select class="form-select" id="modificaNoleggiatore" name="noleggiatore">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, nome in noleggiatori %}
+                                <option value="{{ codice }}">{{ nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Tipo Trattativa -->
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo Trattativa</label>
+                            <select class="form-select" id="modificaTipoTrattativa" name="tipo_trattativa">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, etichetta in tipi %}
+                                <option value="{{ etichetta }}">{{ etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Marca -->
+                        <div class="col-md-4">
+                            <label class="form-label">Marca</label>
+                            <input type="text" class="form-control" id="modificaMarca" name="marca">
+                        </div>
+                        
+                        <!-- Tipologia Veicolo -->
+                        <div class="col-md-4">
+                            <label class="form-label">Tipologia Veicolo</label>
+                            <select class="form-select" id="modificaTipologiaVeicolo" name="tipologia_veicolo">
+                                <option value="">-- Seleziona --</option>
+                                {% for codice, etichetta in tipologie %}
+                                <option value="{{ etichetta }}">{{ etichetta }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Numero Pezzi -->
+                        <div class="col-md-4">
+                            <label class="form-label">N. Pezzi</label>
+                            <input type="number" class="form-control" id="modificaNumPezzi" name="num_pezzi" min="1">
+                        </div>
+                        
+                        <!-- Descrizione Veicolo (riga intera) -->
+                        <div class="col-12">
+                            <label class="form-label">Descrizione Veicolo</label>
+                            <input type="text" class="form-control" id="modificaDescrizioneVeicolo" name="descrizione_veicolo">
+                        </div>
+                        
+                        <!-- Provvigione -->
+                        <div class="col-md-3">
+                            <label class="form-label">Provvigione (&euro;)</label>
+                            <input type="number" class="form-control" id="modificaProvvigione" name="provvigione" step="0.01" min="0">
+                        </div>
+                        
+                        <!-- Q% -->
+                        <div class="col-md-3">
+                            <label class="form-label">Q%</label>
+                            <input type="number" class="form-control" id="modificaQPercentuale" name="q_percentuale" step="0.01" min="0">
+                        </div>
+                        
+                        <!-- Mesi -->
+                        <div class="col-md-3">
+                            <label class="form-label">Mesi</label>
+                            <input type="number" class="form-control" id="modificaMesi" name="mesi" min="1">
+                        </div>
+                        
+                        <!-- Km Totali -->
+                        <div class="col-md-3">
+                            <label class="form-label">Km Totali</label>
+                            <input type="number" class="form-control" id="modificaKmTotali" name="km_totali" min="0">
+                        </div>
+                        
+                        <!-- Note -->
+                        <div class="col-12">
+                            <label class="form-label">Note</label>
+                            <textarea class="form-control" id="modificaNote" name="note" rows="2"></textarea>
+                        </div>
+                        
+                    </div>
+                    
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" onclick="salvaModificaTrattativa()">
+                    <i class="bi bi-check-lg me-1"></i>Salva Modifiche
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

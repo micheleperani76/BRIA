@@ -1,0 +1,252 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Trattative Cancellate
+     Versione: 1.0
+     Data: 2026-01-29
+     Descrizione: Caricamento e ripristino trattative cancellate
+     ============================================================ -->
+<script>
+// Stato paginazione cancellate
+var paginazioneCancellate = {
+    limite: 10,
+    offset: 0,
+    totale: 0,
+    caricato: false
+};
+
+// Flag admin (passato dal template)
+var isAdminCancellate = {{ 'true' if session.get('ruolo_base') == 'admin' else 'false' }};
+
+// Carica trattative cancellate quando si espande la sezione
+document.addEventListener('DOMContentLoaded', function() {
+    var sezioneCancellate = document.getElementById('sezioneTrattativeCancellate');
+    if (sezioneCancellate) {
+        sezioneCancellate.addEventListener('shown.bs.collapse', function() {
+            if (!paginazioneCancellate.caricato) {
+                caricaTrattativeCancellate();
+            }
+        });
+    }
+});
+
+function caricaTrattativeCancellate(resetOffset) {
+    if (resetOffset) paginazioneCancellate.offset = 0;
+    
+    var tbody = document.getElementById('tbodyTrattativeCancellate');
+    if (!tbody) return;
+    
+    // Mostra loading
+    tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div> Caricamento...</td></tr>';
+    
+    // Costruisco URL
+    var params = new URLSearchParams();
+    params.append('limite', paginazioneCancellate.limite);
+    params.append('offset', paginazioneCancellate.offset);
+    
+    // Filtro cliente se presente
+    var clienteId = document.getElementById('filtroClienteId');
+    if (clienteId && clienteId.value) params.append('cliente_id', clienteId.value);
+    
+    var url = '/trattative/api/lista_cancellate?' + params.toString();
+    
+    fetch(url)
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.success) {
+                paginazioneCancellate.caricato = true;
+                paginazioneCancellate.totale = data.totale || (data.trattative || []).length;
+                
+                renderTrattativeCancellate(data.trattative || []);
+                renderPaginazioneCancellate();
+            } else {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-danger">Errore: ' + data.error + '</td></tr>';
+            }
+        })
+        .catch(function(err) {
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-danger">Errore di rete</td></tr>';
+        });
+}
+
+function renderTrattativeCancellate(trattative) {
+    var tbody = document.getElementById('tbodyTrattativeCancellate');
+    if (!tbody) return;
+    
+    if (trattative.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">Nessuna trattativa cancellata</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    trattative.forEach(function(t) {
+        var tr = document.createElement('tr');
+        tr.className = 'riga-trattativa table-secondary';
+        tr.dataset.id = t.id;
+        
+        // Colore stato (sbiadito per cancellate)
+        var coloreStato = window.coloriStati ? (window.coloriStati[t.stato] || '#6c757d') : '#6c757d';
+        
+        // Pulsante ripristina (solo admin)
+        var azioniHtml = '';
+        if (isAdminCancellate) {
+            azioniHtml = 
+                '<button class="btn btn-sm btn-outline-success" onclick="ripristinaTrattativa(' + t.id + ')" title="Ripristina trattativa">' +
+                    '<i class="bi bi-arrow-counterclockwise"></i>' +
+                '</button>';
+        } else {
+            azioniHtml = '<span class="text-muted small">-</span>';
+        }
+        
+        tr.innerHTML = 
+            '<td class="text-center">' +
+                '<button class="btn btn-link btn-sm p-0 toggle-espandi" onclick="toggleEspandi(' + t.id + ')" title="Espandi timeline">' +
+                    '<i class="bi bi-chevron-right"></i>' +
+                '</button>' +
+            '</td>' +
+            '<td class="td-cliente">' +
+                '<a href="/cerca/' + (t.p_iva || t.cliente_id) + '" class="text-decoration-none text-muted">' + 
+                    escapeHtmlCancellate(t.ragione_sociale || '-') + 
+                '</a>' +
+            '</td>' +
+            '<td class="td-noleggiatore text-muted">' + escapeHtmlCancellate(t.noleggiatore || '-') + '</td>' +
+            '<td class="td-veicolo text-muted">' +
+                '<span class="marca">' + escapeHtmlCancellate(t.marca || '') + '</span>' +
+                '<small class="d-block">' + escapeHtmlCancellate(t.descrizione_veicolo || '') + '</small>' +
+            '</td>' +
+            '<td class="td-tipologia text-muted">' + escapeHtmlCancellate(t.tipologia_veicolo || '-') + '</td>' +
+            '<td class="td-tipo text-muted">' + escapeHtmlCancellate(t.tipo_trattativa || '-') + '</td>' +
+            '<td class="td-pezzi text-center text-muted">' + (t.num_pezzi || 1) + '</td>' +
+            '<td class="td-stato">' +
+                '<span class="badge" style="background-color: ' + coloreStato + '; opacity: 0.6;">' + escapeHtmlCancellate(t.stato || '-') + '</span>' +
+            '</td>' +
+            '<td class="td-data-inizio text-muted">' + formatDataCancellate(t.data_inizio) + '</td>' +
+            '<td class="td-data-cancellazione text-muted">' + formatDataCancellate(t.data_cancellazione) + '</td>' +
+            '<td class="td-commerciale small text-muted">' +
+                '<span class="nome-commerciale">' + escapeHtmlCancellate(t.commerciale_nome_snapshot || '-') + '</span>' +
+            '</td>' +
+            '<td class="td-azioni">' + azioniHtml + '</td>';
+        
+        tbody.appendChild(tr);
+    });
+}
+
+function renderPaginazioneCancellate() {
+    var container = document.getElementById('infoRisultatiCancellate');
+    var paginazione = document.getElementById('paginazioneCancellate');
+    
+    var inizio = paginazioneCancellate.totale > 0 ? paginazioneCancellate.offset + 1 : 0;
+    var fine = Math.min(paginazioneCancellate.offset + paginazioneCancellate.limite, paginazioneCancellate.totale);
+    var totalePagine = Math.ceil(paginazioneCancellate.totale / paginazioneCancellate.limite);
+    var paginaCorrente = Math.floor(paginazioneCancellate.offset / paginazioneCancellate.limite) + 1;
+    
+    // Info risultati con selector elementi per pagina
+    if (container) {
+        container.innerHTML = 
+            '<span>' + inizio + '-' + fine + ' di ' + paginazioneCancellate.totale + '</span>' +
+            '<select class="form-select form-select-sm d-inline-block ms-2" style="width: auto;" onchange="cambiaLimiteCancellate(this.value)">' +
+            '<option value="10"' + (paginazioneCancellate.limite == 10 ? ' selected' : '') + '>10</option>' +
+            '<option value="20"' + (paginazioneCancellate.limite == 20 ? ' selected' : '') + '>20</option>' +
+            '<option value="50"' + (paginazioneCancellate.limite == 50 ? ' selected' : '') + '>50</option>' +
+            '</select>' +
+            '<span class="ms-1">per pagina</span>';
+    }
+    
+    // Paginazione
+    if (paginazione && totalePagine > 1) {
+        var html = '';
+        
+        // Precedente
+        html += '<li class="page-item' + (paginaCorrente <= 1 ? ' disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="paginaCancellate(' + (paginaCorrente - 1) + '); return false;">&laquo;</a></li>';
+        
+        // Numeri pagina (max 5)
+        var startPage = Math.max(1, paginaCorrente - 2);
+        var endPage = Math.min(totalePagine, startPage + 4);
+        
+        for (var i = startPage; i <= endPage; i++) {
+            html += '<li class="page-item' + (i == paginaCorrente ? ' active' : '') + '">' +
+                    '<a class="page-link" href="#" onclick="paginaCancellate(' + i + '); return false;">' + i + '</a></li>';
+        }
+        
+        // Successivo
+        html += '<li class="page-item' + (paginaCorrente >= totalePagine ? ' disabled' : '') + '">' +
+                '<a class="page-link" href="#" onclick="paginaCancellate(' + (paginaCorrente + 1) + '); return false;">&raquo;</a></li>';
+        
+        paginazione.innerHTML = html;
+    } else if (paginazione) {
+        paginazione.innerHTML = '';
+    }
+}
+
+function paginaCancellate(numPagina) {
+    paginazioneCancellate.offset = (numPagina - 1) * paginazioneCancellate.limite;
+    caricaTrattativeCancellate();
+}
+
+function cambiaLimiteCancellate(nuovoLimite) {
+    paginazioneCancellate.limite = parseInt(nuovoLimite, 10);
+    paginazioneCancellate.offset = 0;
+    caricaTrattativeCancellate();
+}
+
+function ripristinaTrattativa(trattativaId) {
+    if (!isAdminCancellate) {
+        alert('Solo gli amministratori possono ripristinare trattative');
+        return;
+    }
+    
+    if (!confirm('Ripristinare questa trattativa?')) return;
+    
+    fetch('/trattative/api/' + trattativaId + '/ripristina', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Ricarica griglia aperte
+            caricaTrattative();
+            // Ricarica griglia chiuse se era aperta
+            if (typeof paginazioneChiuse !== 'undefined' && paginazioneChiuse.caricato) {
+                caricaTrattativeChiuse(true);
+            }
+            // Ricarica griglia cancellate
+            caricaTrattativeCancellate(true);
+            
+            // Mostra messaggio successo
+            if (typeof mostraSuccesso === 'function') {
+                mostraSuccesso('Trattativa ripristinata');
+            }
+        } else {
+            if (typeof mostraErrore === 'function') {
+                mostraErrore('Errore: ' + data.error);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        }
+    })
+    .catch(function(err) {
+        if (typeof mostraErrore === 'function') {
+            mostraErrore('Errore di rete: ' + err.message);
+        } else {
+            alert('Errore di rete: ' + err.message);
+        }
+    });
+}
+
+function formatDataCancellate(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        var d = new Date(dataStr);
+        return d.toLocaleDateString('it-IT');
+    } catch(e) {
+        return dataStr;
+    }
+}
+
+function escapeHtmlCancellate(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>

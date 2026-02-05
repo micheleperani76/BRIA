@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Trattative - Gestione Flotta{% endblock %}
+
+{% block content %}
+<!-- ============================================================
+     TRATTATIVE - Template Principale
+     Versione: 1.1
+     Data: 2026-01-28
+     Fix: Due griglie collassabili (aperte/chiuse)
+     ============================================================ -->
+
+<div class="container-fluid py-3">
+    
+    <!-- Header -->
+    {% include "trattative/_header.html" %}
+    
+    <!-- Filtri -->
+    {% include "trattative/_filtri.html" %}
+    
+    <!-- ========== SEZIONE TRATTATIVE IN CORSO (APERTA) ========== -->
+    <div class="card mb-3">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" 
+             style="cursor: pointer;" 
+             data-bs-toggle="collapse" 
+             data-bs-target="#sezioneTrattativeAperte">
+            <h6 class="mb-0">
+                <i class="bi bi-briefcase me-2"></i>Trattative in Corso
+                <span class="badge bg-light text-primary ms-2" id="countTrattativeAperte">0</span>
+            </h6>
+            <i class="bi bi-chevron-up toggle-icon"></i>
+        </div>
+        <div class="collapse show" id="sezioneTrattativeAperte">
+            {% include "trattative/_griglia.html" %}
+        </div>
+    </div>
+    
+    <!-- ========== SEZIONE TRATTATIVE CHIUSE (COLLASSATA - VERDE) ========== -->
+    <div class="card mb-3">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center" 
+             style="cursor: pointer;" 
+             data-bs-toggle="collapse" 
+             data-bs-target="#sezioneTrattativeChiuse">
+            <h6 class="mb-0">
+                <i class="bi bi-archive me-2"></i>Trattative Chiuse
+                <span class="badge bg-light text-success ms-2" id="countTrattativeChiuse">0</span>
+            </h6>
+            <i class="bi bi-chevron-down toggle-icon"></i>
+        </div>
+        <div class="collapse" id="sezioneTrattativeChiuse">
+            {% include "trattative/_griglia_chiuse.html" %}
+        </div>
+    </div>
+    
+    <!-- ========== SEZIONE TRATTATIVE CANCELLATE (COLLASSATA - GRIGIO) ========== -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center" 
+             style="cursor: pointer;" 
+             data-bs-toggle="collapse" 
+             data-bs-target="#sezioneTrattativeCancellate">
+            <h6 class="mb-0">
+                <i class="bi bi-trash me-2"></i>Trattative Cancellate
+            </h6>
+            <i class="bi bi-chevron-down toggle-icon"></i>
+        </div>
+        <div class="collapse" id="sezioneTrattativeCancellate">
+            {% include "trattative/_griglia_cancellate.html" %}
+        </div>
+    </div>
+    
+    <!-- Modal Nuova Trattativa -->
+    {% include "trattative/_modal_nuova.html" %}
+    
+    <!-- Modal Modifica Trattativa -->
+    {% include "trattative/_modal_modifica.html" %}
+    
+    <!-- Modal Avanzamento -->
+    {% include "trattative/_modal_avanzamento.html" %}
+
+</div>
+
+<!-- Styles -->
+{% include "trattative/_styles.html" %}
+
+<!-- Script per gestire icone collapse -->
+<script>
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(header) {
+    var targetId = header.getAttribute('data-bs-target');
+    var target = document.querySelector(targetId);
+    var icon = header.querySelector('.toggle-icon');
+    
+    if (target && icon) {
+        target.addEventListener('shown.bs.collapse', function() {
+            icon.classList.remove('bi-chevron-down');
+            icon.classList.add('bi-chevron-up');
+        });
+        target.addEventListener('hidden.bs.collapse', function() {
+            icon.classList.remove('bi-chevron-up');
+            icon.classList.add('bi-chevron-down');
+        });
+    }
+});
+</script>
+
+<!-- Scripts -->
+{% include "trattative/_scripts.html" %}
+
+{% endblock %}

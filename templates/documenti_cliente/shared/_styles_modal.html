@@ -1,0 +1,144 @@
+<!-- ==============================================================================
+     DOCUMENTI CLIENTE - Stili Modal Condivisi
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2026-01-27
+     Descrizione: Stili CSS per tutti i modal documenti (Car Policy, Contratti, 
+                  Ordini, Quotazioni, Documenti)
+     ============================================================================== -->
+
+<style>
+/* === MODAL DOCUMENTI GENERICI === */
+.modal-documenti .modal-dialog {
+    max-width: 80%;
+    width: 80%;
+    height: 80vh;
+    margin: 10vh auto;
+}
+.modal-documenti .modal-content {
+    height: 100%;
+    resize: both;
+    overflow: auto;
+    min-width: 400px;
+    min-height: 300px;
+}
+.modal-documenti .modal-header {
+    cursor: move;
+    background: #f8f9fa;
+    color: #212529;
+    border-bottom: 1px solid #dee2e6;
+}
+.modal-documenti .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    padding: 0;
+}
+
+/* === LISTA FILE === */
+.doc-file-list {
+    max-height: calc(80vh - 200px);
+    overflow-y: auto;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.15s;
+}
+.file-item:hover {
+    background-color: #f8f9fa;
+}
+.file-item.fissato {
+    background: linear-gradient(to right, #fff3cd, #ffffff);
+    border-left: 4px solid #ffc107;
+}
+.file-item .file-icon {
+    font-size: 1.5rem;
+    margin-right: 12px;
+    width: 30px;
+    text-align: center;
+}
+.file-item .file-info {
+    flex: 1;
+    min-width: 0;
+}
+.file-item .file-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+}
+.file-item .file-meta {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+.file-item .file-actions {
+    display: flex;
+    gap: 5px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.file-item:hover .file-actions {
+    opacity: 1;
+}
+
+/* === UPLOAD AREA === */
+.upload-area {
+    background: #f8f9fa;
+    border-top: 2px solid #dee2e6;
+    padding: 15px;
+}
+
+/* === RESIZE HANDLE === */
+.modal-documenti .modal-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, #adb5bd 50%);
+}
+
+/* === DRAG & DROP === */
+.drop-zone {
+    position: relative;
+    transition: all 0.3s;
+}
+.drop-zone.drag-over {
+    background: #e3f2fd !important;
+}
+.drop-zone.drag-over::before {
+    content: 'Rilascia il file qui';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(33, 150, 243, 0.9);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    z-index: 100;
+    border: 4px dashed white;
+    border-radius: 8px;
+}
+.drop-zone.drag-over * {
+    pointer-events: none;
+}
+
+/* === CARD HEADER CLICCABILE === */
+.doc-card-header {
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+.doc-card-header:hover {
+    background-color: #e9ecef;
+}
+</style>

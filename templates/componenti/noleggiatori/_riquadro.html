@@ -1,0 +1,405 @@
+{# ==============================================================================
+   COMPONENTE MODULARE: Riquadro Noleggiatori (Interattivo)
+   ==============================================================================
+   Versione: 2.3.0
+   Data: 2026-01-26
+   Descrizione: Gestione noleggiatori cliente con CRUD completo
+                - CRM cliente fisso in alto (da clienti.stato_crm)
+                - Noleggiatori sotto con stato relazione
+   
+   USO:
+   {% include "componenti/noleggiatori/_riquadro.html" %}
+   
+   VARIABILI RICHIESTE:
+   - cliente: oggetto cliente con id e stato_crm
+   ============================================================================== #}
+
+<div class="card mb-3" id="card-noleggiatori">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-buildings me-1"></i> Noleggiatori</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="apriModalNoleggiatore()" title="Aggiungi noleggiatore">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+    </div>
+    <div class="card-body py-2" style="font-size: 0.875rem;">
+        <!-- CRM Cliente (fisso in alto) -->
+        <div class="d-flex align-items-center justify-content-between border-bottom pb-2 mb-2" id="crm-cliente-row">
+            <div class="d-flex align-items-center">
+                <span class="text-muted me-2" style="font-size: 0.85rem;">CRM:</span>
+                <span id="crm-badge">
+                    {% if cliente.stato_crm %}
+                    <span class="badge" style="background-color: {{ get_stato_crm_colore(cliente.stato_crm) }};">{{ get_stato_crm_etichetta(cliente.stato_crm) }}</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Non impostato</span>
+                    {% endif %}
+                </span>
+            </div>
+            <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="apriModalCrm()" title="Modifica CRM">
+                <i class="bi bi-pencil"></i>
+            </button>
+        </div>
+        
+        <!-- Lista Noleggiatori -->
+        <div id="lista-noleggiatori">
+            <div class="text-center text-muted py-2">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                <small class="ms-2">Caricamento...</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Modifica CRM Cliente -->
+<div class="modal fade" id="modalCrm" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title">Stato CRM Cliente</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Stato CRM</label>
+                    <select class="form-select" id="crm-select">
+                        <option value="">-- Non impostato --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaCrm()">
+                    <i class="bi bi-check-lg"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi/Modifica Noleggiatore -->
+<div class="modal fade" id="modalNoleggiatore" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalNoleggiatoreTitle">Aggiungi Noleggiatore</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="noleg-edit-id" value="">
+                
+                <div class="mb-3">
+                    <label class="form-label">Noleggiatore *</label>
+                    <select class="form-select" id="noleg-nome">
+                        <option value="">-- Seleziona --</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Stato Relazione</label>
+                    <select class="form-select" id="noleg-stato">
+                        <option value="">-- Non specificato --</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Note <small class="text-muted">(opzionale)</small></label>
+                    <textarea class="form-control" id="noleg-note" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaNoleggiatore()">
+                    <i class="bi bi-check-lg"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const clienteIdNoleg = {{ cliente.id }};
+const clienteStatoCrm = '{{ cliente.stato_crm or "" }}';
+let noleggiatori = [];
+let statiDisponibili = [];
+let statiCrmDisponibili = [];
+let listaNoleggiatori = [];
+
+// Carica dati iniziali
+document.addEventListener('DOMContentLoaded', function() {
+    caricaNoleggiatori();
+    caricaListaNoleggiatori();
+});
+
+function caricaNoleggiatori() {
+    fetch(`/api/cliente/${clienteIdNoleg}/noleggiatori`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                noleggiatori = data.manuali;
+                statiDisponibili = data.stati_disponibili;
+                statiCrmDisponibili = data.stati_crm || [];
+                renderNoleggiatori(data.manuali, data.da_veicoli);
+                popolaSelectCrm();
+            }
+        })
+        .catch(err => console.error('Errore caricamento noleggiatori:', err));
+}
+
+function caricaListaNoleggiatori() {
+    fetch('/api/noleggiatori/lista')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                listaNoleggiatori = data.noleggiatori;
+                statiDisponibili = data.stati;
+                statiCrmDisponibili = data.stati_crm || [];
+                popolaSelectNoleggiatori();
+                popolaSelectStati();
+                popolaSelectCrm();
+            }
+        });
+}
+
+function popolaSelectNoleggiatori() {
+    const select = document.getElementById('noleg-nome');
+    select.innerHTML = '<option value="">-- Seleziona --</option>';
+    listaNoleggiatori.forEach(n => {
+        select.innerHTML += `<option value="${n}">${n}</option>`;
+    });
+}
+
+function popolaSelectStati() {
+    const select = document.getElementById('noleg-stato');
+    select.innerHTML = '<option value="">-- Non specificato --</option>';
+    statiDisponibili.forEach(s => {
+        select.innerHTML += `<option value="${s.codice}">${s.etichetta}</option>`;
+    });
+}
+
+function popolaSelectCrm() {
+    const select = document.getElementById('crm-select');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Non impostato --</option>';
+    statiCrmDisponibili.forEach(s => {
+        select.innerHTML += `<option value="${s.codice}">${s.etichetta}</option>`;
+    });
+}
+
+function renderNoleggiatori(manuali, daVeicoli) {
+    const container = document.getElementById('lista-noleggiatori');
+    
+    if (manuali.length === 0 && daVeicoli.length === 0) {
+        container.innerHTML = `
+            <div class="text-muted text-center py-2">
+                <small>Nessun noleggiatore associato</small>
+            </div>`;
+        return;
+    }
+    
+    let html = '';
+    
+    // Noleggiatori manuali
+    manuali.forEach(n => {
+        const stato = statiDisponibili.find(s => s.codice === n.stato_relazione) || null;
+        
+        let statoBadge = '';
+        if (stato) {
+            statoBadge = `<span class="badge" style="background-color: ${stato.colore}; font-size: 0.7rem;">${stato.etichetta}</span>`;
+        }
+        
+        // Conteggio veicoli se presente
+        let veicoliBadge = '';
+        if (n.veicoli_totale && n.veicoli_totale > 0) {
+            const badgeClass = n.veicoli_installato > 0 ? 'bg-success' : 'bg-secondary';
+            veicoliBadge = `<span class="badge ${badgeClass} ms-1" style="font-size: 0.7rem;">${n.veicoli_totale} veic.</span>`;
+        }
+        
+        // Nota troncata (primi 20 caratteri)
+        let notaTroncata = '';
+        if (n.note && n.note.length > 0) {
+            const notaText = n.note.length > 20 ? n.note.substring(0, 20) + '...' : n.note;
+            notaTroncata = `<span class="text-muted ms-2" title="${n.note}">${notaText}</span>`;
+        }
+        
+        html += `
+            <div class="d-flex align-items-center justify-content-between border-bottom py-1 noleg-item" data-id="${n.id}">
+                <div class="d-flex align-items-center flex-wrap">
+                    <span class="me-2">${n.noleggiatore}</span>
+                    ${statoBadge}
+                    ${veicoliBadge}
+                    ${notaTroncata}
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="modificaNoleggiatore(${n.id})" title="Modifica">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="eliminaNoleggiatore(${n.id}, '${n.noleggiatore}')" title="Elimina">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>`;
+    });
+    
+    // Noleggiatori rilevati dai veicoli
+    daVeicoli.forEach(nol => {
+        const statoAuto = statiDisponibili.find(s => s.codice === nol.stato_auto) || {colore: '#dc3545', etichetta: 'Altro Broker'};
+        
+        // Badge veicoli: verde se almeno uno Installato, grigio se tutti Extra
+        const badgeVeicoliClass = nol.veicoli_installato > 0 ? 'bg-success' : 'bg-secondary';
+        
+        // Nota troncata (primi 20 caratteri)
+        let notaTroncata = '';
+        if (nol.note && nol.note.length > 0) {
+            notaTroncata = nol.note.length > 20 ? nol.note.substring(0, 20) + '...' : nol.note;
+            notaTroncata = `<span class="text-muted ms-2" title="${nol.note}">${notaTroncata}</span>`;
+        }
+        
+        html += `
+            <div class="d-flex align-items-center justify-content-between border-bottom py-1 bg-light" title="Rilevato da ${nol.veicoli_totale} veicolo/i">
+                <div class="d-flex align-items-center flex-wrap">
+                    <span class="me-2">${nol.noleggiatore}</span>
+                    <span class="badge me-1" style="background-color: ${statoAuto.colore}; font-size: 0.7rem;">${statoAuto.etichetta}</span>
+                    <span class="badge ${badgeVeicoliClass}" style="font-size: 0.7rem;">${nol.veicoli_totale} veic.</span>
+                    ${notaTroncata}
+                </div>
+                <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="aggiungiDaVeicolo('${nol.noleggiatore}', '${nol.stato_auto}')" title="Configura">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </div>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+// === CRM Cliente ===
+function apriModalCrm() {
+    document.getElementById('crm-select').value = clienteStatoCrm;
+    new bootstrap.Modal(document.getElementById('modalCrm')).show();
+}
+
+function salvaCrm() {
+    const nuovoStato = document.getElementById('crm-select').value;
+    
+    fetch(`/api/cliente/${clienteIdNoleg}/crm`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({stato_crm: nuovoStato})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCrm')).hide();
+            // Aggiorna badge CRM
+            const badge = document.getElementById('crm-badge');
+            if (nuovoStato) {
+                const statoCrm = statiCrmDisponibili.find(s => s.codice === nuovoStato);
+                badge.innerHTML = `<span class="badge" style="background-color: ${statoCrm.colore};">${statoCrm.etichetta}</span>`;
+            } else {
+                badge.innerHTML = '<span class="badge bg-secondary">Non impostato</span>';
+            }
+        } else {
+            alert(data.error || 'Errore salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore di rete');
+    });
+}
+
+// === Noleggiatori ===
+function apriModalNoleggiatore() {
+    document.getElementById('noleg-edit-id').value = '';
+    document.getElementById('noleg-nome').value = '';
+    document.getElementById('noleg-nome').disabled = false;
+    document.getElementById('noleg-stato').value = '';
+    document.getElementById('noleg-note').value = '';
+    document.getElementById('modalNoleggiatoreTitle').textContent = 'Aggiungi Noleggiatore';
+    
+    new bootstrap.Modal(document.getElementById('modalNoleggiatore')).show();
+}
+
+function aggiungiDaVeicolo(nol, statoAuto) {
+    document.getElementById('noleg-edit-id').value = '';
+    document.getElementById('noleg-nome').value = nol;
+    document.getElementById('noleg-nome').disabled = true;
+    document.getElementById('noleg-stato').value = statoAuto || '';
+    document.getElementById('noleg-note').value = '';
+    document.getElementById('modalNoleggiatoreTitle').textContent = 'Configura Noleggiatore';
+    
+    new bootstrap.Modal(document.getElementById('modalNoleggiatore')).show();
+}
+
+function modificaNoleggiatore(id) {
+    const n = noleggiatori.find(x => x.id === id);
+    if (!n) return;
+    
+    document.getElementById('noleg-edit-id').value = id;
+    document.getElementById('noleg-nome').value = n.noleggiatore;
+    document.getElementById('noleg-nome').disabled = true;
+    document.getElementById('noleg-stato').value = n.stato_relazione || '';
+    document.getElementById('noleg-note').value = n.note || '';
+    document.getElementById('modalNoleggiatoreTitle').textContent = 'Modifica Noleggiatore';
+    
+    new bootstrap.Modal(document.getElementById('modalNoleggiatore')).show();
+}
+
+function salvaNoleggiatore() {
+    const editId = document.getElementById('noleg-edit-id').value;
+    const nome = document.getElementById('noleg-nome').value;
+    const stato = document.getElementById('noleg-stato').value;
+    const note = document.getElementById('noleg-note').value;
+    
+    if (!nome) {
+        alert('Seleziona un noleggiatore');
+        return;
+    }
+    
+    const payload = {
+        noleggiatore: nome,
+        stato_relazione: stato || null,
+        note: note
+    };
+    
+    let url, method;
+    if (editId) {
+        url = `/api/cliente/${clienteIdNoleg}/noleggiatori/${editId}`;
+        method = 'PUT';
+    } else {
+        url = `/api/cliente/${clienteIdNoleg}/noleggiatori`;
+        method = 'POST';
+    }
+    
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNoleggiatore')).hide();
+            caricaNoleggiatori();
+        } else {
+            alert(data.error || 'Errore salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore di rete');
+    });
+}
+
+function eliminaNoleggiatore(id, nome) {
+    if (!confirm(`Eliminare ${nome}?`)) return;
+    
+    fetch(`/api/cliente/${clienteIdNoleg}/noleggiatori/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                caricaNoleggiatori();
+            } else {
+                alert(data.error || 'Errore eliminazione');
+            }
+        });
+}
+</script>

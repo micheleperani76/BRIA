@@ -1,0 +1,506 @@
+{# ==============================================================================
+   COMPONENTE MODULARE: Sedi Aggiuntive (Collassabile + Referente)
+   ==============================================================================
+   Versione: 2.0.0
+   Data: 2026-01-26
+   Descrizione: Elenco sedi aggiuntive con layout compatto
+                - Riga: [Badge] Nome | Citta | Referente
+                - Clic riga espande dettagli
+                - Referente cliccabile
+   
+   USO:
+   {% include "dettaglio/sedi/_riquadro.html" %}
+   
+   VARIABILI RICHIESTE:
+   - cliente: oggetto cliente con id
+   ============================================================================== #}
+
+<!-- Sedi Aggiuntive (collassabile) -->
+<div class="mt-2" id="container-sedi">
+    <div class="d-flex align-items-center justify-content-between">
+        <a href="#" class="text-decoration-none text-muted small" data-bs-toggle="collapse" data-bs-target="#collapse-sedi" id="toggle-sedi">
+            <i class="bi bi-chevron-right me-1 collapse-icon-sedi"></i>
+            <i class="bi bi-geo-alt me-1"></i>Altre Sedi (<span id="count-sedi">0</span>)
+        </a>
+        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" onclick="apriModalSede()" title="Aggiungi sede">
+            <i class="bi bi-plus"></i>
+        </button>
+    </div>
+    
+    <div class="collapse" id="collapse-sedi">
+        <div class="mt-2" id="lista-sedi">
+            <div class="text-center text-muted py-2">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                <small class="ms-2">Caricamento...</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aggiungi/Modifica Sede -->
+<div class="modal fade" id="modalSede" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalSedeTitle">Aggiungi Sede</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="sede-edit-id" value="">
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo Sede</label>
+                        <select class="form-select" id="sede-tipo">
+                            <option value="Operativa">Operativa</option>
+                            <option value="Filiale">Filiale</option>
+                            <option value="Magazzino">Magazzino</option>
+                            <option value="Deposito">Deposito</option>
+                            <option value="Ufficio">Ufficio</option>
+                            <option value="Stabilimento">Stabilimento</option>
+                            <option value="Punto Vendita">Punto Vendita</option>
+                            <option value="Altro">Altro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Denominazione <small class="text-muted">(opz.)</small></label>
+                        <input type="text" class="form-control" id="sede-denominazione" placeholder="Es: Filiale Nord">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Indirizzo</label>
+                        <input type="text" class="form-control" id="sede-indirizzo" placeholder="Via e numero civico">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">CAP</label>
+                        <input type="text" class="form-control" id="sede-cap" maxlength="5">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Citt&agrave;</label>
+                        <input type="text" class="form-control" id="sede-citta" style="text-transform: uppercase;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Prov.</label>
+                        <input type="text" class="form-control" id="sede-provincia" maxlength="2" style="text-transform: uppercase;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Telefono Sede <small class="text-muted">(opz.)</small></label>
+                        <input type="text" class="form-control" id="sede-telefono">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email Sede <small class="text-muted">(opz.)</small></label>
+                        <input type="email" class="form-control" id="sede-email">
+                    </div>
+                    
+                    <!-- Referente collegato -->
+                    <div class="col-12">
+                        <label class="form-label"><i class="bi bi-person me-1"></i>Referente collegato <small class="text-muted">(opz.)</small></label>
+                        <select class="form-select" id="sede-referente">
+                            <option value="">-- Nessun referente --</option>
+                        </select>
+                        <small class="text-muted">Seleziona un referente esistente da associare a questa sede</small>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label">Note <small class="text-muted">(opz.)</small></label>
+                        <textarea class="form-control" id="sede-note" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaSede()">
+                    <i class="bi bi-check-lg"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dettaglio Sede -->
+<div class="modal fade" id="modalDettaglioSede" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="bi bi-geo-alt me-1"></i><span id="dettaglio-sede-title">Dettaglio Sede</span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="dettaglio-sede-body">
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-modifica-sede">
+                    <i class="bi bi-pencil"></i> Modifica
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" id="btn-elimina-sede">
+                    <i class="bi bi-trash"></i> Elimina
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Dettaglio Referente -->
+<div class="modal fade" id="modalDettaglioReferente" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title"><i class="bi bi-person me-1"></i><span id="ref-modal-nome">Referente</span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="ref-modal-body">
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.collapse-icon-sedi {
+    transition: transform 0.2s;
+    display: inline-block;
+}
+.collapse-icon-sedi.rotated {
+    transform: rotate(90deg);
+}
+.sede-row {
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 4px;
+    margin-bottom: 2px;
+    background-color: #f8f9fa;
+    font-size: 0.85rem;
+}
+.sede-row:hover {
+    background-color: #e9ecef;
+}
+.sede-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+.sede-badge-click:hover {
+    filter: brightness(1.2);
+}
+.referente-link {
+    color: #0d6efd;
+    text-decoration: none;
+}
+.referente-link:hover {
+    text-decoration: underline;
+}
+</style>
+
+<script>
+// Variabile locale per questo componente
+const clienteIdSedi = {{ cliente.id }};
+let sediCliente = [];
+let referentiDisponibili = [];
+
+// Carica dati iniziali
+document.addEventListener('DOMContentLoaded', function() {
+    caricaSedi();
+    
+    // Ruota icona quando collassa/espande
+    const collapseSedi = document.getElementById('collapse-sedi');
+    const toggleIcon = document.querySelector('.collapse-icon-sedi');
+    
+    if (collapseSedi && toggleIcon) {
+        collapseSedi.addEventListener('show.bs.collapse', function() {
+            toggleIcon.classList.add('rotated');
+        });
+        collapseSedi.addEventListener('hide.bs.collapse', function() {
+            toggleIcon.classList.remove('rotated');
+        });
+    }
+});
+
+function caricaSedi() {
+    fetch(`/api/cliente/${clienteIdSedi}/sedi`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                sediCliente = data.sedi;
+                referentiDisponibili = data.referenti || [];
+                renderSedi();
+                popolaSelectReferenti();
+                document.getElementById('count-sedi').textContent = sediCliente.length;
+            }
+        })
+        .catch(err => console.error('Errore caricamento sedi:', err));
+}
+
+function popolaSelectReferenti() {
+    const select = document.getElementById('sede-referente');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Nessun referente --</option>';
+    referentiDisponibili.forEach(r => {
+        const ruolo = r.ruolo ? ` (${r.ruolo})` : '';
+        select.innerHTML += `<option value="${r.id}">${r.nome}${ruolo}</option>`;
+    });
+}
+
+function renderSedi() {
+    const container = document.getElementById('lista-sedi');
+    
+    if (sediCliente.length === 0) {
+        container.innerHTML = `
+            <div class="text-muted text-center py-2 small">
+                <i class="bi bi-info-circle me-1"></i>Nessuna sede aggiuntiva
+            </div>`;
+        return;
+    }
+    
+    let html = '';
+    sediCliente.forEach(sede => {
+        // Badge tipo
+        const tipoBadge = `<span class="badge bg-secondary sede-badge me-2">${sede.tipo_sede}</span>`;
+        
+        // Nome/Denominazione
+        const nome = sede.denominazione || '';
+        
+        // Citta
+        const citta = sede.citta || '';
+        
+        // Referente (se presente) - cliccabile per scroll alla sezione referenti
+        let referenteHtml = '';
+        if (sede.ref_nome) {
+            const refTel = sede.ref_cellulare || sede.ref_telefono || '';
+            const refTelIcon = refTel ? `<i class="bi bi-telephone-fill ms-1" title="${refTel}"></i>` : '';
+            referenteHtml = `<a href="#" class="referente-link" onclick="event.stopPropagation(); scrollToReferente(${sede.ref_id}); return false;" title="Vai al referente">${sede.ref_nome.trim()}${refTelIcon}</a>`;
+        }
+        
+        // Telefono sede (se no referente)
+        let telefonoHtml = '';
+        if (!sede.ref_nome && sede.telefono) {
+            telefonoHtml = `<span class="text-muted"><i class="bi bi-telephone"></i> ${sede.telefono}</span>`;
+        }
+        
+        // Costruisci riga compatta
+        // Badge cliccabile per aprire dettaglio sede
+        // Referente cliccabile per scroll alla sezione referenti
+        html += `
+            <div class="sede-row d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center flex-wrap gap-2">
+                    <span class="badge bg-secondary sede-badge me-2 sede-badge-click" onclick="apriDettaglioSede(${sede.id})" style="cursor:pointer;" title="Vedi dettaglio sede">${sede.tipo_sede}</span>
+                    ${nome ? `<strong>${nome}</strong>` : ''}
+                    ${nome && citta ? '<span class="text-muted">|</span>' : ''}
+                    ${citta ? `<span>${citta}</span>` : ''}
+                    ${(nome || citta) && (referenteHtml || telefonoHtml) ? '<span class="text-muted">|</span>' : ''}
+                    ${referenteHtml}
+                    ${telefonoHtml}
+                </div>
+                <i class="bi bi-chevron-right text-muted" onclick="apriDettaglioSede(${sede.id})" style="cursor:pointer;" title="Vedi dettaglio"></i>
+            </div>`;
+    });
+    
+    container.innerHTML = html;
+}
+
+function apriDettaglioSede(id) {
+    const sede = sediCliente.find(s => s.id === id);
+    if (!sede) return;
+    
+    // Costruisci indirizzo
+    let indirizzo = '';
+    if (sede.indirizzo) indirizzo += sede.indirizzo;
+    if (sede.cap || sede.citta) {
+        if (indirizzo) indirizzo += ', ';
+        if (sede.cap) indirizzo += sede.cap + ' ';
+        if (sede.citta) indirizzo += sede.citta;
+    }
+    if (sede.provincia) indirizzo += ' (' + sede.provincia + ')';
+    
+    // Link Maps
+    const mapsLink = indirizzo ? 
+        `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(indirizzo)}" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt-fill text-danger"></i> ${indirizzo}</a>` : 
+        '<span class="text-muted">Non specificato</span>';
+    
+    // Referente
+    let referenteHtml = '<span class="text-muted">Nessuno</span>';
+    if (sede.ref_nome) {
+        const refTel = sede.ref_cellulare || sede.ref_telefono || '';
+        const refEmail = sede.ref_email || '';
+        referenteHtml = `
+            <div>
+                <strong>${sede.ref_nome}</strong>
+                ${sede.ref_ruolo ? `<span class="badge bg-info ms-1">${sede.ref_ruolo}</span>` : ''}
+            </div>
+            ${refTel ? `<div class="small"><i class="bi bi-telephone"></i> <a href="tel:${refTel}">${refTel}</a></div>` : ''}
+            ${refEmail ? `<div class="small"><i class="bi bi-envelope"></i> <a href="mailto:${refEmail}">${refEmail}</a></div>` : ''}
+        `;
+    }
+    
+    // Titolo
+    const titolo = sede.denominazione ? `${sede.tipo_sede} - ${sede.denominazione}` : sede.tipo_sede;
+    document.getElementById('dettaglio-sede-title').textContent = titolo;
+    
+    // Body
+    document.getElementById('dettaglio-sede-body').innerHTML = `
+        <table class="table table-sm mb-0">
+            <tr>
+                <td class="text-muted" style="width: 120px;">Indirizzo</td>
+                <td>${mapsLink}</td>
+            </tr>
+            ${sede.telefono ? `<tr><td class="text-muted">Telefono</td><td><a href="tel:${sede.telefono}">${sede.telefono}</a></td></tr>` : ''}
+            ${sede.email ? `<tr><td class="text-muted">Email</td><td><a href="mailto:${sede.email}">${sede.email}</a></td></tr>` : ''}
+            <tr>
+                <td class="text-muted">Referente</td>
+                <td>${referenteHtml}</td>
+            </tr>
+            ${sede.note ? `<tr><td class="text-muted">Note</td><td class="fst-italic">${sede.note}</td></tr>` : ''}
+        </table>
+    `;
+    
+    // Pulsanti footer
+    document.getElementById('btn-modifica-sede').onclick = function() {
+        bootstrap.Modal.getInstance(document.getElementById('modalDettaglioSede')).hide();
+        setTimeout(() => modificaSede(id), 300);
+    };
+    document.getElementById('btn-elimina-sede').onclick = function() {
+        if (confirm('Eliminare questa sede?')) {
+            eliminaSede(id);
+            bootstrap.Modal.getInstance(document.getElementById('modalDettaglioSede')).hide();
+        }
+    };
+    
+    new bootstrap.Modal(document.getElementById('modalDettaglioSede')).show();
+}
+
+function apriModalReferente(refId, nome, ruolo, cellulare, telefono, email) {
+    document.getElementById('ref-modal-nome').textContent = nome;
+    
+    let html = '<table class="table table-sm mb-0">';
+    if (ruolo) {
+        html += `<tr><td class="text-muted" style="width:80px;">Ruolo</td><td><span class="badge bg-info">${ruolo}</span></td></tr>`;
+    }
+    if (cellulare) {
+        html += `<tr><td class="text-muted">Cellulare</td><td><a href="tel:${cellulare}"><i class="bi bi-phone"></i> ${cellulare}</a></td></tr>`;
+    }
+    if (telefono) {
+        html += `<tr><td class="text-muted">Telefono</td><td><a href="tel:${telefono}"><i class="bi bi-telephone"></i> ${telefono}</a></td></tr>`;
+    }
+    if (email) {
+        html += `<tr><td class="text-muted">Email</td><td><a href="mailto:${email}"><i class="bi bi-envelope"></i> ${email}</a></td></tr>`;
+    }
+    html += '</table>';
+    
+    document.getElementById('ref-modal-body').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('modalDettaglioReferente')).show();
+}
+
+function scrollToReferente(refId) {
+    // Cerca la riga del referente nella tabella
+    const refRow = document.querySelector(`tr[data-referente-id="${refId}"]`);
+    if (refRow) {
+        refRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        refRow.classList.add('table-warning');
+        setTimeout(() => refRow.classList.remove('table-warning'), 2000);
+    }
+}
+
+function apriModalSede() {
+    document.getElementById('sede-edit-id').value = '';
+    document.getElementById('sede-tipo').value = 'Operativa';
+    document.getElementById('sede-denominazione').value = '';
+    document.getElementById('sede-indirizzo').value = '';
+    document.getElementById('sede-cap').value = '';
+    document.getElementById('sede-citta').value = '';
+    document.getElementById('sede-provincia').value = '';
+    document.getElementById('sede-telefono').value = '';
+    document.getElementById('sede-email').value = '';
+    document.getElementById('sede-referente').value = '';
+    document.getElementById('sede-note').value = '';
+    document.getElementById('modalSedeTitle').textContent = 'Aggiungi Sede';
+    
+    new bootstrap.Modal(document.getElementById('modalSede')).show();
+}
+
+function modificaSede(id) {
+    const sede = sediCliente.find(s => s.id === id);
+    if (!sede) return;
+    
+    document.getElementById('sede-edit-id').value = id;
+    document.getElementById('sede-tipo').value = sede.tipo_sede || 'Operativa';
+    document.getElementById('sede-denominazione').value = sede.denominazione || '';
+    document.getElementById('sede-indirizzo').value = sede.indirizzo || '';
+    document.getElementById('sede-cap').value = sede.cap || '';
+    document.getElementById('sede-citta').value = sede.citta || '';
+    document.getElementById('sede-provincia').value = sede.provincia || '';
+    document.getElementById('sede-telefono').value = sede.telefono || '';
+    document.getElementById('sede-email').value = sede.email || '';
+    document.getElementById('sede-referente').value = sede.referente_id || '';
+    document.getElementById('sede-note').value = sede.note || '';
+    document.getElementById('modalSedeTitle').textContent = 'Modifica Sede';
+    
+    new bootstrap.Modal(document.getElementById('modalSede')).show();
+}
+
+function salvaSede() {
+    const editId = document.getElementById('sede-edit-id').value;
+    
+    const payload = {
+        tipo_sede: document.getElementById('sede-tipo').value,
+        denominazione: document.getElementById('sede-denominazione').value,
+        indirizzo: document.getElementById('sede-indirizzo').value,
+        cap: document.getElementById('sede-cap').value,
+        citta: document.getElementById('sede-citta').value,
+        provincia: document.getElementById('sede-provincia').value,
+        telefono: document.getElementById('sede-telefono').value,
+        email: document.getElementById('sede-email').value,
+        referente_id: document.getElementById('sede-referente').value || null,
+        note: document.getElementById('sede-note').value
+    };
+    
+    if (!payload.indirizzo && !payload.citta) {
+        alert('Inserire almeno indirizzo o citta');
+        return;
+    }
+    
+    let url, method;
+    if (editId) {
+        url = `/api/cliente/${clienteIdSedi}/sedi/${editId}`;
+        method = 'PUT';
+    } else {
+        url = `/api/cliente/${clienteIdSedi}/sedi`;
+        method = 'POST';
+    }
+    
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalSede')).hide();
+            caricaSedi();
+            // Espandi la lista se era chiusa
+            const collapse = document.getElementById('collapse-sedi');
+            if (!collapse.classList.contains('show')) {
+                new bootstrap.Collapse(collapse, {show: true});
+            }
+        } else {
+            alert(data.error || 'Errore salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore di rete');
+    });
+}
+
+function eliminaSede(id) {
+    fetch(`/api/cliente/${clienteIdSedi}/sedi/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                caricaSedi();
+            } else {
+                alert(data.error || 'Errore eliminazione');
+            }
+        });
+}
+</script>

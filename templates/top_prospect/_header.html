@@ -1,0 +1,137 @@
+<!-- ============================================================
+     TOP PROSPECT - Header
+     Versione: 1.2.0
+     Data: 2026-01-29
+     Descrizione: Header con banner appuntamenti da Google Calendar
+     Modifiche: Integrazione Google Calendar, colori commerciali
+     ============================================================ -->
+
+<!-- Titolo e azioni -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0">
+            <i class="bi bi-trophy-fill text-warning me-2"></i>Top Prospect
+        </h4>
+        <small class="text-muted">Gestione clienti ad alto potenziale</small>
+    </div>
+    <div class="d-flex gap-2">
+        {% if is_admin %}
+        <!-- Tasto Condividi Calendario (solo admin) -->
+        <button type="button" class="btn btn-outline-secondary" onclick="apriModalCondivisioneCalendario()" title="Gestisci accessi al calendario">
+            <i class="bi bi-share me-1"></i>Condividi
+        </button>
+        {% endif %}
+        
+        <!-- Tasto Calendario Google -->
+        <a href="{{ calendario_url }}" target="_blank" class="btn btn-outline-primary" title="Apri Calendario Google">
+            <i class="bi bi-calendar3 me-1"></i>Calendario
+        </a>
+        
+        <!-- Tasto Candidatura Manuale -->
+        <button type="button" class="btn btn-outline-success" onclick="apriCandidaturaManuale()" title="Aggiungi cliente manualmente">
+            <i class="bi bi-plus-lg me-1"></i>Candidatura Manuale
+        </button>
+    </div>
+</div>
+
+<!-- Banner Prossimi Appuntamenti (da Google Calendar) -->
+{% if appuntamenti and appuntamenti|length > 0 %}
+<div class="alert alert-light mb-3 py-2 border">
+    <div class="d-flex align-items-start flex-wrap">
+        <div class="me-3 mb-1">
+            <i class="bi bi-calendar-event text-primary me-1"></i>
+            <strong>Prossimi 28 giorni:</strong>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% for app in appuntamenti %}
+            <a href="{{ app.link }}" target="_blank" class="text-decoration-none">
+                <span class="badge d-inline-flex align-items-center" 
+                      style="font-size: 0.8rem; background-color: {{ app.colore_hex or '#6c757d' }}; color: white;"
+                      title="{{ app.descrizione or 'Clicca per vedere su Google Calendar' }}">
+                    <i class="bi bi-calendar-date me-1"></i>
+                    <span class="me-1">{{ app.data_formattata }}</span>
+                    {% if app.ora %}
+                    <span class="me-1">{{ app.ora }}</span>
+                    {% endif %}
+                    <span class="fw-bold">{{ app.titolo }}</span>
+                    {% if app.commerciale_nome %}
+                    <span class="ms-1 opacity-75">({{ app.commerciale_nome }})</span>
+                    {% endif %}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-light mb-3 py-2 text-muted border">
+    <i class="bi bi-calendar-check me-2"></i>
+    Nessun appuntamento programmato nei prossimi 28 giorni
+    <a href="{{ calendario_url }}" target="_blank" class="ms-2 text-decoration-none">
+        <i class="bi bi-box-arrow-up-right me-1"></i>Apri Calendario
+    </a>
+</div>
+{% endif %}
+
+<!-- Filtro priorit&agrave; (solo per confermati) -->
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+    <span class="text-muted small me-2">Filtra per priorit&agrave;:</span>
+    
+    <button class="btn btn-sm btn-outline-secondary filtro-priorita active" data-priorita="">
+        Tutte
+    </button>
+    
+    {% for livello, config in livelli_priorita.items() %}
+    <button class="btn btn-sm filtro-priorita" 
+            data-priorita="{{ livello }}"
+            style="border-color: {{ config.colore }}; color: {{ config.colore }};">
+        <i class="bi {{ config.icona }} me-1"></i>{{ config.nome }}
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Modal Condivisione Calendario (solo admin) -->
+{% if is_admin %}
+<div class="modal fade" id="modalCondivisioneCalendario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-share me-2"></i>Condividi Calendario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Aggiungi un account Google per permettergli di vedere il calendario Top Prospect.
+                </div>
+                
+                <!-- Form aggiunta -->
+                <div class="mb-3">
+                    <label class="form-label">Email account Google</label>
+                    <div class="input-group">
+                        <input type="email" class="form-control" id="condivisioneEmail" placeholder="esempio@gmail.com">
+                        <select class="form-select" id="condivisioneRuolo" style="max-width: 150px;">
+                            <option value="reader">Sola lettura</option>
+                            <option value="writer">Modifica</option>
+                        </select>
+                        <button class="btn btn-primary" type="button" onclick="aggiungiCondivisione()">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- Lista utenti con accesso -->
+                <h6><i class="bi bi-people me-1"></i>Account con accesso</h6>
+                <div id="listaCondivisioni" class="small">
+                    <p class="text-muted">Caricamento...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

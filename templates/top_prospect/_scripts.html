@@ -1,0 +1,1570 @@
+<!-- ============================================================
+     TOP PROSPECT - Scripts JavaScript
+     Versione: 1.1.0
+     Data: 2026-01-29
+     Modifiche: Rimossa coppa (ridondante), fix colonna azioni non-admin
+     ============================================================ -->
+
+<script>
+// === VARIABILI GLOBALI ===
+var isAdmin = {{ 'true' if is_admin else 'false' }};
+var filtroPrioritaAttivo = '';
+
+// === INIZIALIZZAZIONE ===
+document.addEventListener('DOMContentLoaded', function() {
+    // Inizializza tooltip Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    
+    // Carica dati
+    caricaConfermati();
+    caricaCandidati();
+    if (isAdmin) {
+        caricaArchiviati();
+    }
+    
+    // Gestione collapse toggle icon
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function(el) {
+        el.addEventListener('click', function() {
+            var icon = this.querySelector('.toggle-icon');
+            if (icon) {
+                var target = document.querySelector(this.getAttribute('data-bs-target'));
+                if (target) {
+                    setTimeout(function() {
+                        if (target.classList.contains('show')) {
+                            icon.classList.remove('bi-chevron-down');
+                            icon.classList.add('bi-chevron-up');
+                        } else {
+                            icon.classList.remove('bi-chevron-up');
+                            icon.classList.add('bi-chevron-down');
+                        }
+                    }, 50);
+                }
+            }
+        });
+    });
+    
+    // Gestione filtri priorit&agrave;
+    document.querySelectorAll('.filtro-priorita').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filtro-priorita').forEach(function(b) {
+                b.classList.remove('active');
+            });
+            this.classList.add('active');
+            filtroPrioritaAttivo = this.getAttribute('data-priorita') || '';
+            caricaConfermati();
+        });
+    });
+});
+
+// === CARICA CONFERMATI ===
+function caricaConfermati() {
+    var url = '/top-prospect/api/confermati';
+    if (filtroPrioritaAttivo) {
+        url += '?priorita=' + filtroPrioritaAttivo;
+    }
+    
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderConfermati(data.confermati);
+                document.getElementById('countConfermati').textContent = data.confermati.length;
+            }
+        })
+        .catch(function(e) { console.error('Errore caricamento confermati:', e); });
+}
+
+function renderConfermati(confermati) {
+    var tbody = document.getElementById('tbodyConfermati');
+    var template = document.getElementById('templateRigaConfermato');
+    
+    if (!confermati || confermati.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="13" class="text-center py-4 text-muted">' +
+            '<i class="bi bi-trophy me-2"></i>Nessun Top Prospect confermato</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    confermati.forEach(function(tp) {
+        var clone = template.content.cloneNode(true);
+        var row = clone.querySelector('.tp-row');
+        var detailRow = clone.querySelector('.tp-detail-row');
+        
+        row.setAttribute('data-tp-id', tp.id);
+        row.setAttribute('data-cliente-id', tp.cliente_id);
+        
+        // Priorit&agrave;
+        var prioIcon = row.querySelector('.priorita-icona');
+        prioIcon.className = 'bi ' + (tp.priorita_config ? tp.priorita_config.icona : 'bi-star') + ' priorita-' + tp.priorita;
+        prioIcon.title = tp.priorita_config ? tp.priorita_config.nome : '';
+        
+        // Origine (mano = manuale, pc = automatico)
+        var origineCell = row.querySelector('.origine');
+        if (origineCell) {
+            if (tp.origine === 'manuale') {
+                origineCell.innerHTML = '<i class="bi bi-hand-index-thumb text-primary" title="Proposta manuale"></i>';
+            } else {
+                origineCell.innerHTML = '<i class="bi bi-cpu text-secondary" title="Proposta automatica"></i>';
+            }
+        }
+        
+        // Nome azienda (con link se autorizzato) - senza coppa, siamo gi&agrave; nella pagina Top Prospect
+        var nomeCell = row.querySelector('.nome-azienda');
+        if (tp.puo_accedere) {
+            nomeCell.innerHTML = '<a href="/cliente/' + tp.cliente_id + '" class="link-azienda">' + 
+                escapeHtml(tp.nome_display) + '</a>';
+        } else {
+            nomeCell.innerHTML = '<span class="text-muted">' + escapeHtml(tp.nome_display) + '</span>';
+        }
+        
+        // Altri campi - Commerciale con pallino colorato
+        var commercialeCell = row.querySelector('.commerciale');
+        if (tp.commerciale_colore_hex) {
+            commercialeCell.innerHTML = '<span class="commerciale-colore" style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:' + tp.commerciale_colore_hex + ';margin-right:6px;vertical-align:middle;"></span>' + escapeHtml(tp.commerciale_nome || '-');
+        } else {
+            commercialeCell.textContent = tp.commerciale_nome || '-';
+        }
+        row.querySelector('.flotta').textContent = tp.flotta || 0;
+        row.querySelector('.dipendenti').textContent = tp.dipendenti || '-';
+        row.querySelector('.provincia').textContent = tp.provincia || '-';
+        row.querySelector('.ultimo-app').textContent = tp.ultimo_appuntamento ? formatData(tp.ultimo_appuntamento) : '-';
+        row.querySelector('.prossimo-app').textContent = tp.prossimo_appuntamento ? formatData(tp.prossimo_appuntamento) : '-';
+        
+        // Car Policy
+        var cpCell = row.querySelector('.car-policy');
+        if (tp.has_car_policy) {
+            cpCell.innerHTML = '<i class="bi bi-file-earmark-text text-primary" title="Car Policy presente"></i>';
+        } else {
+            cpCell.innerHTML = '<span class="text-muted">-</span>';
+        }
+        
+        // Note count
+        row.querySelector('.note-count').textContent = tp.note_count || 0;
+        
+        // Azioni admin
+        if (isAdmin) {
+            var azioniCell = row.querySelector('.azioni-admin');
+            azioniCell.innerHTML = 
+                '<button class="btn btn-sm btn-outline-primary me-1" onclick="apriModalPriorita(' + tp.id + ', ' + tp.priorita + ')" title="Modifica priorit&agrave;">' +
+                '<i class="bi bi-star"></i></button>' +
+                '<button class="btn btn-sm btn-outline-danger" onclick="apriModalArchivia(' + tp.id + ', \'' + escapeHtml(tp.nome_display) + '\')" title="Archivia">' +
+                '<i class="bi bi-archive"></i></button>';
+        } else {
+            // Rimuovi cella azioni per non-admin (altrimenti disallinea la tabella)
+            var azioniCell = row.querySelector('.azioni-admin');
+            if (azioniCell) azioniCell.remove();
+        }
+        
+        // Gestione espansione riga
+        row.addEventListener('click', function(e) {
+            // Non espandere se click su link o bottone
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            
+            toggleDettaglio(tp.id, row, detailRow);
+        });
+        
+        tbody.appendChild(clone);
+    });
+}
+
+function toggleDettaglio(tpId, row, detailRow) {
+    var isExpanded = row.classList.contains('expanded');
+    
+    // Chiudi tutti gli altri
+    document.querySelectorAll('.tp-row.expanded').forEach(function(r) {
+        r.classList.remove('expanded');
+        r.querySelector('.expand-icon').style.transform = 'rotate(0deg)';
+    });
+    document.querySelectorAll('.tp-detail-row').forEach(function(r) {
+        r.style.display = 'none';
+    });
+    
+    if (!isExpanded) {
+        row.classList.add('expanded');
+        row.querySelector('.expand-icon').style.transform = 'rotate(90deg)';
+        detailRow.style.display = '';
+        
+        // Carica dettagli
+        caricaNote(tpId, detailRow.querySelector('.note-container'));
+        caricaAppuntamenti(tpId, detailRow.querySelector('.appuntamenti-container'));
+        caricaStorico(tpId, detailRow.querySelector('.storico-container'));
+        
+        // Setup bottoni
+        detailRow.querySelector('.btn-nuova-nota').onclick = function() {
+            apriModalNuovaNota(tpId);
+        };
+        detailRow.querySelector('.btn-nuovo-app').onclick = function() {
+            apriModalNuovoApp(tpId);
+        };
+    }
+}
+
+// === CARICA CANDIDATI ===
+function caricaCandidati() {
+    fetch('/top-prospect/api/candidati')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderCandidati(data.candidati);
+                document.getElementById('countCandidati').textContent = data.candidati.length;
+            }
+        })
+        .catch(function(e) { console.error('Errore caricamento candidati:', e); });
+}
+
+function renderCandidati(candidati) {
+    var tbody = document.getElementById('tbodyCandidati');
+    var template = document.getElementById('templateRigaCandidato');
+    
+    if (!candidati || candidati.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">' +
+            '<i class="bi bi-search me-2"></i>Nessun candidato trovato. ' +
+            (isAdmin ? 'Clicca "Analizza Clienti" per cercare nuovi candidati.' : '') + '</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    candidati.forEach(function(c) {
+        var clone = template.content.cloneNode(true);
+        var row = clone.querySelector('.candidato-row');
+        
+        row.setAttribute('data-tp-id', c.id);
+        row.setAttribute('data-cliente-id', c.cliente_id);
+        
+        
+        // Icona origine (mano = manuale, pc = automatico)
+        var origineCell = row.querySelector(".origine");
+        if (c.origine === "manuale") {
+            origineCell.innerHTML = '<i class="bi bi-hand-index-thumb text-primary" title="Proposta manuale"></i>';
+        } else {
+            origineCell.innerHTML = '<i class="bi bi-cpu text-secondary" title="Proposta automatica"></i>';
+        }
+        // Nome azienda - senza coppa, siamo gi&agrave; nella pagina Top Prospect
+        var nomeCell = row.querySelector('.nome-azienda');
+        if (c.puo_accedere) {
+            nomeCell.innerHTML = '<a href="/cliente/' + c.cliente_id + '" class="link-azienda">' +
+                escapeHtml(c.nome_display) + '</a>';
+        } else {
+            nomeCell.innerHTML = '<span>' + escapeHtml(c.nome_display) + '</span>';
+        }
+        
+        // Commerciale con pallino colorato
+        var commercialeCell = row.querySelector('.commerciale');
+        if (c.commerciale_colore_hex) {
+            commercialeCell.innerHTML = '<span class="commerciale-colore" style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:' + c.commerciale_colore_hex + ';margin-right:6px;vertical-align:middle;"></span>' + escapeHtml(c.commerciale_nome || '-');
+        } else {
+            commercialeCell.textContent = c.commerciale_nome || '-';
+        }
+        row.querySelector('.flotta').textContent = c.flotta || 0;
+        row.querySelector('.dipendenti').textContent = c.dipendenti || '-';
+        row.querySelector('.provincia').textContent = c.provincia || '-';
+        
+        // Car Policy
+        var cpCell = row.querySelector('.car-policy');
+        if (c.has_car_policy) {
+            cpCell.innerHTML = '<i class="bi bi-file-earmark-text text-primary" title="Car Policy presente"></i>';
+        } else {
+            cpCell.innerHTML = '<span class="text-muted">-</span>';
+        }
+        
+        // Variazioni percentuali
+        row.querySelector('.var-vp').innerHTML = formatVariazione(c.var_valore_prod);
+        row.querySelector('.var-pn').innerHTML = formatVariazione(c.var_patrimonio);
+        
+        // Azioni admin
+        if (isAdmin) {
+            var azioniCell = row.querySelector('.azioni-admin');
+            azioniCell.innerHTML = 
+                '<button class="btn btn-sm btn-success me-1" onclick="apriModalConferma(' + c.id + ', \'' + escapeHtml(c.nome_display) + '\')" title="Conferma come Top Prospect">' +
+                '<i class="bi bi-check-lg me-1"></i>Conferma</button>' +
+                '<button class="btn btn-sm btn-outline-secondary" onclick="scartaCandidato(' + c.id + ')" title="Scarta">' +
+                '<i class="bi bi-x-lg"></i></button>';
+        } else {
+            // Rimuovi cella azioni per non-admin (altrimenti disallinea la tabella)
+            var azioniCell = row.querySelector('.azioni-admin');
+            if (azioniCell) azioniCell.remove();
+        }
+        
+        tbody.appendChild(clone);
+    });
+}
+
+// === CARICA ARCHIVIATI ===
+function caricaArchiviati() {
+    fetch('/top-prospect/api/archiviati')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderArchiviati(data.archiviati);
+                var countEl = document.getElementById('countArchiviati');
+                if (countEl) countEl.textContent = data.archiviati.length;
+            }
+        })
+        .catch(function(e) { console.error('Errore caricamento archiviati:', e); });
+}
+
+function renderArchiviati(archiviati) {
+    var tbody = document.getElementById('tbodyArchiviati');
+    var template = document.getElementById('templateRigaArchiviato');
+    
+    if (!archiviati || archiviati.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">' +
+            '<i class="bi bi-archive me-2"></i>Nessun Top Prospect archiviato</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    
+    archiviati.forEach(function(a) {
+        var clone = template.content.cloneNode(true);
+        var row = clone.querySelector('.archiviato-row');
+        
+        row.setAttribute('data-tp-id', a.id);
+        
+        row.querySelector('.nome-azienda').textContent = a.nome_display;
+        row.querySelector('.provincia').textContent = a.provincia || '-';
+        row.querySelector('.data-archiviazione').textContent = a.data_archiviazione ? formatData(a.data_archiviazione) : '-';
+        row.querySelector('.archiviato-da').textContent = a.archiviato_da_nome || '-';
+        row.querySelector('.note-archiviazione').textContent = a.note_archiviazione || '';
+        
+        row.querySelector('.btn-ripristina').onclick = function() {
+            ripristinaTopProspect(a.id);
+        };
+        
+        tbody.appendChild(clone);
+    });
+}
+
+// === CARICA NOTE ===
+function caricaNote(tpId, container) {
+    fetch('/top-prospect/api/' + tpId + '/note')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderNote(data.note, container, tpId);
+            }
+        });
+}
+
+function renderNote(note, container, tpId) {
+    if (!note || note.length === 0) {
+        container.innerHTML = '<p class="text-muted small">Nessuna nota</p>';
+        return;
+    }
+    
+    var html = '';
+    note.forEach(function(n) {
+        html += '<div class="nota-card p-2 bg-white rounded mb-2 ' + (n.fissata ? 'fissata' : '') + '" style="cursor: pointer;" onclick="apriModalModificaNota(' + tpId + ', ' + n.id + ', this)" data-nota=\'' + JSON.stringify({id: n.id, titolo: n.titolo, testo: n.testo || '', fissata: n.fissata, allegati: n.allegati}).replace(/'/g, "&#39;") + '\'>' +
+            '<div class="d-flex justify-content-between align-items-start">' +
+            '<strong class="small">' + escapeHtml(n.titolo) + '</strong>' +
+            '<div>' +
+            (n.fissata ? '<i class="bi bi-pin-fill text-warning me-1" title="Fissata"></i>' : '') +
+            '<small class="text-muted">' + formatData(n.data_creazione) + '</small>' +
+            '</div>' +
+            '</div>' +
+            (n.testo ? '<p class="small mb-0 mt-1 text-truncate" style="max-width: 300px;">' + escapeHtml(n.testo) + '</p>' : '');
+        
+        // Mostra allegati se presenti
+        if (n.allegati) {
+            try {
+                var allegati = JSON.parse(n.allegati);
+                if (allegati && allegati.length > 0) {
+                    html += '<div class="mt-2 pt-2 border-top" onclick="event.stopPropagation();">';
+                    html += '<small class="text-muted"><i class="bi bi-paperclip me-1"></i>Allegati:</small>';
+                    html += '<div class="d-flex flex-wrap gap-1 mt-1">';
+                    allegati.forEach(function(a) {
+                        var url = '/top-prospect/api/' + tpId + '/note/' + n.id + '/allegato/' + encodeURIComponent(a.nome_file);
+                        html += '<a href="' + url + '" class="badge bg-light text-primary text-decoration-none" target="_blank" title="Scarica ' + escapeHtml(a.nome_originale) + '">';
+                        html += '<i class="bi bi-download me-1"></i>' + escapeHtml(a.nome_originale) + '</a>';
+                    });
+                    html += '</div></div>';
+                }
+            } catch (e) {
+                console.log('Errore parsing allegati:', e);
+            }
+        }
+        
+        html += '<div class="text-end mt-1"><small class="text-muted opacity-50"><i class="bi bi-pencil"></i> clicca per modificare</small></div>';
+        html += '</div>';
+    });
+    container.innerHTML = html;
+}
+
+// === CARICA APPUNTAMENTI ===
+function caricaAppuntamenti(tpId, container) {
+    fetch('/top-prospect/api/' + tpId + '/appuntamenti')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderAppuntamenti(data.appuntamenti, container, tpId);
+            }
+        });
+}
+
+function renderAppuntamenti(appuntamenti, container, tpId) {
+    if (!appuntamenti || appuntamenti.length === 0) {
+        container.innerHTML = '<p class="text-muted small">Nessun appuntamento</p>';
+        return;
+    }
+    
+    var oggi = new Date().toISOString().split('T')[0];
+    var html = '';
+    
+    appuntamenti.forEach(function(a) {
+        var isGoogle = (a.fonte === 'google' || a.tipo_appuntamento === 'google');
+        var classExtra = a.completato ? 'completato' : (a.data_appuntamento < oggi ? 'passato' : '');
+        var tipoLabel = isGoogle ? 'Google' : (a.tipo_appuntamento || 'visita');
+        var badgeClass = isGoogle ? 'bg-primary' : 'bg-light text-dark';
+        
+        html += '<div class="app-card p-2 bg-white rounded mb-2 ' + classExtra + '">' +
+            '<div class="d-flex justify-content-between align-items-center">' +
+            '<span><strong>' + a.data_appuntamento + '</strong>' +
+            (a.ora_appuntamento ? ' ' + a.ora_appuntamento : '') +
+            ' <span class="badge ' + badgeClass + '">' + tipoLabel + '</span></span>';
+        
+        // Pulsante azioni (solo per eventi locali)
+        if (a.completato) {
+            html += '<i class="bi bi-check-circle-fill text-success"></i>';
+        } else if (!isGoogle && a.id) {
+            html += '<button class="btn btn-xs btn-outline-success" onclick="apriModalCompleta(' + tpId + ', ' + a.id + ')">Completa</button>';
+        } else if (isGoogle) {
+            html += '<i class="bi bi-google text-primary" title="Sincronizzato con Google Calendar"></i>';
+        }
+        
+        html += '</div>' +
+            (a.note ? '<p class="small mb-0 mt-1">' + escapeHtml(a.note) + '</p>' : '') +
+            (a.esito ? '<p class="small mb-0 mt-1 text-success"><em>Esito: ' + escapeHtml(a.esito) + '</em></p>' : '') +
+            '</div>';
+    });
+    container.innerHTML = html;
+}
+
+// === CARICA STORICO ===
+function caricaStorico(tpId, container) {
+    fetch('/top-prospect/api/' + tpId + '/storico')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                renderStorico(data.storico, container);
+            }
+        });
+}
+
+function renderStorico(storico, container) {
+    if (!storico || storico.length === 0) {
+        container.innerHTML = '<p class="text-muted small">Nessuna attivit&agrave;</p>';
+        return;
+    }
+    
+    var html = '<div class="ps-2">';
+    storico.forEach(function(s) {
+        html += '<div class="timeline-item ' + s.tipo_attivita + '">' +
+            '<small class="text-muted">' + formatData(s.data_ora) + '</small>' +
+            '<p class="mb-0 small">' + escapeHtml(s.descrizione || s.tipo_attivita) + '</p>' +
+            '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// === MODAL FUNCTIONS ===
+// ==============================================================================
+// MODAL NOTA UNIFICATO - Gestisce sia creazione che modifica
+// ==============================================================================
+// Principio: UN SOLO modal, la modalita' viene determinata dal campo notaId
+// - notaId vuoto = nuova nota
+// - notaId valorizzato = modifica nota esistente
+// ==============================================================================
+
+var currentNotaTpId = null;
+var allegatiEsistentiCorrente = [];
+
+/**
+ * Configura il modal in modalita' NUOVA NOTA
+ */
+function apriModalNuovaNota(tpId) {
+    currentNotaTpId = tpId;
+    
+    // Imposta modalita'
+    document.getElementById('notaModalita').value = 'nuovo';
+    document.getElementById('notaTopProspectId').value = tpId;
+    document.getElementById('notaId').value = '';
+    document.getElementById('notaAllegatiDaEliminare').value = '[]';
+    
+    // Reset campi
+    document.getElementById('notaTitolo').value = '';
+    document.getElementById('notaTesto').value = '';
+    document.getElementById('notaFissata').checked = false;
+    document.getElementById('notaAllegati').value = '';
+    document.getElementById('notaAllegatiSelezionati').innerHTML = '';
+    document.getElementById('notaAllegatiEsistenti').innerHTML = '';
+    allegatiEsistentiCorrente = [];
+    
+    // Configura aspetto modal per NUOVA NOTA
+    var header = document.getElementById('modalNotaHeader');
+    header.className = 'modal-header text-white bg-primary';
+    document.getElementById('modalNotaIcona').className = 'bi bi-chat-left-text me-2';
+    document.getElementById('modalNotaTitoloTesto').textContent = 'Nuova Nota';
+    
+    // Nascondi pulsante Elimina
+    document.getElementById('notaBtnEliminaContainer').style.display = 'none';
+    
+    // Pulsante Salva in blu
+    var btnSalva = document.getElementById('btnSalvaNota');
+    btnSalva.className = 'btn btn-primary';
+    btnSalva.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salva Nota';
+    
+    new bootstrap.Modal(document.getElementById('modalNota')).show();
+}
+
+/**
+ * Configura il modal in modalita' MODIFICA NOTA
+ */
+function apriModalModificaNota(tpId, notaId, element) {
+    currentNotaTpId = tpId;
+    
+    // Recupera i dati dalla nota cliccata
+    var notaData = JSON.parse(element.getAttribute('data-nota').replace(/&#39;/g, "'"));
+    
+    // Imposta modalita'
+    document.getElementById('notaModalita').value = 'modifica';
+    document.getElementById('notaTopProspectId').value = tpId;
+    document.getElementById('notaId').value = notaId;
+    document.getElementById('notaAllegatiDaEliminare').value = '[]';
+    
+    // Popola campi con dati esistenti
+    document.getElementById('notaTitolo').value = notaData.titolo || '';
+    document.getElementById('notaTesto').value = notaData.testo || '';
+    document.getElementById('notaFissata').checked = notaData.fissata ? true : false;
+    
+    // Reset campo allegati
+    document.getElementById('notaAllegati').value = '';
+    document.getElementById('notaAllegatiSelezionati').innerHTML = '';
+    
+    // Mostra allegati esistenti con pulsante elimina
+    allegatiEsistentiCorrente = [];
+    var allegatiContainer = document.getElementById('notaAllegatiEsistenti');
+    if (notaData.allegati) {
+        try {
+            var allegati = JSON.parse(notaData.allegati);
+            if (allegati && allegati.length > 0) {
+                allegatiEsistentiCorrente = allegati.slice();
+                renderAllegatiEsistenti(tpId, notaId, allegati, allegatiContainer);
+            } else {
+                allegatiContainer.innerHTML = '';
+            }
+        } catch (e) {
+            allegatiContainer.innerHTML = '';
+        }
+    } else {
+        allegatiContainer.innerHTML = '';
+    }
+    
+    // Configura aspetto modal per MODIFICA
+    var header = document.getElementById('modalNotaHeader');
+    header.className = 'modal-header text-white bg-info';
+    document.getElementById('modalNotaIcona').className = 'bi bi-pencil-square me-2';
+    document.getElementById('modalNotaTitoloTesto').textContent = 'Modifica Nota';
+    
+    // Mostra pulsante Elimina
+    document.getElementById('notaBtnEliminaContainer').style.display = 'block';
+    
+    // Pulsante Salva in celeste
+    var btnSalva = document.getElementById('btnSalvaNota');
+    btnSalva.className = 'btn btn-info';
+    btnSalva.innerHTML = '<i class="bi bi-check-lg me-1"></i>Salva';
+    
+    new bootstrap.Modal(document.getElementById('modalNota')).show();
+}
+
+/**
+ * Mostra gli allegati esistenti con pulsante per eliminarli
+ */
+function renderAllegatiEsistenti(tpId, notaId, allegati, container) {
+    if (!allegati || allegati.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    var html = '<label class="form-label"><i class="bi bi-files me-1"></i>Allegati esistenti</label>';
+    html += '<div class="list-group list-group-flush">';
+    allegati.forEach(function(a, index) {
+        var url = '/top-prospect/api/' + tpId + '/note/' + notaId + '/allegato/' + encodeURIComponent(a.nome_file);
+        html += '<div class="list-group-item d-flex justify-content-between align-items-center py-1 px-2" id="allegato-esistente-' + index + '">';
+        html += '<a href="' + url + '" class="text-decoration-none small" target="_blank">';
+        html += '<i class="bi bi-file-earmark me-1"></i>' + escapeHtml(a.nome_originale) + '</a>';
+        html += '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="rimuoviAllegatoEsistente(' + index + ', \'' + escapeHtml(a.nome_file).replace(/'/g, "\\'") + '\')" title="Rimuovi allegato">';
+        html += '<i class="bi bi-x"></i></button>';
+        html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/**
+ * Marca un allegato esistente per l'eliminazione
+ */
+function rimuoviAllegatoEsistente(index, nomeFile) {
+    var inputDaEliminare = document.getElementById('notaAllegatiDaEliminare');
+    var listaEliminare = JSON.parse(inputDaEliminare.value || '[]');
+    if (listaEliminare.indexOf(nomeFile) === -1) {
+        listaEliminare.push(nomeFile);
+    }
+    inputDaEliminare.value = JSON.stringify(listaEliminare);
+    
+    // Nascondi visivamente l'allegato
+    var elemento = document.getElementById('allegato-esistente-' + index);
+    if (elemento) {
+        elemento.style.display = 'none';
+    }
+}
+
+/**
+ * Listener per mostrare file selezionati
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    var inputAllegati = document.getElementById('notaAllegati');
+    if (inputAllegati) {
+        inputAllegati.addEventListener('change', function() {
+            var container = document.getElementById('notaAllegatiSelezionati');
+            var files = this.files;
+            
+            if (files.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            var html = '<div class="mt-2"><strong>File selezionati:</strong></div>';
+            html += '<ul class="list-group list-group-flush small">';
+            for (var i = 0; i < files.length; i++) {
+                var size = (files[i].size / 1024).toFixed(1);
+                if (size > 1024) {
+                    size = (files[i].size / 1024 / 1024).toFixed(1) + ' MB';
+                } else {
+                    size += ' KB';
+                }
+                html += '<li class="list-group-item py-1 px-2 d-flex justify-content-between align-items-center">';
+                html += '<span><i class="bi bi-file-earmark me-1"></i>' + escapeHtml(files[i].name) + '</span>';
+                html += '<span class="text-muted">' + size + '</span>';
+                html += '</li>';
+            }
+            html += '</ul>';
+            container.innerHTML = html;
+        });
+    }
+});
+
+/**
+ * SALVA NOTA - Funzione UNIFICATA per creazione e modifica
+ */
+function salvaNota() {
+    var modalita = document.getElementById('notaModalita').value;
+    var tpId = document.getElementById('notaTopProspectId').value;
+    var notaId = document.getElementById('notaId').value;
+    var titolo = document.getElementById('notaTitolo').value.trim();
+    var testo = document.getElementById('notaTesto').value.trim();
+    var fissata = document.getElementById('notaFissata').checked ? 1 : 0;
+    var fileInput = document.getElementById('notaAllegati');
+    var files = fileInput ? fileInput.files : [];
+    
+    if (!titolo) {
+        alert('Inserisci un titolo');
+        return;
+    }
+    
+    // Disabilita pulsante durante invio
+    var btn = document.getElementById('btnSalvaNota');
+    var originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Salvataggio...';
+    btn.disabled = true;
+    
+    // Prepara FormData
+    var formData = new FormData();
+    formData.append('titolo', titolo);
+    formData.append('testo', testo);
+    formData.append('fissata', fissata);
+    
+    // Aggiungi file
+    for (var i = 0; i < files.length; i++) {
+        formData.append(modalita === 'nuovo' ? 'allegati' : 'nuovi_allegati', files[i]);
+    }
+    
+    // Determina URL e parametri in base alla modalita'
+    var url, metodo;
+    if (modalita === 'nuovo') {
+        url = '/top-prospect/api/' + tpId + '/note/crea';
+    } else {
+        url = '/top-prospect/api/' + tpId + '/note/' + notaId + '/modifica';
+        var allegatiDaEliminare = document.getElementById('notaAllegatiDaEliminare').value || '[]';
+        formData.append('allegati_da_eliminare', allegatiDaEliminare);
+    }
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNota')).hide();
+            
+            // Ricarica le note
+            var detailRow = document.querySelector('.tp-row[data-tp-id="' + tpId + '"]');
+            if (detailRow) {
+                var nextRow = detailRow.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('tp-detail-row')) {
+                    var noteContainer = nextRow.querySelector('.note-container');
+                    if (noteContainer) {
+                        caricaNote(tpId, noteContainer);
+                    }
+                }
+            }
+            
+            // Messaggio di conferma
+            if (modalita === 'nuovo') {
+                var msg = 'Nota salvata!';
+                if (data.allegati > 0) {
+                    msg += ' (' + data.allegati + ' allegati caricati)';
+                }
+                alert(msg);
+            }
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(function(e) {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        alert('Errore di rete');
+    });
+}
+
+/**
+ * Elimina una nota (soft delete)
+ */
+function eliminaNota() {
+    if (!confirm('Sei sicuro di voler eliminare questa nota?')) {
+        return;
+    }
+    
+    var tpId = document.getElementById('notaTopProspectId').value;
+    var notaId = document.getElementById('notaId').value;
+    
+    fetch('/top-prospect/api/' + tpId + '/note/' + notaId + '/elimina', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNota')).hide();
+            
+            // Ricarica le note
+            var detailRow = document.querySelector('.tp-row[data-tp-id="' + tpId + '"]');
+            if (detailRow) {
+                var nextRow = detailRow.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('tp-detail-row')) {
+                    var noteContainer = nextRow.querySelector('.note-container');
+                    if (noteContainer) {
+                        caricaNote(tpId, noteContainer);
+                    }
+                }
+            }
+            
+            alert('Nota eliminata');
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(function(e) {
+        alert('Errore di rete');
+    });
+}
+
+function apriModalNuovoApp(tpId) {
+    document.getElementById('appTopProspectId').value = tpId;
+    document.getElementById('appId').value = '';
+    document.getElementById('appData').value = '';
+    document.getElementById('appOra').value = '';
+    document.getElementById('appTipo').value = 'visita';
+    document.getElementById('appNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalNuovoAppuntamento')).show();
+}
+
+function salvaAppuntamento() {
+    var tpId = document.getElementById('appTopProspectId').value;
+    var data = document.getElementById('appData').value;
+    var ora = document.getElementById('appOra').value;
+    var tipo = document.getElementById('appTipo').value;
+    var note = document.getElementById('appNote').value.trim();
+    
+    if (!data) {
+        alert('Seleziona una data');
+        return;
+    }
+    
+    fetch('/top-prospect/api/' + tpId + '/appuntamenti/crea', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            data_appuntamento: data,
+            ora_appuntamento: ora,
+            tipo_appuntamento: tipo,
+            note: note
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+        if (resp.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalNuovoAppuntamento')).hide();
+            
+            // Ricarica solo gli appuntamenti di questo Top Prospect (senza chiudere la riga)
+            var detailRow = document.querySelector('.tp-row[data-tp-id="' + tpId + '"]');
+            if (detailRow) {
+                var nextRow = detailRow.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('tp-detail-row')) {
+                    var appContainer = nextRow.querySelector('.appuntamenti-container');
+                    if (appContainer) {
+                        caricaAppuntamenti(tpId, appContainer);
+                    }
+                }
+            }
+            
+            // Mostra conferma
+            var syncMsg = resp.sincronizzato ? ' (sincronizzato con Google Calendar)' : '';
+            alert('Appuntamento salvato!' + syncMsg);
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    });
+}
+
+function apriModalCompleta(tpId, appId) {
+    document.getElementById('completaTopProspectId').value = tpId;
+    document.getElementById('completaAppId').value = appId;
+    document.getElementById('completaEsito').value = '';
+    new bootstrap.Modal(document.getElementById('modalCompletaAppuntamento')).show();
+}
+
+function completaAppuntamento() {
+    var tpId = document.getElementById('completaTopProspectId').value;
+    var appId = document.getElementById('completaAppId').value;
+    var esito = document.getElementById('completaEsito').value.trim();
+    
+    fetch('/top-prospect/api/' + tpId + '/appuntamenti/' + appId + '/completa', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({esito: esito})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCompletaAppuntamento')).hide();
+            caricaConfermati();
+        }
+    });
+}
+
+function apriModalConferma(tpId, nomeAzienda) {
+    document.getElementById('confermaCandidatoId').value = tpId;
+    document.getElementById('confermaNomeAzienda').textContent = nomeAzienda;
+    document.getElementById('confermaPriorita').value = '4';
+    document.getElementById('confermaNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalConfermaCandidato')).show();
+}
+
+function confermaTopProspect() {
+    var tpId = document.getElementById('confermaCandidatoId').value;
+    var priorita = document.getElementById('confermaPriorita').value;
+    var note = document.getElementById('confermaNote').value.trim();
+    
+    fetch('/top-prospect/api/conferma/' + tpId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({priorita: parseInt(priorita), note: note})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalConfermaCandidato')).hide();
+            caricaCandidati();
+            caricaConfermati();
+            aggiornaConteggi();
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    });
+}
+
+function scartaCandidato(tpId) {
+    if (!confirm('Vuoi scartare questo candidato?')) return;
+    
+    fetch('/top-prospect/api/scarta/' + tpId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            caricaCandidati();
+            aggiornaConteggi();
+        }
+    });
+}
+
+function apriModalArchivia(tpId, nomeAzienda) {
+    document.getElementById('archiviaTopProspectId').value = tpId;
+    document.getElementById('archiviaNomeAzienda').textContent = nomeAzienda;
+    document.getElementById('archiviaNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalArchivia')).show();
+}
+
+function archiviaTopProspect() {
+    var tpId = document.getElementById('archiviaTopProspectId').value;
+    var note = document.getElementById('archiviaNote').value.trim();
+    
+    fetch('/top-prospect/api/archivia/' + tpId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({note: note})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalArchivia')).hide();
+            caricaConfermati();
+            caricaArchiviati();
+            aggiornaConteggi();
+        }
+    });
+}
+
+function ripristinaTopProspect(tpId) {
+    if (!confirm('Vuoi ripristinare questo Top Prospect?')) return;
+    
+    fetch('/top-prospect/api/ripristina/' + tpId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            caricaConfermati();
+            caricaArchiviati();
+            aggiornaConteggi();
+        }
+    });
+}
+
+function apriModalPriorita(tpId, prioritaAttuale) {
+    document.getElementById('prioritaTopProspectId').value = tpId;
+    document.getElementById('nuovaPriorita').value = prioritaAttuale;
+    new bootstrap.Modal(document.getElementById('modalPriorita')).show();
+}
+
+function salvaPriorita() {
+    var tpId = document.getElementById('prioritaTopProspectId').value;
+    var nuova = document.getElementById('nuovaPriorita').value;
+    
+    fetch('/top-prospect/api/priorita/' + tpId, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({priorita: parseInt(nuova)})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalPriorita')).hide();
+            caricaConfermati();
+        }
+    });
+}
+
+// === ANALISI CANDIDATI ===
+function eseguiAnalisi() {
+    if (!confirm('Vuoi avviare l\'analisi per trovare nuovi candidati?')) return;
+    
+    fetch('/top-prospect/api/analizza', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alert('Scansione completata!\nClienti analizzati: ' + data.totale_analizzati + 
+                  '\nNuovi candidati trovati: ' + data.nuovi_candidati);
+            caricaCandidati();
+            aggiornaConteggi();
+            
+            // Apri sezione candidati se ci sono nuovi
+            if (data.nuovi_candidati > 0) {
+                var sez = document.getElementById('sezioneCandidati');
+                if (sez && !sez.classList.contains('show')) {
+                    new bootstrap.Collapse(sez, {show: true});
+                }
+            }
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    });
+}
+
+// === AGGIORNA CONTEGGI ===
+function aggiornaConteggi() {
+    fetch('/top-prospect/api/conteggi')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                document.getElementById('countConfermati').textContent = data.conteggi.confermati || 0;
+                document.getElementById('countCandidati').textContent = data.conteggi.candidati || 0;
+                var archEl = document.getElementById('countArchiviati');
+                if (archEl) archEl.textContent = data.conteggi.archiviati || 0;
+            }
+        });
+}
+
+// === UTILITY ===
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatData(dataStr) {
+    if (!dataStr) return '-';
+    // Accetta sia YYYY-MM-DD che YYYY-MM-DD HH:MM:SS
+    var parts = dataStr.split(' ')[0].split('-');
+    if (parts.length === 3) {
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+    return dataStr;
+}
+
+function formatVariazione(val) {
+    if (val === null || val === undefined) {
+        return '<span class="text-muted">N/D</span>';
+    }
+    var cls = val >= 0 ? 'var-positiva' : 'var-negativa';
+    var sign = val >= 0 ? '+' : '';
+    return '<span class="' + cls + '">' + sign + val.toFixed(1) + '%</span>';
+}
+
+// === CANDIDATURA MANUALE ===
+// ==============================================================================
+// CANDIDATURA MANUALE - Pattern Trattative (precaricamento clienti)
+// ==============================================================================
+window.clientiDisponibiliTP = [];
+
+function apriCandidaturaManuale() {
+    // Reset campi
+    document.getElementById('cercaClienteManuale').value = '';
+    document.getElementById('clienteSelezionatoInfo').classList.add('d-none');
+    document.getElementById('btnConfermaCandidatura').disabled = true;
+    document.getElementById('dropdownClientiTP').classList.remove('show');
+    
+    // Carica clienti
+    caricaClientiPerTP();
+    
+    // Apri modal
+    new bootstrap.Modal(document.getElementById('modalCandidaturaManuale')).show();
+}
+
+function caricaClientiPerTP() {
+    var loading = document.getElementById('loadingClientiTP');
+    if (loading) loading.classList.remove('d-none');
+    
+    fetch('/top-prospect/api/clienti-disponibili')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (loading) loading.classList.add('d-none');
+            if (data.success) {
+                window.clientiDisponibiliTP = data.clienti || [];
+            } else {
+                window.clientiDisponibiliTP = [];
+                console.error('Errore caricamento clienti:', data.error);
+            }
+        })
+        .catch(function(err) {
+            if (loading) loading.classList.add('d-none');
+            window.clientiDisponibiliTP = [];
+            console.error('Errore rete:', err);
+        });
+}
+
+function setupRicercaClientiTP() {
+    var input = document.getElementById('cercaClienteManuale');
+    var dropdown = document.getElementById('dropdownClientiTP');
+    
+    if (!input || !dropdown) return;
+    
+    // Click: mostra tutti i clienti
+    input.addEventListener('focus', function() {
+        renderClientiDropdownTP(window.clientiDisponibiliTP);
+        dropdown.classList.add('show');
+    });
+    
+    // Digitazione: filtra clienti
+    input.addEventListener('input', function() {
+        var query = this.value.toLowerCase().trim();
+        if (query.length === 0) {
+            renderClientiDropdownTP(window.clientiDisponibiliTP);
+        } else {
+            var filtrati = window.clientiDisponibiliTP.filter(function(c) {
+                return c.nome.toLowerCase().includes(query) || 
+                       (c.piva && c.piva.toLowerCase().includes(query));
+            });
+            renderClientiDropdownTP(filtrati);
+        }
+        dropdown.classList.add('show');
+    });
+    
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', function(e) {
+        if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('show');
+        }
+    });
+}
+
+function renderClientiDropdownTP(clienti) {
+    var dropdown = document.getElementById('dropdownClientiTP');
+    if (!dropdown) return;
+    
+    if (!clienti || clienti.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-item text-muted">Nessun cliente disponibile</div>';
+        return;
+    }
+    
+    var html = clienti.map(function(c) {
+        var badge = '';
+        if (c.is_top_prospect) {
+            badge = '<span class="badge bg-warning ms-2">GiÃƒÂ  TP</span>';
+        } else if (c.is_candidato) {
+            badge = '<span class="badge bg-info ms-2">GiÃƒÂ  Proposto</span>';
+        }
+        return '<a class="dropdown-item" href="#" onclick="selezionaClienteTP(' + c.id + '); return false;">' +
+            '<strong>' + escapeHtml(c.nome) + '</strong>' + badge +
+            '<br><small class="text-muted">' + (c.piva || 'N/D') + ' - ' + (c.provincia || 'N/D') + 
+            ' - Comm: ' + (c.commerciale || 'N/D') + '</small>' +
+            '</a>';
+    }).join('');
+    
+    dropdown.innerHTML = html;
+}
+
+function selezionaClienteTP(clienteId) {
+    var cliente = window.clientiDisponibiliTP.find(function(c) { return c.id === clienteId; });
+    if (!cliente) return;
+    
+    if (cliente.is_top_prospect || cliente.is_candidato) {
+        alert('Questo cliente ÃƒÂ¨ giÃƒÂ  presente nei Top Prospect o nei Proposti');
+        return;
+    }
+    
+    document.getElementById('clienteSelezionatoId').value = cliente.id;
+    document.getElementById('infoNomeCliente').textContent = cliente.nome;
+    document.getElementById('infoPiva').textContent = cliente.piva || 'N/D';
+    document.getElementById('infoProvincia').textContent = cliente.provincia || 'N/D';
+    document.getElementById('infoDipendenti').textContent = cliente.dipendenti || 'N/D';
+    document.getElementById('infoVeicoli').textContent = cliente.veicoli || 0;
+    document.getElementById('infoCommerciale').textContent = cliente.commerciale || 'N/D';
+    
+    document.getElementById('cercaClienteManuale').value = cliente.nome;
+    document.getElementById('dropdownClientiTP').classList.remove('show');
+    document.getElementById('clienteSelezionatoInfo').classList.remove('d-none');
+    document.getElementById('btnConfermaCandidatura').disabled = false;
+}
+
+function confermaCandidaturaManuale() {
+    var clienteId = document.getElementById('clienteSelezionatoId').value;
+    var note = document.getElementById('candidaturaNote').value.trim();
+    
+    if (!clienteId) {
+        alert('Seleziona un cliente');
+        return;
+    }
+    
+    fetch('/top-prospect/api/candidatura-manuale', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            cliente_id: parseInt(clienteId),
+            note: note
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCandidaturaManuale')).hide();
+            caricaCandidati();
+            aggiornaConteggi();
+            alert('Cliente proposto come Top Prospect!');
+        } else {
+            alert('Errore: ' + (data.error || 'Errore sconosciuto'));
+        }
+    });
+}
+
+// Inizializza ricerca al caricamento pagina
+document.addEventListener('DOMContentLoaded', function() {
+    setupRicercaClientiTP();
+});
+// ==============================================================================
+// GESTIONE PARAMETRI SELEZIONE
+// ==============================================================================
+
+function apriModalParametri() {
+    // Carica valori attuali
+    fetch("/top-prospect/api/parametri")
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var p = data.parametri;
+                document.getElementById("edit_var_vp").value = p.variazione_valore_produzione_min || -10;
+                document.getElementById("edit_var_pn").value = p.variazione_patrimonio_netto_min || 0;
+                document.getElementById("edit_dipendenti").value = p.dipendenti_min || 50;
+                document.getElementById("edit_veicoli").value = p.veicoli_min || 50;
+                document.getElementById("edit_vp_min").value = p.valore_produzione_min || "";
+                document.getElementById("edit_pn_min").value = p.patrimonio_netto_min || "";
+                document.getElementById("edit_score").value = p.score_max || "";
+            }
+            new bootstrap.Modal(document.getElementById("modalParametri")).show();
+        });
+}
+
+function salvaParametri() {
+    var parametri = {
+        variazione_valore_produzione_min: document.getElementById("edit_var_vp").value,
+        variazione_patrimonio_netto_min: document.getElementById("edit_var_pn").value,
+        dipendenti_min: document.getElementById("edit_dipendenti").value,
+        veicoli_min: document.getElementById("edit_veicoli").value,
+        valore_produzione_min: document.getElementById("edit_vp_min").value,
+        patrimonio_netto_min: document.getElementById("edit_pn_min").value,
+        score_max: document.getElementById("edit_score").value
+    };
+    
+    fetch("/top-prospect/api/parametri", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(parametri)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById("modalParametri")).hide();
+            aggiornaRiquadroParametri(parametri);
+            alert("Parametri salvati!");
+        } else {
+            alert("Errore: " + (data.error || "Errore sconosciuto"));
+        }
+    });
+}
+
+function aggiornaRiquadroParametri(p) {
+    document.getElementById("param_var_vp").textContent = "\u2265 " + p.variazione_valore_produzione_min + "%";
+    document.getElementById("param_var_pn").textContent = "\u2265 " + p.variazione_patrimonio_netto_min + "%";
+    document.getElementById("param_dipendenti").textContent = "\u2265 " + p.dipendenti_min;
+    document.getElementById("param_veicoli").textContent = "\u2265 " + p.veicoli_min;
+    document.getElementById("param_vp_min").textContent = p.valore_produzione_min ? p.valore_produzione_min.toLocaleString() + " EUR" : "Nessun limite";
+    document.getElementById("param_pn_min").textContent = p.patrimonio_netto_min ? p.patrimonio_netto_min.toLocaleString() + " EUR" : "Nessun limite";
+    var scoreMap = {"A": "A", "B": "A+B", "C": "A+B+C", "D": "A+B+C+D"};
+    document.getElementById("param_score").textContent = scoreMap[p.score_max] || p.score_max || "Nessun limite";
+}
+
+function eseguiAnalisiTP() {
+    if (!confirm("Vuoi eseguire l'scansione automatica dei clienti?\nVerranno cercati nuovi candidati Top Prospect.")) return;
+    
+    var btn = event.target.closest("button");
+    var originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Scansione in corso...';
+    btn.disabled = true;
+    
+    fetch("/top-prospect/api/analizza", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        
+        if (data.success) {
+            var msg = "Scansione completata!\n\n";
+            msg += "Clienti analizzati: " + data.totale_analizzati + "\n";
+            msg += "Nuovi candidati trovati: " + data.nuovi_candidati + "\n";
+            alert(msg);
+            caricaCandidati();
+            aggiornaConteggi();
+        } else {
+            alert("Errore: " + (data.error || "Errore sconosciuto"));
+        }
+    })
+    .catch(function(e) {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        alert("Errore di rete");
+    });
+}
+
+function caricaParametriIniziali() {
+    fetch("/top-prospect/api/parametri")
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                aggiornaRiquadroParametri(data.parametri);
+            }
+        });
+}
+
+// Carica parametri al load
+document.addEventListener("DOMContentLoaded", function() {
+    caricaParametriIniziali();
+});
+
+// ==============================================================================
+// GESTIONE CONDIVISIONE CALENDARIO (SOLO ADMIN)
+// ==============================================================================
+
+function apriModalCondivisioneCalendario() {
+    var modal = document.getElementById('modalCondivisioneCalendario');
+    if (!modal) return;
+    
+    document.getElementById('condivisioneEmail').value = '';
+    document.getElementById('condivisioneRuolo').value = 'reader';
+    
+    // Carica lista utenti con accesso
+    caricaListaCondivisioni();
+    
+    new bootstrap.Modal(modal).show();
+}
+
+function caricaListaCondivisioni() {
+    var container = document.getElementById('listaCondivisioni');
+    if (!container) return;
+    
+    container.innerHTML = '<p class="text-muted"><i class="bi bi-hourglass-split me-1"></i>Caricamento...</p>';
+    
+    fetch('/top-prospect/api/calendario/condivisioni')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.utenti) {
+                renderListaCondivisioni(data.utenti, container);
+            } else {
+                container.innerHTML = '<p class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Errore: ' + 
+                    (data.errore || data.error || 'Errore sconosciuto') + '</p>';
+            }
+        })
+        .catch(function(e) {
+            container.innerHTML = '<p class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Errore di rete</p>';
+        });
+}
+
+function renderListaCondivisioni(utenti, container) {
+    if (!utenti || utenti.length === 0) {
+        container.innerHTML = '<p class="text-muted">Nessun utente con accesso</p>';
+        return;
+    }
+    
+    var html = '<ul class="list-group list-group-flush">';
+    utenti.forEach(function(u) {
+        var ruoloLabel = u.ruolo === 'owner' ? 'Proprietario' : 
+                         (u.ruolo === 'writer' ? 'Modifica' : 'Lettura');
+        var ruoloBadge = u.ruolo === 'owner' ? 'bg-danger' : 
+                         (u.ruolo === 'writer' ? 'bg-warning text-dark' : 'bg-secondary');
+        
+        html += '<li class="list-group-item d-flex justify-content-between align-items-center py-2">';
+        html += '<span><i class="bi bi-person me-1"></i>' + escapeHtml(u.email) + '</span>';
+        html += '<span>';
+        html += '<span class="badge ' + ruoloBadge + ' me-2">' + ruoloLabel + '</span>';
+        
+        // Non permettere di rimuovere il proprietario
+        if (u.ruolo !== 'owner') {
+            html += '<button class="btn btn-sm btn-outline-danger" onclick="rimuoviCondivisione(\'' + 
+                    escapeHtml(u.email) + '\')" title="Rimuovi accesso">';
+            html += '<i class="bi bi-x-lg"></i></button>';
+        }
+        
+        html += '</span></li>';
+    });
+    html += '</ul>';
+    
+    container.innerHTML = html;
+}
+
+function aggiungiCondivisione() {
+    var email = document.getElementById('condivisioneEmail').value.trim();
+    var ruolo = document.getElementById('condivisioneRuolo').value;
+    
+    if (!email) {
+        alert('Inserisci un indirizzo email');
+        return;
+    }
+    
+    if (email.indexOf('@') === -1) {
+        alert('Inserisci un indirizzo email valido');
+        return;
+    }
+    
+    fetch('/top-prospect/api/calendario/condividi', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: email, ruolo: ruolo})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('condivisioneEmail').value = '';
+            caricaListaCondivisioni();
+            alert('Accesso concesso a ' + email);
+        } else {
+            alert('Errore: ' + (data.errore || data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(function(e) {
+        alert('Errore di rete');
+    });
+}
+
+function rimuoviCondivisione(email) {
+    if (!confirm('Rimuovere l\'accesso al calendario per ' + email + '?')) {
+        return;
+    }
+    
+    fetch('/top-prospect/api/calendario/rimuovi-condivisione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email: email})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            caricaListaCondivisioni();
+            alert('Accesso rimosso per ' + email);
+        } else {
+            alert('Errore: ' + (data.errore || data.error || 'Errore sconosciuto'));
+        }
+    })
+    .catch(function(e) {
+        alert('Errore di rete');
+    });
+}
+
+// === RESIZE MODAL DA TUTTI I BORDI ===
+(function() {
+    var resizing = false;
+    var currentModal = null;
+    var currentHandle = null;
+    var startX, startY, startW, startH, startLeft, startTop;
+    var minWidth = 500;
+    var minHeight = 450;
+    var maxWidth, maxHeight;
+    
+    // Inizializza quando il DOM &egrave; pronto
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attach handlers a tutti gli handle di resize
+        document.querySelectorAll('.resize-handle').forEach(function(handle) {
+            handle.addEventListener('mousedown', iniziaResize);
+        });
+        
+        // Global mouse events
+        document.addEventListener('mousemove', eseguiResize);
+        document.addEventListener('mouseup', terminaResize);
+    });
+    
+    function iniziaResize(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        resizing = true;
+        currentHandle = e.target.getAttribute('data-resize');
+        currentModal = e.target.closest('.modal-nota-resizable');
+        
+        if (!currentModal) return;
+        
+        var rect = currentModal.getBoundingClientRect();
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = rect.width;
+        startH = rect.height;
+        startLeft = rect.left;
+        startTop = rect.top;
+        
+        maxWidth = window.innerWidth * 0.95;
+        maxHeight = window.innerHeight * 0.90;
+        
+        document.body.style.cursor = getComputedStyle(e.target).cursor;
+        document.body.style.userSelect = 'none';
+    }
+    
+    function eseguiResize(e) {
+        if (!resizing || !currentModal || !currentHandle) return;
+        
+        e.preventDefault();
+        
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+        var newW = startW;
+        var newH = startH;
+        var newLeft = null;
+        var newTop = null;
+        
+        // Calcola nuove dimensioni in base all'handle
+        if (currentHandle.includes('e')) {
+            newW = Math.min(maxWidth, Math.max(minWidth, startW + dx));
+        }
+        if (currentHandle.includes('w')) {
+            var potentialW = startW - dx;
+            if (potentialW >= minWidth && potentialW <= maxWidth) {
+                newW = potentialW;
+                newLeft = startLeft + dx;
+            }
+        }
+        if (currentHandle.includes('s')) {
+            newH = Math.min(maxHeight, Math.max(minHeight, startH + dy));
+        }
+        if (currentHandle.includes('n')) {
+            var potentialH = startH - dy;
+            if (potentialH >= minHeight && potentialH <= maxHeight) {
+                newH = potentialH;
+                newTop = startTop + dy;
+            }
+        }
+        
+        // Applica nuove dimensioni
+        currentModal.style.width = newW + 'px';
+        currentModal.style.height = newH + 'px';
+        
+        // Per spostamenti (bordi nord e ovest), aggiusta la posizione
+        if (newLeft !== null) {
+            currentModal.style.marginLeft = (newLeft - startLeft) + 'px';
+        }
+        if (newTop !== null) {
+            currentModal.style.marginTop = (newTop - startTop) + 'px';
+        }
+    }
+    
+    function terminaResize(e) {
+        if (!resizing) return;
+        
+        resizing = false;
+        currentModal = null;
+        currentHandle = null;
+        
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    }
+})();
+
+</script>

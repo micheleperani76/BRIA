@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Log Accessi - {{ utente.username if utente else 'Tutti' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="/admin/utenti">Gestione Utenti</a></li>
+                {% if utente %}
+                <li class="breadcrumb-item"><a href="/admin/utenti/{{ utente.id }}">{{ utente.username }}</a></li>
+                {% endif %}
+                <li class="breadcrumb-item active">Log Accessi</li>
+            </ol>
+        </nav>
+        <h1 class="h3 mb-0">
+            <i class="bi bi-clock-history me-2"></i>
+            Log Accessi {% if utente %}- {{ utente.nome }} {{ utente.cognome }}{% endif %}
+        </h1>
+    </div>
+    {% if utente %}
+    <a href="/admin/utenti/{{ utente.id }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Torna al profilo
+    </a>
+    {% else %}
+    <a href="/admin/utenti" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Torna alla lista
+    </a>
+    {% endif %}
+</div>
+
+<!-- Statistiche -->
+{% if statistiche %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-success">{{ statistiche.login_ok }}</div>
+            <div class="stat-label">Login riusciti</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-danger">{{ statistiche.login_fallito }}</div>
+            <div class="stat-label">Login falliti</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-secondary">{{ statistiche.logout }}</div>
+            <div class="stat-label">Logout</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-value text-warning">{{ statistiche.cambio_pwd }}</div>
+            <div class="stat-label">Cambi password</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Info retention -->
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    Vengono mostrati i log degli ultimi <strong>{{ retention_giorni }} giorni</strong>.
+    La retention è configurabile in <code>impostazioni/log_config.conf</code>
+</div>
+
+<!-- Filtri -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Tipo evento</label>
+                <select name="tipo" class="form-select">
+                    <option value="">Tutti</option>
+                    <option value="login_ok" {% if filtro_tipo == 'login_ok' %}selected{% endif %}>Login riusciti</option>
+                    <option value="login_fallito" {% if filtro_tipo == 'login_fallito' %}selected{% endif %}>Login falliti</option>
+                    <option value="logout" {% if filtro_tipo == 'logout' %}selected{% endif %}>Logout</option>
+                    <option value="cambio_pwd" {% if filtro_tipo == 'cambio_pwd' %}selected{% endif %}>Cambio password</option>
+                    <option value="reset_pwd" {% if filtro_tipo == 'reset_pwd' %}selected{% endif %}>Reset password</option>
+                    <option value="profilo_completato" {% if filtro_tipo == 'profilo_completato' %}selected{% endif %}>Profilo completato</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-1"></i>Filtra
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabella log -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-2"></i>Log Accessi</span>
+        <span class="badge bg-secondary">{{ totale }} eventi</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Ora</th>
+                        {% if not utente %}
+                        <th>Utente</th>
+                        {% endif %}
+                        <th>Evento</th>
+                        {% if mostra_ip %}
+                        <th>IP</th>
+                        {% endif %}
+                        <th>Dettagli</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>
+                            <small>{{ log.data_ora[:19] }}</small>
+                        </td>
+                        {% if not utente %}
+                        <td>
+                            {% if log.username %}
+                                <a href="/admin/utenti/{{ log.utente_id }}/log">{{ log.username }}</a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            {% if log.tipo_evento == 'login_ok' %}
+                                <span class="badge bg-success"><i class="bi bi-check"></i> Login OK</span>
+                            {% elif log.tipo_evento == 'login_fallito' %}
+                                <span class="badge bg-danger"><i class="bi bi-x"></i> Login Fallito</span>
+                            {% elif log.tipo_evento == 'logout' %}
+                                <span class="badge bg-secondary"><i class="bi bi-box-arrow-right"></i> Logout</span>
+                            {% elif log.tipo_evento == 'cambio_pwd' %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-key"></i> Cambio Pwd</span>
+                            {% elif log.tipo_evento == 'reset_pwd' %}
+                                <span class="badge bg-info"><i class="bi bi-arrow-clockwise"></i> Reset Pwd</span>
+                            {% elif log.tipo_evento == 'login_bloccato' %}
+                                <span class="badge bg-dark"><i class="bi bi-lock"></i> Bloccato</span>
+                            {% elif log.tipo_evento == 'profilo_completato' %}
+                                <span class="badge bg-primary"><i class="bi bi-person-check"></i> Profilo OK</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ log.tipo_evento }}</span>
+                            {% endif %}
+                        </td>
+                        {% if mostra_ip %}
+                        <td>
+                            <code class="small">{{ log.ip_address or '-' }}</code>
+                        </td>
+                        {% endif %}
+                        <td>
+                            <small class="text-muted">{{ log.dettagli or '-' }}</small>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">
+                            Nessun log trovato
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Paginazione -->
+    {% if pagine > 1 %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-center">
+                {% if pagina_corrente > 1 %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina_corrente - 1 }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for p in range(1, pagine + 1) %}
+                    {% if p == pagina_corrente %}
+                    <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                    {% elif p <= 3 or p > pagine - 2 or (p >= pagina_corrente - 1 and p <= pagina_corrente + 1) %}
+                    <li class="page-item">
+                        <a class="page-link" href="?pagina={{ p }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">{{ p }}</a>
+                    </li>
+                    {% elif p == 4 or p == pagine - 2 %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagina_corrente < pagine %}
+                <li class="page-item">
+                    <a class="page-link" href="?pagina={{ pagina_corrente + 1 }}{% if filtro_tipo %}&tipo={{ filtro_tipo }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

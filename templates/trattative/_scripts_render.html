@@ -1,0 +1,174 @@
+<!-- ============================================================
+     TRATTATIVE - Scripts Render Tabella
+     Versione: 1.1
+     ============================================================ -->
+<script>
+// ==============================================================================
+// RENDER TABELLA
+// ==============================================================================
+function renderTrattative(trattative) {
+    const container = document.getElementById('tbodyTrattative');
+    
+    if (trattative.length === 0) {
+        container.innerHTML = '<tr><td colspan="12" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Nessuna trattativa trovata</td></tr>';
+        return;
+    }
+    
+    const template = document.getElementById('templateRigaTrattativa');
+    container.innerHTML = '';
+    
+    trattative.forEach(t => {
+        const row = template.content.cloneNode(true);
+        const tr = row.querySelector('tr');
+        
+        tr.dataset.id = t.id;
+        
+        // Cliente
+        const linkCliente = tr.querySelector('.link-cliente');
+        if (linkCliente) {
+            linkCliente.textContent = t.ragione_sociale || 'N/D';
+            linkCliente.href = '/cerca/' + (t.p_iva || t.cliente_id);
+        }
+        
+        // Noleggiatore
+        const tdNoleggiatore = tr.querySelector('.td-noleggiatore');
+        if (tdNoleggiatore) tdNoleggiatore.textContent = t.noleggiatore || '-';
+        
+        // Veicolo (marca + descrizione)
+        const marca = tr.querySelector('.marca');
+        if (marca) marca.textContent = t.marca || '';
+        const descrizione = tr.querySelector('.descrizione');
+        if (descrizione) descrizione.textContent = t.descrizione_veicolo || '-';
+        
+        // Tipologia
+        const tdTipologia = tr.querySelector('.td-tipologia');
+        if (tdTipologia) tdTipologia.textContent = t.tipologia_veicolo || '-';
+        
+        // Tipo
+        const tdTipo = tr.querySelector('.td-tipo');
+        if (tdTipo) tdTipo.textContent = t.tipo_trattativa || '-';
+        
+        // Pezzi
+        const tdPezzi = tr.querySelector('.td-pezzi');
+        if (tdPezzi) tdPezzi.textContent = t.num_pezzi || 1;
+        
+        // Stato con colore
+        const badgeStato = tr.querySelector('.stato-badge');
+        if (badgeStato) {
+            badgeStato.textContent = t.stato || '-';
+            badgeStato.style.backgroundColor = t.stato_colore || '#6c757d';
+        }
+        
+        // Percentuale avanzamento
+        const progressBar = tr.querySelector('.progress-bar');
+        if (progressBar) {
+            const perc = t.percentuale || 0;
+            progressBar.style.width = perc + '%';
+            progressBar.textContent = perc + '%';
+            progressBar.style.backgroundColor = t.stato_colore || '#6c757d';
+        }
+        
+        // Date
+        const tdDataInizio = tr.querySelector('.td-data-inizio');
+        if (tdDataInizio) tdDataInizio.textContent = formatData(t.data_inizio);
+        
+        const tdDataChiusura = tr.querySelector('.td-data-chiusura');
+        if (tdDataChiusura) tdDataChiusura.textContent = t.data_chiusura ? formatData(t.data_chiusura) : '-';
+        
+        // Commerciale
+        // Commerciale e badge affidato
+        const nomeComm = tr.querySelector('.nome-commerciale');
+        if (nomeComm) nomeComm.textContent = t.commerciale_nome || t.commerciale_nome_snapshot || '-';
+        
+        const badgeAffidato = tr.querySelector('.badge-affidato');
+        if (badgeAffidato && t.affidato) {
+            badgeAffidato.classList.remove('d-none');
+            badgeAffidato.title = t.assegnato_da_nome || 'supervisore';
+        }
+        
+        // Pulsante espandi (toggle su click riga)
+        const btnEspandi = tr.querySelector('.toggle-espandi');
+        if (btnEspandi) btnEspandi.onclick = (e) => { e.stopPropagation(); toggleEspandi(t.id); };
+        
+        // Click su tutta la riga espande storico
+        tr.style.cursor = 'pointer';
+        tr.onclick = (e) => {
+            // Non espandere se clicco su link o pulsanti
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            toggleEspandi(t.id);
+        };
+        
+        // Pulsanti azione
+        const btnAvanzamento = tr.querySelector('.btn-avanzamento');
+        if (btnAvanzamento) btnAvanzamento.onclick = (e) => { e.stopPropagation(); apriModalAvanzamento(t.id, t.stato); };
+        
+        const btnModifica = tr.querySelector('.btn-modifica');
+        if (btnModifica) btnModifica.onclick = (e) => { e.stopPropagation(); apriModalModifica(t.id); };
+        
+        // Pulsante elimina (solo se cancellabile)
+        const btnElimina = tr.querySelector('.btn-elimina');
+        if (btnElimina) {
+            if (t.cancellabile) {
+                btnElimina.onclick = (e) => { e.stopPropagation(); confermaElimina(t.id); };
+            } else {
+                btnElimina.remove();
+            }
+        }
+        
+        container.appendChild(row);
+    });
+}
+
+function renderPaginazione(totale, limite, offset) {
+    const container = document.getElementById('containerPaginazione');
+    if (!container) return;
+    
+    const totalePagine = Math.ceil(totale / limite);
+    const paginaCorrente = Math.floor(offset / limite);
+    
+    if (totalePagine <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<nav><ul class="pagination pagination-sm mb-0">';
+    
+    // Precedente
+    if (paginaCorrente > 0) {
+        html += '<li class="page-item"><a class="page-link" href="#" onclick="caricaTrattative(' + ((paginaCorrente - 1) * limite) + '); return false;">&laquo;</a></li>';
+    }
+    
+    // Pagine
+    for (let i = 0; i < totalePagine; i++) {
+        if (i === paginaCorrente) {
+            html += '<li class="page-item active"><span class="page-link">' + (i + 1) + '</span></li>';
+        } else if (Math.abs(i - paginaCorrente) <= 2 || i === 0 || i === totalePagine - 1) {
+            html += '<li class="page-item"><a class="page-link" href="#" onclick="caricaTrattative(' + (i * limite) + '); return false;">' + (i + 1) + '</a></li>';
+        } else if (Math.abs(i - paginaCorrente) === 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // Successivo
+    if (paginaCorrente < totalePagine - 1) {
+        html += '<li class="page-item"><a class="page-link" href="#" onclick="caricaTrattative(' + ((paginaCorrente + 1) * limite) + '); return false;">&raquo;</a></li>';
+    }
+    
+    html += '</ul></nav>';
+    container.innerHTML = html;
+}
+
+function renderInfoRisultati(totale, limite, offset) {
+    const info = document.getElementById('infoRisultati');
+    if (!info) return;
+    const da = offset + 1;
+    const a = Math.min(offset + limite, totale);
+    info.textContent = 'Visualizzando ' + da + '-' + a + ' di ' + totale + ' trattative';
+}
+
+function formatData(dataStr) {
+    if (!dataStr) return '-';
+    const d = new Date(dataStr);
+    return d.toLocaleDateString('it-IT', {day: '2-digit', month: '2-digit', year: 'numeric'});
+}
+</script>

@@ -1,0 +1,32 @@
+{# ================================================
+   INDEX - RICERCA SMART
+   Box informativo con badge "Trovato in: ..."
+   Versione: 1.0.0
+   ================================================ #}
+
+<!-- Box informativo ricerca smart -->
+{% if search and search_matches %}
+<div class="alert alert-info py-2 mb-3 d-flex align-items-center flex-wrap gap-2">
+    <small class="me-2">
+        <i class="bi bi-search"></i> <strong>Trovato in:</strong>
+    </small>
+    {% if search_matches.get('referente') %}
+        <span class="badge bg-primary">Referente: {{ search_matches.referente|join(', ') }}</span>
+    {% endif %}
+    {% if search_matches.get('driver') %}
+        <span class="badge bg-success">Driver: {{ search_matches.driver|join(', ') }}</span>
+    {% endif %}
+    {% if search_matches.get('targa') %}
+        <span class="badge bg-warning text-dark">Targa: {{ search_matches.targa|join(', ') }}</span>
+    {% endif %}
+    {% if search_matches.get('capogruppo') %}
+        <span class="badge bg-secondary">Capogruppo: {{ search_matches.capogruppo|join(', ') }}</span>
+    {% endif %}
+    {% if search_matches.get('note') %}
+        <span class="badge bg-info">Note: {{ search_matches.note|join(', ') }}</span>
+    {% endif %}
+    {% if search_matches.get('contatto') %}
+        <span class="badge bg-dark">Tel/PEC: {{ search_matches.contatto|join(', ') }}</span>
+    {% endif %}
+</div>
+{% endif %}

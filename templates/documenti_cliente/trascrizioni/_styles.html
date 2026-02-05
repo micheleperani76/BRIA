@@ -1,0 +1,80 @@
+<!-- ==============================================================================
+     TRASCRIZIONI CLIENTE - Styles
+     ==============================================================================
+     Versione: 1.0.0
+     Data: 2026-02-04
+     ============================================================================== -->
+
+<style>
+/* Drop zone nel modal trascrizioni */
+.trascrizioni-drop-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #fafafa;
+    margin-bottom: 1rem;
+}
+.trascrizioni-drop-zone:hover {
+    border-color: #6c757d;
+    background: #f0f0f0;
+}
+.trascrizioni-drop-zone.drag-over {
+    border-color: #0d6efd;
+    background: #e8f0fe;
+    border-style: solid;
+}
+.trascrizioni-drop-zone.uploading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+/* Progress bar upload nel modal */
+.trascrizioni-upload-item {
+    display: flex;
+    align-items: center;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.85rem;
+}
+.trascrizioni-upload-item:last-child {
+    border-bottom: none;
+}
+.trascrizioni-upload-item .progress {
+    height: 6px;
+    flex: 1;
+    margin: 0 0.5rem;
+}
+.trascrizioni-upload-item .upload-status {
+    min-width: 80px;
+    text-align: right;
+    font-size: 0.75rem;
+}
+
+/* Barra ricerca trascrizioni */
+.trascrizioni-search-box {
+    position: relative;
+}
+.trascrizioni-search-box .bi-search {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+}
+.trascrizioni-search-box input {
+    padding-left: 2rem;
+    font-size: 0.85rem;
+}
+
+/* Textarea modifica testo */
+#anteprima-trascrizione-testo-edit {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 200px;
+}
+</style>
