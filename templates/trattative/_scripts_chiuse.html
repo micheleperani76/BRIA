@@ -12,6 +12,8 @@ var paginazioneChiuse = {
     totale: 0,
     caricato: false
 };
+// Flag admin (per bottoni cancella/riapri)
+var isAdminChiuse = {{ 'true' if session.get('ruolo_base') == 'admin' else 'false' }};
 
 // Carica trattative chiuse quando si espande la sezione
 document.addEventListener('DOMContentLoaded', function() {
@@ -139,9 +141,19 @@ function renderTrattativeChiuse(trattative) {
                 '<span class="nome-commerciale">' + escapeHtmlChiuse(t.commerciale_nome_snapshot || '-') + '</span>' +
             '</td>' +
             '<td class="td-azioni">' +
-                '<button class="btn btn-sm btn-outline-secondary" onclick="toggleEspandi(' + t.id + ')" title="Visualizza storico">' +
-                    '<i class="bi bi-eye"></i>' +
-                '</button>' +
+                '<div class="btn-group btn-group-sm">' +
+                    '<button class="btn btn-outline-secondary" onclick="toggleEspandi(' + t.id + ')" title="Visualizza storico">' +
+                        '<i class="bi bi-eye"></i>' +
+                    '</button>' +
+                    (isAdminChiuse ? 
+                        '<button class="btn btn-outline-success" onclick="riapriTrattativa(' + t.id + ')" title="Riapri trattativa">' +
+                            '<i class="bi bi-arrow-counterclockwise"></i>' +
+                        '</button>' +
+                        '<button class="btn btn-outline-danger" onclick="cancellaTrattativaChiusa(' + t.id + ')" title="Cancella trattativa">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>'
+                    : '') +
+                '</div>' +
             '</td>';
         
         tbody.appendChild(tr);
@@ -223,5 +235,97 @@ function escapeHtmlChiuse(text) {
     var div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ==============================================================================
+// FUNZIONI ADMIN - RIAPRI E CANCELLA TRATTATIVA CHIUSA
+// ==============================================================================
+
+function riapriTrattativa(trattativaId) {
+    if (!isAdminChiuse) {
+        alert('Solo gli amministratori possono riaprire trattative');
+        return;
+    }
+    
+    if (!confirm('Riaprire questa trattativa? Tornera allo stato "Preso in carico".')) return;
+    
+    fetch('/trattative/api/' + trattativaId + '/riapri', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Ricarica griglia aperte
+            if (typeof caricaTrattative === 'function') {
+                caricaTrattative();
+            }
+            // Ricarica griglia chiuse
+            caricaTrattativeChiuse(true);
+            
+            if (typeof mostraSuccesso === 'function') {
+                mostraSuccesso('Trattativa riaperta');
+            }
+        } else {
+            if (typeof mostraErrore === 'function') {
+                mostraErrore('Errore: ' + data.error);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        }
+    })
+    .catch(function(err) {
+        if (typeof mostraErrore === 'function') {
+            mostraErrore('Errore di rete: ' + err.message);
+        } else {
+            alert('Errore di rete: ' + err.message);
+        }
+    });
+}
+
+function cancellaTrattativaChiusa(trattativaId) {
+    if (!isAdminChiuse) {
+        alert('Solo gli amministratori possono cancellare trattative chiuse');
+        return;
+    }
+    
+    if (!confirm('Sei sicuro di voler cancellare questa trattativa chiusa?')) return;
+    
+    fetch('/trattative/api/' + trattativaId + '/elimina', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.success) {
+            // Ricarica griglia chiuse
+            caricaTrattativeChiuse(true);
+            // Ricarica griglia cancellate se aperta
+            if (typeof paginazioneCancellate !== 'undefined') {
+                paginazioneCancellate.caricato = false;
+                var sezioneCancellate = document.getElementById('sezioneTrattativeCancellate');
+                if (sezioneCancellate && sezioneCancellate.classList.contains('show')) {
+                    caricaTrattativeCancellate();
+                }
+            }
+            
+            if (typeof mostraSuccesso === 'function') {
+                mostraSuccesso('Trattativa cancellata');
+            }
+        } else {
+            if (typeof mostraErrore === 'function') {
+                mostraErrore('Errore: ' + data.error);
+            } else {
+                alert('Errore: ' + data.error);
+            }
+        }
+    })
+    .catch(function(err) {
+        if (typeof mostraErrore === 'function') {
+            mostraErrore('Errore di rete: ' + err.message);
+        } else {
+            alert('Errore di rete: ' + err.message);
+        }
+    });
 }
 </script>

@@ -458,6 +458,62 @@ def ripristina_trattativa(conn, trattativa_id: int, user_id: int) -> bool:
         return False
 
 
+def riapri_trattativa(conn, trattativa_id: int, user_id: int) -> bool:
+    """
+    Riapre una trattativa chiusa riportandola allo stato 'Preso in carico' (solo admin).
+    
+    Args:
+        conn: connessione SQLite
+        trattativa_id: ID trattativa
+        user_id: ID utente che riapre (per log)
+    
+    Returns:
+        True se successo, False se errore
+    """
+    try:
+        cursor = conn.cursor()
+        
+        # Verifica esistenza e che sia chiusa (non cancellata)
+        stati_chiusi = get_stati_chiusi()
+        cursor.execute("""
+            SELECT id, stato FROM trattative 
+            WHERE id = ? AND (cancellata IS NULL OR cancellata = 0)
+        """, (trattativa_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return False
+        
+        if row['stato'] not in stati_chiusi:
+            return False  # Non e' una trattativa chiusa
+        
+        # Riapri: riporta a stato iniziale
+        cursor.execute("""
+            UPDATE trattative 
+            SET stato = 'Preso in carico',
+                data_chiusura = NULL,
+                modificato_da = ?,
+                modificato_il = datetime('now', 'localtime')
+            WHERE id = ?
+        """, (user_id, trattativa_id))
+        
+        # Registra avanzamento
+        cursor.execute("""
+            INSERT INTO trattative_avanzamenti (
+                trattativa_id, stato, note_avanzamento,
+                data_avanzamento, registrato_da
+            ) VALUES (?, ?, ?, datetime('now', 'localtime'), ?)
+        """, (trattativa_id, 'Preso in carico', 'Trattativa riaperta da admin', user_id))
+        conn.commit()
+        return True
+        
+    except Exception as e:
+        print(f"[ERRORE] riapri_trattativa: {e}")
+        conn.rollback()
+        return False
+
+
+
 # ==============================================================================
 # AVANZAMENTI
 # ==============================================================================
@@ -885,7 +941,7 @@ def trattativa_cancellabile(conn, trattativa_id: int, is_admin: bool = False, st
     # Verifica se trattativa chiusa (nessuno puo' cancellarla)
     stati_chiusi = get_stati_chiusi()
     if stato in stati_chiusi:
-        return False
+        return is_admin  # Admin puo' cancellare anche le chiuse
     
     # Admin puo' sempre cancellare trattative aperte
     if is_admin:

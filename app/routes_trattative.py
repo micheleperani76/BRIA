@@ -46,7 +46,8 @@ from app.motore_trattative import (
     cerca_trattative,
     conta_per_stato,
     trattativa_appartiene_a,
-    trattativa_cancellabile
+    trattativa_cancellabile,
+    riapri_trattativa
 )
 from app.database_utenti import get_subordinati, get_utente_by_id
 
@@ -653,6 +654,38 @@ def api_ripristina(trattativa_id):
             })
         else:
             return jsonify({'success': False, 'error': 'Trattativa non trovata o non cancellata'}), 404
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ==============================================================================
+# API - RIAPRI TRATTATIVA CHIUSA (solo admin)
+# ==============================================================================
+
+@trattative_bp.route('/api/<int:trattativa_id>/riapri', methods=['POST'])
+@login_required
+def api_riapri(trattativa_id):
+    """API riapre trattativa chiusa (solo admin)"""
+    conn = get_db()
+    user_id = get_current_user_id()
+    is_admin = session.get('ruolo_base') == 'admin'
+    
+    try:
+        # Solo admin puo' riaprire
+        if not is_admin:
+            return jsonify({'success': False, 'error': 'Solo gli amministratori possono riaprire trattative chiuse'}), 403
+        
+        # Riapri
+        if riapri_trattativa(conn, trattativa_id, user_id):
+            return jsonify({
+                'success': True,
+                'message': 'Trattativa riaperta con successo'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Trattativa non trovata o non chiusa'}), 404
             
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

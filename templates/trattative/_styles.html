@@ -5,17 +5,17 @@
 
 <style>
 /* Tabella */
-#tabellaTrattative {
+#tabellaTrattative, #tabellaTrattativeChiuse {
     font-size: 0.875rem;
 }
 
-#tabellaTrattative th {
+#tabellaTrattative th, #tabellaTrattativeChiuse th {
     font-weight: 600;
     white-space: nowrap;
     border-bottom: 2px solid #dee2e6;
 }
 
-#tabellaTrattative td {
+#tabellaTrattative td, #tabellaTrattativeChiuse td {
     vertical-align: middle;
 }
 
@@ -134,7 +134,7 @@
 
 /* Responsive */
 @media (max-width: 992px) {
-    #tabellaTrattative {
+    #tabellaTrattative, #tabellaTrattativeChiuse {
         font-size: 0.8rem;
     }
     
@@ -162,5 +162,21 @@
 .pagination .page-link {
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
+}
+
+/* Layout fisso tabelle */
+#tabellaTrattative, #tabellaTrattativeChiuse {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Celle con ellipsis per testo lungo */
+#tabellaTrattative td, #tabellaTrattativeChiuse td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#tabellaTrattative .td-veicolo, #tabellaTrattativeChiuse .td-veicolo {
+    white-space: normal;
 }
 </style>
