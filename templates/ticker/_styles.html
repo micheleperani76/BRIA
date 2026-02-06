@@ -1,0 +1,164 @@
+<!-- ============================================================
+     TICKER - Stili CSS dedicati
+     Versione: 1.0
+     ============================================================ -->
+<style>
+    /* === PREVIEW === */
+    .ticker-preview-area {
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        height: 50px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: border-color 0.3s;
+    }
+    .ticker-preview-area:hover {
+        border-color: #adb5bd;
+    }
+    .ticker-preview-area .ticker-msg {
+        position: absolute;
+        white-space: nowrap;
+        font-size: 0.88rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .ticker-preview-placeholder {
+        color: #adb5bd;
+        font-size: 0.85rem;
+        font-style: italic;
+    }
+    
+    /* === GRIGLIA === */
+    .ticker-griglia .table {
+        font-size: 0.85rem;
+    }
+    .ticker-griglia .table td {
+        vertical-align: middle;
+    }
+    
+    /* Badge stati */
+    .badge-bozza      { background: #6c757d; }
+    .badge-in_attesa   { background: #ffc107; color: #000; }
+    .badge-approvato   { background: #198754; }
+    .badge-rifiutato   { background: #dc3545; }
+    .badge-scaduto     { background: #adb5bd; color: #000; }
+    
+    /* Badge animazioni */
+    .badge-anim {
+        background: #e9ecef;
+        color: #495057;
+        font-size: 0.75rem;
+        font-weight: normal;
+    }
+    
+    /* Priorita visuale */
+    .priorita-bar {
+        width: 60px;
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 4px;
+        display: inline-block;
+        vertical-align: middle;
+        position: relative;
+        overflow: hidden;
+    }
+    .priorita-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+    .priorita-bar-fill.p-low    { background: #198754; }
+    .priorita-bar-fill.p-medium { background: #ffc107; }
+    .priorita-bar-fill.p-high   { background: #dc3545; }
+    
+    /* Testo troncato nella griglia */
+    .testo-preview {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* === MODAL === */
+    .modal-ticker .form-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #495057;
+    }
+    .modal-ticker .form-text {
+        font-size: 0.75rem;
+    }
+    
+    /* Giorni settimana checkbox inline */
+    .giorni-settimana-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .giorni-settimana-group .form-check {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.3rem 0.6rem 0.3rem 2rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .giorni-settimana-group .form-check:has(input:checked) {
+        background: #0d6efd;
+        border-color: #0d6efd;
+        color: #fff;
+    }
+    .giorni-settimana-group .form-check-input:checked {
+        background-color: #fff;
+        border-color: #fff;
+    }
+    
+    /* Range priorita con valore */
+    .range-with-value {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .range-with-value input[type="range"] {
+        flex: 1;
+    }
+    .range-value-display {
+        min-width: 28px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    /* Filtri */
+    .ticker-filtri {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+    }
+    
+    /* Azioni compatte */
+    .btn-azione {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.78rem;
+        line-height: 1;
+    }
+    
+    /* Preview dentro modal */
+    .modal-preview-area {
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        height: 50px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>

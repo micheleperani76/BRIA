@@ -1,0 +1,294 @@
+<!-- ============================================================
+     COMPONENTI - Topbar Ticker Broadcasting
+     Versione: 2.0
+     Data: 2026-02-06
+     Barra fissa in alto con polling messaggi dal backend.
+     5 animazioni: scroll-rtl, scroll-ltr, slide-up, slide-down, fade
+     Background: stesso colore sfondo pagina (#f8f9fa)
+     ============================================================ -->
+
+{% if current_user %}
+<div class="topbar-ticker" id="topbar-ticker">
+    <div class="ticker-display" id="ticker-display">
+        <!-- Messaggio inserito via JS -->
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- STILI TOPBAR TICKER                                                    -->
+<!-- ====================================================================== -->
+<style>
+    /* === BARRA CONTENITORE === */
+    .topbar-ticker {
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width, 250px);
+        right: 0;
+        height: 50px;
+        background: #f8f9fa;
+        z-index: 1050;
+        display: flex;
+        align-items: center;
+        padding: 0 64px;
+        transition: left 0.3s ease;
+        overflow: hidden;
+    }
+    
+    body.sidebar-collapsed .topbar-ticker {
+        left: var(--sidebar-width-collapsed, 70px);
+    }
+    
+    /* === AREA DISPLAY MESSAGGI === */
+    .ticker-display {
+        width: 100%;
+        height: 36px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .ticker-msg {
+        position: absolute;
+        white-space: nowrap;
+        color: #000000;
+        font-size: 0.88rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .ticker-msg i {
+        color: #6c757d;
+    }
+    
+    /* === ANIMAZIONE: SCROLL DESTRA-SINISTRA (classico) === */
+    .ticker-msg.anim-scroll-rtl {
+        animation: ticker-rtl var(--ticker-dur, 10s) linear forwards;
+    }
+    @keyframes ticker-rtl {
+        0%   { left: 100%; }
+        100% { left: -100%; }
+    }
+    
+    /* === ANIMAZIONE: SCROLL SINISTRA-DESTRA === */
+    .ticker-msg.anim-scroll-ltr {
+        animation: ticker-ltr var(--ticker-dur, 10s) linear forwards;
+    }
+    @keyframes ticker-ltr {
+        0%   { right: 100%; left: auto; }
+        100% { right: -100%; left: auto; }
+    }
+    
+    /* === ANIMAZIONE: SALE DAL BASSO === */
+    .ticker-msg.anim-slide-up {
+        left: 50%;
+        transform: translateX(-50%);
+        animation: ticker-slide-up var(--ticker-dur, 6s) ease forwards;
+    }
+    @keyframes ticker-slide-up {
+        0%   { top: 100%; opacity: 0; }
+        15%  { top: 50%; transform: translate(-50%, -50%); opacity: 1; }
+        85%  { top: 50%; transform: translate(-50%, -50%); opacity: 1; }
+        100% { top: -100%; opacity: 0; }
+    }
+    
+    /* === ANIMAZIONE: SCENDE DALL'ALTO === */
+    .ticker-msg.anim-slide-down {
+        left: 50%;
+        transform: translateX(-50%);
+        animation: ticker-slide-down var(--ticker-dur, 6s) ease forwards;
+    }
+    @keyframes ticker-slide-down {
+        0%   { top: -100%; opacity: 0; }
+        15%  { top: 50%; transform: translate(-50%, -50%); opacity: 1; }
+        85%  { top: 50%; transform: translate(-50%, -50%); opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+    }
+    
+    /* === ANIMAZIONE: FADE IN/OUT === */
+    .ticker-msg.anim-fade {
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        animation: ticker-fade var(--ticker-dur, 6s) ease forwards;
+    }
+    @keyframes ticker-fade {
+        0%   { opacity: 0; }
+        15%  { opacity: 1; }
+        85%  { opacity: 1; }
+        100% { opacity: 0; }
+    }
+    
+    /* === VELOCITA === */
+    .ticker-msg.vel-lenta   { --ticker-dur: calc(var(--ticker-base-dur, 8s) * 1.5); }
+    .ticker-msg.vel-normale { --ticker-dur: var(--ticker-base-dur, 8s); }
+    .ticker-msg.vel-veloce  { --ticker-dur: calc(var(--ticker-base-dur, 8s) * 0.6); }
+    
+    /* === RESPONSIVE === */
+    @media (max-width: 768px) {
+        .topbar-ticker { padding: 0 52px; }
+    }
+</style>
+
+<!-- ====================================================================== -->
+<!-- SCRIPT TOPBAR TICKER (Polling + Animazioni)                            -->
+<!-- ====================================================================== -->
+<script>
+(function() {
+    
+    var display = null;
+    var timer = null;
+    var attivo = true;
+    
+    // Fattori velocita per scroll (pixel-based duration)
+    var FATTORI_VELOCITA = { 'lenta': 1.5, 'normale': 1.0, 'veloce': 0.6 };
+    
+    /**
+     * Mostra un messaggio nel ticker con l'animazione specificata
+     */
+    function mostraMessaggio(msg) {
+        if (!display) return;
+        
+        // Pulisci display
+        display.innerHTML = '';
+        
+        // Crea elemento messaggio
+        var el = document.createElement('span');
+        el.className = 'ticker-msg';
+        
+        // Icona (opzionale)
+        if (msg.icona) {
+            el.innerHTML = '<i class="bi bi-' + escHtml(msg.icona) + '"></i>';
+        }
+        
+        // Testo
+        var testo = document.createElement('span');
+        testo.textContent = msg.testo;
+        if (msg.colore_testo && msg.colore_testo !== '#000000') {
+            testo.style.color = msg.colore_testo;
+        }
+        el.appendChild(testo);
+        
+        // Font da config
+        if (msg.font_size) el.style.fontSize = msg.font_size;
+        if (msg.font_family && msg.font_family !== "inherit") el.style.fontFamily = msg.font_family;
+        
+        // Calcola durata base
+        var durataBase = (msg.durata_secondi || 8);
+        var fattore = FATTORI_VELOCITA[msg.velocita] || 1.0;
+        var durataReale = durataBase * fattore;
+        
+        // Per scroll, la durata dipende anche dalla larghezza del testo
+        var animazione = msg.animazione || 'scroll-rtl';
+        
+        // Set CSS variable per durata
+        el.style.setProperty('--ticker-base-dur', durataBase + 's');
+        el.style.setProperty('--ticker-dur', durataReale + 's');
+        
+        // Classe animazione
+        el.classList.add('anim-' + animazione);
+        el.classList.add('vel-' + (msg.velocita || 'normale'));
+        
+        display.appendChild(el);
+        
+        // Registra visualizzazione
+        if (msg.id) {
+            registraVisto(msg.id);
+        }
+        
+        // Dopo fine animazione, pulisci
+        setTimeout(function() {
+            display.innerHTML = '';
+        }, (durataReale + 0.5) * 1000);
+    }
+    
+    /**
+     * Registra visualizzazione sul backend
+     */
+    function registraVisto(msgId) {
+        fetch('/ticker/api/visto/' + msgId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        }).catch(function() {});
+    }
+    
+    /**
+     * Polling: chiedi al backend il prossimo messaggio
+     */
+    function chiediProssimo() {
+        if (!attivo) return;
+        
+        fetch('/ticker/api/prossimo')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.messaggio) {
+                    var m = data.messaggio; if(m) { m.font_size = data.font_size; m.font_family = data.font_family; } mostraMessaggio(m);
+                }
+                // Programma prossimo check
+                var pausa = (data.prossimo_check_sec || 120) * 1000;
+                timer = setTimeout(chiediProssimo, pausa);
+            })
+            .catch(function() {
+                // In caso di errore, riprova dopo 60 secondi
+                timer = setTimeout(chiediProssimo, 60000);
+            });
+    }
+    
+    /**
+     * Escape HTML per sicurezza
+     */
+    function escHtml(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+    
+    /**
+     * Funzione pubblica per mostrare messaggi da fuori (es. preview)
+     */
+    window.tickerMostraMessaggio = function(msg) {
+        mostraMessaggio(msg);
+    };
+    
+    /**
+     * Funzione pubblica per fermare/riavviare il polling
+     */
+    window.tickerToggle = function(stato) {
+        attivo = stato;
+        if (!stato && timer) {
+            clearTimeout(timer);
+            timer = null;
+        } else if (stato && !timer) {
+            chiediProssimo();
+        }
+    };
+    
+    // === AGGIORNA LEFT QUANDO SIDEBAR CAMBIA ===
+    var sidebarToggle = document.getElementById('sidebarToggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            setTimeout(function() {
+                var sidebar = document.getElementById('sidebar');
+                var topbar = document.getElementById('topbar-ticker');
+                if (sidebar && topbar) {
+                    topbar.style.left = sidebar.offsetWidth + 'px';
+                }
+            }, 350);
+        });
+    }
+    
+    // === INIT ===
+    document.addEventListener('DOMContentLoaded', function() {
+        display = document.getElementById('ticker-display');
+        // Pausa random iniziale (10-60 sec) prima del primo polling
+        var pausaIniziale = Math.floor(Math.random() * 50000) + 10000;
+        timer = setTimeout(chiediProssimo, pausaIniziale);
+    });
+    
+})();
+</script>
+{% endif %}

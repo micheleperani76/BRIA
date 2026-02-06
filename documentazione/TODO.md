@@ -6,6 +6,20 @@ Ultimo aggiornamento: 06 Febbraio 2026
 
 ## IN CORSO
 
+### Ticker Broadcasting
+- [x] Fase 1: Backend (DB, config, motore, routes, blueprint)
+- [x] Fase 2: Widget topbar (polling + 5 animazioni)
+- [x] Fase 3: Pagina gestione (griglia, modal, preview, filtri)
+- [x] Fix autenticazione ruolo_base
+- [x] Pulsante accesso da pagina /admin
+- [x] Rimosso link sidebar, ticker nascosto in /admin
+- [x] Fase 4: Messaggi automatici (compleanni, festivita, gomme, deposito bilancio)
+- [x] Fase 5 eliminata: statistiche visualizzazioni (non necessarie)
+- [x] Config aspetto testo (font-size, font-family)
+- [x] Toggle automatici in riga sulla pagina
+- [x] Rimossi filtri griglia (non necessari)
+- [x] Cron giornaliero 00:05 per auto-generazione
+
 ### Top Prospect
 - [ ] Test completo sincronizzazione Google Calendar
 - [ ] Test condivisione calendario con altri account
@@ -57,10 +71,6 @@ Ultimo aggiornamento: 06 Febbraio 2026
 
 ## BACKLOG (Priorita' Media/Bassa)
 
-### Banner Dashboard (Progettato, non implementato)
-- [ ] Striscia scorrevole RSS-style sotto navbar
-- [ ] Messaggi: cambio gomme, compleanni clienti, scadenze contratti
-- [ ] Configurabile da admin
 
 ### Miglioramenti UI
 - [ ] Dark mode

@@ -1,0 +1,753 @@
+<!-- ============================================================
+     TICKER - Scripts JavaScript
+     Versione: 1.0
+     ============================================================ -->
+<script>
+    // Inizializza tooltip Bootstrap
+    document.addEventListener("DOMContentLoaded", function() {
+        var tt = document.querySelectorAll("[data-bs-toggle=\"tooltip\"]");
+        tt.forEach(function(el) { new bootstrap.Tooltip(el); });
+    });
+(function() {
+    
+    // ==================================================================
+    // VARIABILI GLOBALI
+    // ==================================================================
+    var modalInstance = null;
+    var configModalInstance = null;
+    var debounceTimer = null;
+    
+    // Nomi animazioni per display
+    var NOMI_ANIM = {
+        'scroll-rtl': 'Dx&rarr;Sx',
+        'scroll-ltr': 'Sx&rarr;Dx',
+        'slide-up':   'Sale',
+        'slide-down': 'Scende',
+        'fade':       'Fade'
+    };
+    
+    var NOMI_DEST = {
+        'TUTTI':             'Tutti',
+        'RUOLO:ADMIN':       'Admin',
+        'RUOLO:COMMERCIALE': 'Commerciali',
+        'RUOLO:OPERATORE':   'Operatori'
+    };
+    
+    // ==================================================================
+    // CARICAMENTO GRIGLIA
+    // ==================================================================
+    
+    window.caricaGriglia = function() {
+        var params = new URLSearchParams();
+        
+        var stato = '';
+        var tipo = '';
+        var cerca = '';
+        var dest = '';
+        
+        if (stato) params.set('stato', stato);
+        if (tipo) params.set('tipo', tipo);
+        if (cerca) params.set('cerca', cerca);
+        if (dest) params.set('destinatari', dest);
+        params.set('limite', '100');
+        
+        fetch('/ticker/api/lista?' + params.toString())
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    renderGriglia(data.messaggi, data.totale);
+                }
+            })
+            .catch(function(e) {
+                console.error('Errore caricamento griglia:', e);
+            });
+    };
+    
+    window.debounceCarica = function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(caricaGriglia, 400);
+    };
+    
+    function renderGriglia(messaggi, totale) {
+        var tbody = document.getElementById('tbody-messaggi');
+        var conteggio = null;
+        
+        if (conteggio) conteggio.textContent = totale + ' messaggi';
+        
+        if (!messaggi || messaggi.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">' +
+                '<i class="bi bi-inbox me-2"></i>Nessun messaggio trovato</td></tr>';
+            return;
+        }
+        
+        var html = '';
+        messaggi.forEach(function(m) {
+            html += '<tr>';
+            
+            // Testo (troncato)
+            html += '<td><div class="testo-preview">';
+            if (m.icona) html += '<i class="bi bi-' + esc(m.icona) + ' me-1 text-muted"></i>';
+            html += esc(m.testo) + '</div></td>';
+            
+            // Animazione
+            html += '<td><span class="badge badge-anim">' + (NOMI_ANIM[m.animazione] || m.animazione) + '</span></td>';
+            
+            // Periodo
+            var periodo = formattaData(m.data_inizio);
+            if (m.data_fine) periodo += ' &rarr; ' + formattaData(m.data_fine);
+            html += '<td class="small">' + periodo + '</td>';
+            
+            // Tipo
+            html += '<td><span class="badge ' + (m.tipo === 'automatico' ? 'bg-info' : 'bg-secondary') + '">' + (m.tipo || 'manuale') + '</span></td>';
+            
+            // Priorita (barra)
+            var prio = m.priorita || 5;
+            var pClass = prio <= 3 ? 'p-low' : (prio <= 6 ? 'p-medium' : 'p-high');
+            html += '<td class="text-center">';
+            html += '<span class="priorita-bar"><span class="priorita-bar-fill ' + pClass + '" style="width:' + (prio * 10) + '%"></span></span>';
+            html += ' <small class="text-muted">' + prio + '</small></td>';
+            
+            // Stato
+            html += '<td><span class="badge badge-' + m.stato + '">' + m.stato + '</span></td>';
+            
+            
+            // Azioni
+            html += '<td class="text-end text-nowrap">';
+            html += '<button class="btn btn-outline-info btn-azione me-1" onclick="previewMessaggio(' + m.id + ')" title="Preview">';
+            html += '<i class="bi bi-eye"></i></button>';
+            html += '<button class="btn btn-outline-primary btn-azione me-1" onclick="modificaMessaggio(' + m.id + ')" title="Modifica">';
+            html += '<i class="bi bi-pencil"></i></button>';
+            
+            // Admin: approva/rifiuta
+            if (TICKER_IS_ADMIN && (m.stato === 'bozza' || m.stato === 'in_attesa')) {
+                html += '<button class="btn btn-outline-success btn-azione me-1" onclick="approvaMsg(' + m.id + ')" title="Approva">';
+                html += '<i class="bi bi-check-lg"></i></button>';
+                html += '<button class="btn btn-outline-danger btn-azione me-1" onclick="rifiutaMsg(' + m.id + ')" title="Rifiuta">';
+                html += '<i class="bi bi-x-lg"></i></button>';
+            }
+            
+            html += '<button class="btn btn-outline-danger btn-azione" onclick="eliminaMsg(' + m.id + ')" title="Elimina">';
+            html += '<i class="bi bi-trash"></i></button>';
+            html += '</td>';
+            
+            html += '</tr>';
+        });
+        
+        tbody.innerHTML = html;
+    }
+    
+    // ==================================================================
+    // MODAL NUOVO/MODIFICA
+    // ==================================================================
+    
+    window.apriModalNuovo = function() {
+        // Reset form
+        document.getElementById('msg-id').value = '';
+        document.getElementById('msg-testo').value = '';
+        document.getElementById('msg-icona').value = '';
+        document.getElementById('msg-colore').value = '#000000';
+        document.getElementById('msg-colore-hex').value = '#000000';
+        document.getElementById('msg-animazione').value = 'scroll-rtl';
+        document.getElementById('msg-durata').value = '8';
+        document.getElementById('msg-velocita').value = 'normale';
+        document.getElementById('msg-data-inizio').value = oggi();
+        document.getElementById('msg-data-fine').value = '';
+        document.getElementById('msg-ora-inizio').value = '00:00';
+        document.getElementById('msg-ora-fine').value = '23:59';
+        document.getElementById('msg-ricorrenza').value = 'nessuna';
+        document.getElementById('msg-destinatari').value = 'TUTTI';
+        document.getElementById('msg-priorita').value = '5';
+        document.getElementById('priorita-val').textContent = '5';
+        document.getElementById('msg-peso').value = '1';
+        
+        // Giorni: lun-ven selezionati, sab-dom no
+        for (var i = 1; i <= 7; i++) {
+            document.getElementById('g' + i).checked = (i <= 5);
+        }
+        
+        // Titolo modal
+        document.getElementById('modal-titolo').innerHTML = '<i class="bi bi-plus-circle me-2"></i>Nuovo Messaggio';
+        
+        // Mostra/nascondi pulsante approvazione
+        var btnInvia = document.getElementById('btn-invia-approvazione');
+        btnInvia.style.display = TICKER_IS_ADMIN ? 'none' : 'inline-block';
+        
+        // Pulisci preview
+        var prev = document.getElementById('modal-preview-area');
+        if (prev) prev.innerHTML = '<span class="ticker-preview-placeholder">Scrivi un testo per vedere la preview</span>';
+        
+        if (!modalInstance) {
+            modalInstance = new bootstrap.Modal(document.getElementById('modalMessaggio'));
+        }
+        modalInstance.show();
+    };
+    
+    window.modificaMessaggio = function(id) {
+        fetch('/ticker/api/' + id)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success || !data.messaggio) return;
+                var m = data.messaggio;
+                
+                document.getElementById('msg-id').value = m.id;
+                document.getElementById('msg-testo').value = m.testo || '';
+                document.getElementById('msg-icona').value = m.icona || '';
+                document.getElementById('msg-colore').value = m.colore_testo || '#000000';
+                document.getElementById('msg-colore-hex').value = m.colore_testo || '#000000';
+                document.getElementById('msg-animazione').value = m.animazione || 'scroll-rtl';
+                document.getElementById('msg-durata').value = m.durata_secondi || 8;
+                document.getElementById('msg-velocita').value = m.velocita || 'normale';
+                document.getElementById('msg-data-inizio').value = m.data_inizio || '';
+                document.getElementById('msg-data-fine').value = m.data_fine || '';
+                document.getElementById('msg-ora-inizio').value = m.ora_inizio || '00:00';
+                document.getElementById('msg-ora-fine').value = m.ora_fine || '23:59';
+                document.getElementById('msg-ricorrenza').value = m.ricorrenza || 'nessuna';
+                document.getElementById('msg-destinatari').value = m.destinatari || 'TUTTI';
+                document.getElementById('msg-priorita').value = m.priorita || 5;
+                document.getElementById('priorita-val').textContent = m.priorita || 5;
+                document.getElementById('msg-peso').value = m.peso || 1;
+                
+                // Giorni
+                var giorni = (m.giorni_settimana || '1,2,3,4,5,6,7').split(',');
+                for (var i = 1; i <= 7; i++) {
+                    document.getElementById('g' + i).checked = giorni.indexOf(String(i)) >= 0;
+                }
+                
+                document.getElementById('modal-titolo').innerHTML = '<i class="bi bi-pencil me-2"></i>Modifica Messaggio';
+                
+                var btnInvia = document.getElementById('btn-invia-approvazione');
+                btnInvia.style.display = (!TICKER_IS_ADMIN && m.stato === 'bozza') ? 'inline-block' : 'none';
+                
+                aggiornaIconaPreview();
+                
+                if (!modalInstance) {
+                    modalInstance = new bootstrap.Modal(document.getElementById('modalMessaggio'));
+                }
+                modalInstance.show();
+            });
+    };
+    
+    window.salvaMessaggio = function() {
+        var id = document.getElementById('msg-id').value;
+        var testo = document.getElementById('msg-testo').value.trim();
+        
+        if (!testo) {
+            alert('Il testo del messaggio non puo\' essere vuoto.');
+            return;
+        }
+        
+        // Raccogli giorni selezionati
+        var giorni = [];
+        for (var i = 1; i <= 7; i++) {
+            if (document.getElementById('g' + i).checked) giorni.push(String(i));
+        }
+        if (giorni.length === 0) {
+            alert('Seleziona almeno un giorno della settimana.');
+            return;
+        }
+        
+        var dati = {
+            testo: testo,
+            icona: document.getElementById('msg-icona').value.trim(),
+            colore_testo: document.getElementById('msg-colore').value,
+            animazione: document.getElementById('msg-animazione').value,
+            durata_secondi: parseInt(document.getElementById('msg-durata').value) || 8,
+            velocita: document.getElementById('msg-velocita').value,
+            data_inizio: document.getElementById('msg-data-inizio').value,
+            data_fine: document.getElementById('msg-data-fine').value || null,
+            ora_inizio: document.getElementById('msg-ora-inizio').value || '00:00',
+            ora_fine: document.getElementById('msg-ora-fine').value || '23:59',
+            giorni_settimana: giorni.join(','),
+            ricorrenza: document.getElementById('msg-ricorrenza').value,
+            destinatari: document.getElementById('msg-destinatari').value,
+            priorita: parseInt(document.getElementById('msg-priorita').value) || 5,
+            peso: parseInt(document.getElementById('msg-peso').value) || 1
+        };
+        
+        if (!dati.data_inizio) {
+            alert('La data di inizio e\' obbligatoria.');
+            return;
+        }
+        
+        var url = id ? '/ticker/api/' + id + '/modifica' : '/ticker/api/crea';
+        
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dati)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                if (modalInstance) modalInstance.hide();
+                caricaGriglia();
+            } else {
+                alert('Errore: ' + (data.errore || 'sconosciuto'));
+            }
+        })
+        .catch(function(e) { alert('Errore di rete: ' + e); });
+    };
+    
+    // ==================================================================
+    // APPROVAZIONE / RIFIUTO / ELIMINAZIONE
+    // ==================================================================
+    
+    window.approvaMsg = function(id) {
+        if (!confirm('Approvare questo messaggio?')) return;
+        fetch('/ticker/api/' + id + '/approva', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.success) caricaGriglia(); else alert('Errore'); });
+    };
+    
+    window.rifiutaMsg = function(id) {
+        var nota = prompt('Motivo del rifiuto (opzionale):');
+        if (nota === null) return; // cancel
+        fetch('/ticker/api/' + id + '/rifiuta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nota: nota })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) { if (d.success) caricaGriglia(); else alert('Errore'); });
+    };
+    
+    window.eliminaMsg = function(id) {
+        if (!confirm('Eliminare questo messaggio? L\'operazione non e\' reversibile.')) return;
+        fetch('/ticker/api/' + id + '/elimina', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.success) caricaGriglia(); else alert('Errore'); });
+    };
+    
+    window.inviaPerApprovazione = function() {
+        var id = document.getElementById('msg-id').value;
+        if (!id) {
+            alert('Salva prima il messaggio, poi potrai inviarlo per approvazione.');
+            return;
+        }
+        fetch('/ticker/api/' + id + '/invia', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success) {
+                    alert('Messaggio inviato per approvazione.');
+                    if (modalInstance) modalInstance.hide();
+                    caricaGriglia();
+                } else {
+                    alert('Errore: ' + (d.errore || 'sconosciuto'));
+                }
+            });
+    };
+    
+    // ==================================================================
+    // PREVIEW
+    // ==================================================================
+    
+    window.previewMessaggio = function(id) {
+        fetch('/ticker/api/' + id)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success && data.messaggio) {
+                    playPreview(document.getElementById('preview-area'), data.messaggio);
+                }
+            });
+    };
+    
+    window.previewTest = function() {
+        var esempi = [
+            { testo: 'Buon compleanno Marco! Auguri da tutto il team!', icona: 'balloon-heart', animazione: 'slide-up', durata_secondi: 6, velocita: 'normale', colore_testo: '#000000' },
+            { testo: 'Promemoria: periodo cambio gomme invernali dal 15 ottobre', icona: 'snow', animazione: 'scroll-rtl', durata_secondi: 8, velocita: 'normale', colore_testo: '#000000' },
+            { testo: 'Buone Feste a tutti da BR Car Service!', icona: 'tree', animazione: 'fade', durata_secondi: 6, velocita: 'normale', colore_testo: '#000000' },
+        ];
+        var msg = esempi[Math.floor(Math.random() * esempi.length)];
+        playPreview(document.getElementById('preview-area'), msg);
+    };
+    
+    window.aggiornaPreviewModal = function() {
+        // Non auto-play, solo aggiorna colore hex
+        var colore = document.getElementById('msg-colore').value;
+        document.getElementById('msg-colore-hex').value = colore;
+    };
+    
+    window.playPreviewModal = function() {
+        var testo = document.getElementById('msg-testo').value.trim();
+        if (!testo) return;
+        
+        var msg = {
+            testo: testo,
+            icona: document.getElementById('msg-icona').value.trim(),
+            colore_testo: document.getElementById('msg-colore').value,
+            animazione: document.getElementById('msg-animazione').value,
+            durata_secondi: parseInt(document.getElementById('msg-durata').value) || 8,
+            velocita: document.getElementById('msg-velocita').value
+        };
+        
+        playPreview(document.getElementById('modal-preview-area'), msg);
+    };
+    
+    function playPreview(container, msg) {
+        if (!container) return;
+        container.innerHTML = '';
+        
+        var el = document.createElement('span');
+        el.className = 'ticker-msg';
+        
+        if (msg.icona) {
+            el.innerHTML = '<i class="bi bi-' + esc(msg.icona) + '"></i>';
+        }
+        
+        var testo = document.createElement('span');
+        testo.textContent = msg.testo;
+        if (msg.colore_testo && msg.colore_testo !== '#000000') {
+            testo.style.color = msg.colore_testo;
+        }
+        el.appendChild(testo);
+        
+        // Font da config DB
+        if (window._tickerFontSize) el.style.fontSize = window._tickerFontSize;
+        if (window._tickerFontFamily && window._tickerFontFamily !== 'inherit') el.style.fontFamily = window._tickerFontFamily;
+        
+        var durataBase = msg.durata_secondi || 8;
+        var fattori = { 'lenta': 1.5, 'normale': 1.0, 'veloce': 0.6 };
+        var durata = durataBase * (fattori[msg.velocita] || 1.0);
+        
+        el.style.setProperty('--ticker-base-dur', durataBase + 's');
+        el.style.setProperty('--ticker-dur', durata + 's');
+        el.classList.add('anim-' + (msg.animazione || 'scroll-rtl'));
+        el.classList.add('vel-' + (msg.velocita || 'normale'));
+        
+        container.appendChild(el);
+        
+        // Pulisci dopo animazione
+        setTimeout(function() {
+            if (container.contains(el)) {
+                container.innerHTML = '<span class="ticker-preview-placeholder">Preview completata</span>';
+            }
+        }, (durata + 0.5) * 1000);
+    }
+    
+    window.aggiornaIconaPreview = function() {
+        var icona = document.getElementById('msg-icona').value.trim();
+        var prev = document.getElementById('icona-preview-icon');
+        if (prev) {
+            prev.className = 'bi' + (icona ? ' bi-' + icona : '');
+        }
+    };
+    
+    // ==================================================================
+    // CONFIGURAZIONE (admin)
+    // ==================================================================
+    
+    window.apriConfig = function() {
+        fetch('/ticker/api/config')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var c = data.config;
+                
+                setVal('cfg-messaggi-ora', c.messaggi_ora);
+                setVal('cfg-pausa-min', c.pausa_minima_sec);
+                setVal('cfg-pausa-max', c.pausa_massima_sec);
+                setChk('cfg-attivo', c.attivo);
+                setChk('cfg-auto-compleanni', c.auto_compleanni);
+                setChk('cfg-auto-festivita', c.auto_festivita);
+                setChk('cfg-auto-gomme', c.auto_gomme);
+                setChk('cfg-auto-deposito', c.auto_deposito_bilancio);
+                
+                if (!configModalInstance) {
+                    configModalInstance = new bootstrap.Modal(document.getElementById('modalConfig'));
+                }
+                configModalInstance.show();
+            });
+    };
+    
+    window.salvaConfig = function() {
+        var dati = {
+            messaggi_ora: document.getElementById('cfg-messaggi-ora').value,
+            pausa_minima_sec: document.getElementById('cfg-pausa-min').value,
+            pausa_massima_sec: document.getElementById('cfg-pausa-max').value,
+            attivo: document.getElementById('cfg-attivo').checked ? '1' : '0',
+            auto_compleanni: document.getElementById('cfg-auto-compleanni').checked ? '1' : '0',
+            auto_festivita: document.getElementById('cfg-auto-festivita').checked ? '1' : '0',
+            auto_gomme: document.getElementById('cfg-auto-gomme').checked ? '1' : '0'
+            ,auto_deposito_bilancio: document.getElementById('cfg-auto-deposito').checked ? '1' : '0'
+        };
+        
+        fetch('/ticker/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dati)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                if (configModalInstance) configModalInstance.hide();
+                alert('Configurazione salvata (' + d.aggiornati + ' parametri aggiornati)');
+            } else {
+                alert('Errore salvataggio');
+            }
+        });
+    };
+    
+    // ==================================================================
+    // UTILITY
+    // ==================================================================
+    
+    function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+    
+    function oggi() {
+        var d = new Date();
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    }
+    
+    function pad(n) { return n < 10 ? '0' + n : '' + n; }
+    
+    function formattaData(d) {
+        if (!d) return '';
+        var p = d.split('-');
+        if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+        return d;
+    }
+    
+    function setVal(id, cfg) {
+        var el = document.getElementById(id);
+        if (el && cfg) el.value = cfg.valore || '';
+    }
+    
+    function setChk(id, cfg) {
+        var el = document.getElementById(id);
+        if (el && cfg) el.checked = (cfg.valore === '1');
+    }
+    
+    // ==================================================================
+    // INIT
+    // ==================================================================
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        caricaGriglia();
+    });
+    
+})();
+</script>
+
+<!-- ============================================================
+     TICKER - Scripts aggiuntivi: toggle automatici + font
+     ============================================================ -->
+<script>
+    // Inizializza tooltip Bootstrap
+    document.addEventListener("DOMContentLoaded", function() {
+        var tt = document.querySelectorAll("[data-bs-toggle=\"tooltip\"]");
+        tt.forEach(function(el) { new bootstrap.Tooltip(el); });
+    });
+(function() {
+    
+    // === CARICA STATO TOGGLE AUTOMATICI ===
+    function caricaToggleAuto() {
+        fetch('/ticker/api/config')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var c = data.config;
+                setToggle('toggle-auto-compleanni', c.auto_compleanni);
+                setToggle('toggle-auto-festivita', c.auto_festivita);
+                setToggle('toggle-auto-gomme', c.auto_gomme);
+                setToggle('toggle-auto-deposito', c.auto_deposito_bilancio);
+            });
+    }
+    
+    function setToggle(id, cfg) {
+        var el = document.getElementById(id);
+        if (el && cfg) el.checked = (cfg.valore === '1');
+    }
+    
+    // === SALVA TOGGLE AUTOMATICI (chiamata da onchange) ===
+    window.salvaToggleAuto = function() {
+        var dati = {
+            auto_compleanni: document.getElementById('toggle-auto-compleanni').checked ? '1' : '0',
+            auto_festivita: document.getElementById('toggle-auto-festivita').checked ? '1' : '0',
+            auto_gomme: document.getElementById('toggle-auto-gomme').checked ? '1' : '0',
+            auto_deposito_bilancio: document.getElementById('toggle-auto-deposito').checked ? '1' : '0'
+        };
+        
+        fetch('/ticker/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dati)
+        });
+    };
+    
+    // === OVERRIDE apriConfig per aggiungere font ===
+    var _apriConfigOriginale = window.apriConfig;
+    window.apriConfig = function() {
+        fetch('/ticker/api/config')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var c = data.config;
+                
+                // Campi originali
+                var el;
+                el = document.getElementById('cfg-messaggi-ora');
+                if (el && c.messaggi_ora) el.value = c.messaggi_ora.valore || '4';
+                el = document.getElementById('cfg-pausa-min');
+                if (el && c.pausa_minima_sec) el.value = c.pausa_minima_sec.valore || '120';
+                el = document.getElementById('cfg-pausa-max');
+                if (el && c.pausa_massima_sec) el.value = c.pausa_massima_sec.valore || '600';
+                el = document.getElementById('cfg-attivo');
+                if (el && c.attivo) el.checked = (c.attivo.valore === '1');
+                
+                // Font
+                el = document.getElementById('cfg-font-size');
+                if (el && c.font_size) el.value = c.font_size.valore || '0.88rem';
+                el = document.getElementById('cfg-font-family');
+                if (el && c.font_family) el.value = c.font_family.valore || 'inherit';
+                
+                if (!window._configModalInst) {
+                    window._configModalInst = new bootstrap.Modal(document.getElementById('modalConfig'));
+                }
+                window._configModalInst.show();
+            });
+    };
+    
+    // === OVERRIDE salvaConfig per aggiungere font ===
+    window.salvaConfig = function() {
+        var dati = {
+            messaggi_ora: document.getElementById('cfg-messaggi-ora').value,
+            pausa_minima_sec: document.getElementById('cfg-pausa-min').value,
+            pausa_massima_sec: document.getElementById('cfg-pausa-max').value,
+            attivo: document.getElementById('cfg-attivo').checked ? '1' : '0',
+            font_size: document.getElementById('cfg-font-size').value,
+            font_family: document.getElementById('cfg-font-family').value
+        };
+        
+        fetch('/ticker/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dati)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                window._tickerFontSize = dati.font_size;
+                window._tickerFontFamily = dati.font_family;
+                if (window._configModalInst) window._configModalInst.hide();
+                alert('Configurazione salvata');
+            } else {
+                alert('Errore salvataggio');
+            }
+        });
+    };
+    
+    // === INIT ===
+    document.addEventListener('DOMContentLoaded', function() {
+        caricaToggleAuto();
+        // Carica font config globali per preview
+        fetch('/ticker/api/config')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var c = data.config;
+                window._tickerFontSize = c.font_size ? c.font_size.valore : '0.88rem';
+                window._tickerFontFamily = c.font_family ? c.font_family.valore : 'inherit';
+            });
+    });
+    
+})();
+</script>
+
+<!-- ============================================================
+     TICKER - Scripts gestione festivita
+     ============================================================ -->
+<script>
+    // Inizializza tooltip Bootstrap
+    document.addEventListener("DOMContentLoaded", function() {
+        var tt = document.querySelectorAll("[data-bs-toggle=\"tooltip\"]");
+        tt.forEach(function(el) { new bootstrap.Tooltip(el); });
+    });
+(function() {
+    
+    var _festModalInst = null;
+    
+    window.apriFestivita = function() {
+        if (!_festModalInst) {
+            _festModalInst = new bootstrap.Modal(document.getElementById('modalFestivita'));
+        }
+        caricaFestivita();
+        _festModalInst.show();
+    };
+    
+    function caricaFestivita() {
+        fetch('/ticker/api/festivita')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var tbody = document.getElementById('tbody-festivita');
+                if (!data.festivita.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nessuna festivita</td></tr>';
+                    return;
+                }
+                var html = '';
+                data.festivita.forEach(function(f) {
+                    var gg = String(f.giorno).padStart(2, '0');
+                    var mm = String(f.mese).padStart(2, '0');
+                    html += '<tr' + (f.attiva ? '' : ' class="text-muted"') + '>';
+                    html += '<td class="small">' + gg + '/' + mm + '</td>';
+                    html += '<td class="small">' + f.nome + '</td>';
+                    html += '<td><span class="badge ' + (f.tipo === 'fissa' ? 'bg-secondary' : 'bg-info') + '">' + f.tipo + '</span></td>';
+                    html += '<td class="text-center">';
+                    html += '<div class="form-check form-switch d-inline-block mb-0">';
+                    html += '<input class="form-check-input" type="checkbox"' + (f.attiva ? ' checked' : '') + ' onchange="toggleFestivita(' + f.id + ')">';
+                    html += '</div></td>';
+                    html += '<td class="text-end">';
+                    if (f.tipo === 'personalizzata') {
+                        html += '<button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="eliminaFestivita(' + f.id + ')" title="Elimina"><i class="bi bi-trash"></i></button>';
+                    }
+                    html += '</td></tr>';
+                });
+                tbody.innerHTML = html;
+            });
+    }
+    
+    window.aggiungiFestivita = function() {
+        var nome = document.getElementById('fest-nome').value.trim();
+        var giorno = document.getElementById('fest-giorno').value;
+        var mese = document.getElementById('fest-mese').value;
+        if (!nome || !giorno || !mese) {
+            alert('Compila tutti i campi');
+            return;
+        }
+        fetch('/ticker/api/festivita', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nome: nome, giorno: parseInt(giorno), mese: parseInt(mese) })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                document.getElementById('fest-nome').value = '';
+                document.getElementById('fest-giorno').value = '';
+                document.getElementById('fest-mese').value = '';
+                caricaFestivita();
+            } else {
+                alert(d.errore || 'Errore');
+            }
+        });
+    };
+    
+    window.toggleFestivita = function(id) {
+        fetch('/ticker/api/festivita/' + id + '/toggle', { method: 'POST' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.success) caricaFestivita(); });
+    };
+    
+    window.eliminaFestivita = function(id) {
+        if (!confirm('Eliminare questa festivita?')) return;
+        fetch('/ticker/api/festivita/' + id, { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(d) { if (d.success) caricaFestivita(); });
+    };
+    
+})();
+</script>

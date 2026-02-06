@@ -1,5 +1,45 @@
 # CHANGELOG - Aggiornamenti Recenti
 
+---
+
+## 2026-02-06 - Ticker Broadcasting (Fase 4 + Miglioramenti)
+
+### Messaggi Automatici
+- Generatori: compleanni, festivita nazionali, cambio gomme, deposito bilancio CCIAA
+- Tabella ticker_festivita con 10 festivita italiane fisse
+- Script ticker_auto_gen.py con dedup giornaliero e log
+- Cron giornaliero alle 00:05
+- Fix bug segno invertito calcolo diff compleanni
+- Fix nomi colonne DB (codice_auto, data_creazione, data_approvazione)
+
+### Miglioramenti UI
+- Toggle messaggi automatici in riga sopra griglia (no piu nel modal)
+- Config aspetto testo: dimensione e stile carattere
+- Font applicato a preview e widget topbar
+- Rimossi filtri griglia (non necessari per uso admin)
+- Fix struttura modal configurazione (div extra)
+- Colonna Tipo (manuale/automatico) al posto di Destinatari e Creato da
+
+## 2026-02-06 - Ticker Broadcasting (Fasi 1-3)
+
+### Nuove Funzionalita
+- Sistema ticker broadcasting completo con scheduling intelligente
+- 3 tabelle DB: ticker_messaggi, ticker_config, ticker_log
+- 5 animazioni: scroll dx-sx, sx-dx, sale, scende, fade
+- Widget topbar con polling a intervalli variabili
+- Pagina gestione con griglia, filtri, modal creazione/modifica
+- Preview live con riproduzione animazione reale
+- Workflow: admin crea messaggi approvati direttamente
+- Configurazione: messaggi/ora, pause, toggle automatici
+- 13 API endpoints nel blueprint ticker_bp
+- Pulsante accesso da pagina /admin (barra strumenti)
+
+### Modifiche Strutturali
+- Rimosso link ticker dalla sidebar
+- Ticker nascosto nella pagina /admin
+- Barra strumenti admin predisposta per futuri pulsanti
+- Architettura satellite: 6 file template modulari
+
 ## 2026-02-05 - Integrazione GitHub
 
 ### Repository GitHub

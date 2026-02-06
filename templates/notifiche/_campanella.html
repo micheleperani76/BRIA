@@ -36,9 +36,6 @@
 <!-- Indicatori angoli (visibili durante il drag) -->
 <div class="notifiche-corner-hint pos-top-right" id="corner-tr"></div>
 <div class="notifiche-corner-hint pos-top-left" id="corner-tl"></div>
-<div class="notifiche-corner-hint pos-bottom-right" id="corner-br"></div>
-<div class="notifiche-corner-hint pos-bottom-left" id="corner-bl"></div>
-
 <!-- ====================================================================== -->
 <!-- STILI CAMPANELLA -->
 <!-- ====================================================================== -->
@@ -47,7 +44,7 @@
     .notifiche-widget {
         position: fixed;
         z-index: 1060;
-        top: 16px;
+        top: 3px;
         right: 20px;
         bottom: auto;
         left: auto;
@@ -55,11 +52,8 @@
     }
     
     /* 4 posizioni angolari */
-    .notifiche-widget.pos-top-right    { top: 16px; right: 20px; bottom: auto; left: auto; }
-    .notifiche-widget.pos-top-left     { top: 16px; left: var(--notifiche-left, 270px);  bottom: auto; right: auto; }
-    .notifiche-widget.pos-bottom-right { bottom: 80px; right: 20px; top: auto; left: auto; }
-    .notifiche-widget.pos-bottom-left  { bottom: 80px; left: var(--notifiche-left, 270px);  top: auto; right: auto; }
-    
+    .notifiche-widget.pos-top-right    { top: 3px; right: 20px; bottom: auto; left: auto; }
+    .notifiche-widget.pos-top-left     { top: 3px; left: var(--notifiche-left, 270px);  bottom: auto; right: auto; }
     /* Campanella */
     .notifiche-bell {
         width: 44px;
@@ -139,17 +133,10 @@
     .notifiche-widget.pos-top-left .notifiche-dropdown {
         top: 52px;
     }
-    .notifiche-widget.pos-bottom-right .notifiche-dropdown,
-    .notifiche-widget.pos-bottom-left .notifiche-dropdown {
-        bottom: 52px;
-        top: auto;
-    }
-    .notifiche-widget.pos-top-right .notifiche-dropdown,
-    .notifiche-widget.pos-bottom-right .notifiche-dropdown {
+    .notifiche-widget.pos-top-right .notifiche-dropdown {
         right: 0;
     }
-    .notifiche-widget.pos-top-left .notifiche-dropdown,
-    .notifiche-widget.pos-bottom-left .notifiche-dropdown {
+    .notifiche-widget.pos-top-left .notifiche-dropdown {
         left: 0;
         right: auto;
     }
@@ -277,17 +264,12 @@
         border-color: rgba(37, 99, 235, 0.5);
         transform: scale(1.2);
     }
-    .notifiche-corner-hint.pos-top-right    { top: 10px; right: 14px; }
-    .notifiche-corner-hint.pos-top-left     { top: 10px; left: var(--notifiche-left, 270px); }
-    .notifiche-corner-hint.pos-bottom-right { bottom: 74px; right: 14px; }
-    .notifiche-corner-hint.pos-bottom-left  { bottom: 74px; left: var(--notifiche-left, 270px); }
-    
+    .notifiche-corner-hint.pos-top-right    { top: 3px; right: 14px; }
+    .notifiche-corner-hint.pos-top-left     { top: 3px; left: var(--notifiche-left, 270px); }
     @media (max-width: 576px) {
         .notifiche-dropdown { width: calc(100vw - 40px); }
-        .notifiche-widget.pos-top-right .notifiche-dropdown,
-        .notifiche-widget.pos-bottom-right .notifiche-dropdown { right: -8px; }
-        .notifiche-widget.pos-top-left .notifiche-dropdown,
-        .notifiche-widget.pos-bottom-left .notifiche-dropdown { left: -8px; }
+        .notifiche-widget.pos-top-right .notifiche-dropdown { right: -8px; }
+        .notifiche-widget.pos-top-left .notifiche-dropdown { left: -8px; }
     }
 </style>
 
@@ -304,8 +286,8 @@
     const widget = document.getElementById('notifiche-widget');
     const bell = document.getElementById('notifiche-bell');
     const badge = document.getElementById('notifiche-badge');
-    const cornersIds = ['corner-tr', 'corner-tl', 'corner-br', 'corner-bl'];
-    const posizioni = ['pos-top-right', 'pos-top-left', 'pos-bottom-right', 'pos-bottom-left'];
+    const cornersIds = ['corner-tr', 'corner-tl'];
+    const posizioni = ['pos-top-right', 'pos-top-left'];
     
     // ===== POSIZIONE SALVATA =====
     function caricaPosizione() {
@@ -453,13 +435,13 @@
         const w = window.innerWidth, h = window.innerHeight;
         if (y <= h / 2 && x > (w + sidebarW) / 2)  return 'pos-top-right';
         if (y <= h / 2 && x <= (w + sidebarW) / 2) return 'pos-top-left';
-        if (y > h / 2 && x > (w + sidebarW) / 2)   return 'pos-bottom-right';
-        return 'pos-bottom-left';
+        if (y > h / 2 && x > (w + sidebarW) / 2)   return 'pos-top-right';
+        return 'pos-top-left';
     }
     
     const mappaCorner = {
         'pos-top-right': 'corner-tr', 'pos-top-left': 'corner-tl',
-        'pos-bottom-right': 'corner-br', 'pos-bottom-left': 'corner-bl'
+        
     };
     
     function mostraIndicatori(angoloAttivo) {

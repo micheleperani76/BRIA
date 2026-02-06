@@ -235,6 +235,7 @@
         .main-content {
             margin-left: var(--sidebar-width);
             padding: 2rem;
+            padding-top: calc(2rem + 50px);
             min-height: 100vh;
             transition: margin-left 0.3s ease;
         }
@@ -561,6 +562,7 @@
     </script>
     
     {% block extra_js %}{% endblock %}
+    {% include "componenti/_topbar.html" %}
     {% include "notifiche/_campanella.html" %}
     {% include "trascrizione/_fab.html" %}
 </body>

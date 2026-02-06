@@ -1,0 +1,306 @@
+<!-- ============================================================
+     TICKER BROADCASTING - Pagina Gestione
+     Versione: 2.0
+     Data: 2026-02-06
+     Coordinatore modulare: include satellite files
+     
+     STRUTTURA:
+     templates/ticker/
+       gestione.html        (questo file - coordinatore)
+       _styles.html         (CSS dedicato)
+       _preview.html        (area preview live)
+       _griglia.html        (griglia messaggi con filtri)
+       _modal_nuovo.html    (modal creazione/modifica)
+       _scripts.html        (JavaScript)
+     ============================================================ -->
+
+{% extends "base.html" %}
+
+{% block title %}Gestione Ticker{% endblock %}
+
+{% block content %}
+
+<!-- Stili dedicati -->
+{% include 'ticker/_styles.html' %}
+
+<div class="container-fluid py-3">
+    
+    <!-- ==================== HEADER ==================== -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">
+            <i class="bi bi-megaphone me-2"></i>Ticker Broadcasting
+        </h2>
+        <div class="d-flex gap-2">
+            {% if is_admin and in_attesa > 0 %}
+            <span class="badge bg-warning text-dark fs-6">
+                <i class="bi bi-clock me-1"></i>{{ in_attesa }} da approvare
+            </span>
+<!-- ==================== MODAL FESTIVITA ==================== -->
+<div class="modal fade" id="modalFestivita" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Gestione Festivit&agrave;</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Lista festivita esistenti -->
+                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Giorno</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Attiva</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-festivita"></tbody>
+                    </table>
+                </div>
+                <hr>
+                <!-- Form nuova festivita -->
+                <p class="fw-bold mb-2"><i class="bi bi-plus-circle me-1"></i>Aggiungi festivit&agrave;</p>
+                <div class="row g-2">
+                    <div class="col-3">
+                        <label class="form-label small">Giorno</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-giorno" min="1" max="31" placeholder="GG">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">Mese</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-mese" min="1" max="12" placeholder="MM">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="fest-nome" placeholder="es. Patrono citt&agrave;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                <button class="btn btn-primary btn-sm" onclick="aggiungiFestivita()"><i class="bi bi-plus-lg me-1"></i>Aggiungi</button>
+            </div>
+        </div>
+    </div>
+</div>
+            {% endif %}
+            <button class="btn btn-primary" onclick="apriModalNuovo()">
+                <i class="bi bi-plus-lg me-1"></i>Nuovo Messaggio
+            </button>
+            {% if is_admin %}
+            <button class="btn btn-outline-secondary" onclick="apriConfig()">
+                <i class="bi bi-gear me-1"></i>Configurazione
+            </button>
+<!-- ==================== MODAL FESTIVITA ==================== -->
+<div class="modal fade" id="modalFestivita" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Gestione Festivit&agrave;</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Lista festivita esistenti -->
+                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Giorno</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Attiva</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-festivita"></tbody>
+                    </table>
+                </div>
+                <hr>
+                <!-- Form nuova festivita -->
+                <p class="fw-bold mb-2"><i class="bi bi-plus-circle me-1"></i>Aggiungi festivit&agrave;</p>
+                <div class="row g-2">
+                    <div class="col-3">
+                        <label class="form-label small">Giorno</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-giorno" min="1" max="31" placeholder="GG">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">Mese</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-mese" min="1" max="12" placeholder="MM">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="fest-nome" placeholder="es. Patrono citt&agrave;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                <button class="btn btn-primary btn-sm" onclick="aggiungiFestivita()"><i class="bi bi-plus-lg me-1"></i>Aggiungi</button>
+            </div>
+        </div>
+    </div>
+</div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- ==================== PREVIEW LIVE ==================== -->
+    {% include 'ticker/_preview.html' %}
+    
+    <!-- ==================== TOGGLE AUTOMATICI ==================== -->
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3 p-2 bg-light border rounded">
+        <span class="fw-bold small text-muted me-1"><i class="bi bi-robot me-1"></i>Messaggi automatici:</span>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-auto-compleanni" checked onchange="salvaToggleAuto()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Genera reminder da 5 a 1 giorno prima del compleanno per tutti. Il giorno stesso invia auguri personali al festeggiato (spostati al lunedi se cade nel weekend).">
+            <label class="form-check-label small" for="toggle-auto-compleanni">Compleanni</label>
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-auto-festivita" checked onchange="salvaToggleAuto()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Genera reminder da 7 a 5 giorni prima di ogni festivita nazionale o personalizzata. Clicca + per gestire la lista festivita.">
+            <label class="form-check-label small" for="toggle-auto-festivita">Festivit&agrave;</label>
+            <button class="btn btn-outline-primary btn-sm ms-1 py-0 px-1" onclick="apriFestivita()" title="Gestisci festivit&agrave;" style="font-size:0.7rem;line-height:1.2"><i class="bi bi-plus-lg"></i></button>
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-auto-gomme" checked onchange="salvaToggleAuto()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reminder giornaliero nei 30 giorni prima delle scadenze cambio gomme: 15 ottobre (invernali) e 15 aprile (estive).">
+            <label class="form-check-label small" for="toggle-auto-gomme">Cambio gomme</label>
+        </div>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="toggle-auto-deposito" checked onchange="salvaToggleAuto()" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Reminder giornaliero nei 30 giorni prima della scadenza deposito bilancio CCIAA (30 maggio).">
+            <label class="form-check-label small" for="toggle-auto-deposito">Deposito bilancio</label>
+        </div>
+    </div>
+    <!-- ==================== GRIGLIA MESSAGGI ==================== -->
+    {% include 'ticker/_griglia.html' %}
+    
+</div>
+
+<!-- ==================== MODAL NUOVO/MODIFICA ==================== -->
+{% include 'ticker/_modal_nuovo.html' %}
+
+<!-- ==================== MODAL CONFIGURAZIONE (admin) ==================== -->
+{% if is_admin %}
+<div class="modal fade" id="modalConfig" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Configurazione Ticker</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Messaggi massimi per ora</label>
+                    <input type="number" class="form-control" id="cfg-messaggi-ora" min="1" max="30" value="4">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Pausa minima tra messaggi (secondi)</label>
+                    <input type="number" class="form-control" id="cfg-pausa-min" min="30" max="3600" value="120">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Pausa massima tra messaggi (secondi)</label>
+                    <input type="number" class="form-control" id="cfg-pausa-max" min="60" max="7200" value="600">
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="cfg-attivo" checked>
+                        <label class="form-check-label fw-bold" for="cfg-attivo">Sistema ticker attivo</label>
+                    </div>
+                </div>
+                <hr>
+                <p class="fw-bold mb-2">Aspetto testo</p>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Dimensione carattere</label>
+                        <select class="form-select form-select-sm" id="cfg-font-size">
+                            <option value="0.75rem">Piccolo</option>
+                            <option value="0.88rem" selected>Normale</option>
+                            <option value="1rem">Grande</option>
+                            <option value="1.15rem">Molto grande</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Stile carattere</label>
+                        <select class="form-select form-select-sm" id="cfg-font-family">
+                            <option value="inherit">Default (sistema)</option>
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="Georgia, serif">Georgia (serif)</option>
+                            <option value="Courier New, monospace">Courier (mono)</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <option value="Trebuchet MS, sans-serif">Trebuchet</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button class="btn btn-primary" onclick="salvaConfig()">
+                    <i class="bi bi-check-lg me-1"></i>Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ==================== MODAL FESTIVITA ==================== -->
+<div class="modal fade" id="modalFestivita" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-event me-2"></i>Gestione Festivit&agrave;</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Lista festivita esistenti -->
+                <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Giorno</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Attiva</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-festivita"></tbody>
+                    </table>
+                </div>
+                <hr>
+                <!-- Form nuova festivita -->
+                <p class="fw-bold mb-2"><i class="bi bi-plus-circle me-1"></i>Aggiungi festivit&agrave;</p>
+                <div class="row g-2">
+                    <div class="col-3">
+                        <label class="form-label small">Giorno</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-giorno" min="1" max="31" placeholder="GG">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">Mese</label>
+                        <input type="number" class="form-control form-control-sm" id="fest-mese" min="1" max="12" placeholder="MM">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="fest-nome" placeholder="es. Patrono citt&agrave;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                <button class="btn btn-primary btn-sm" onclick="aggiungiFestivita()"><i class="bi bi-plus-lg me-1"></i>Aggiungi</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Variabili Jinja -> JS -->
+<script>
+    var TICKER_IS_ADMIN = {{ 'true' if is_admin else 'false' }};
+    var TICKER_ANIMAZIONI = {{ animazioni | tojson }};
+    var TICKER_VELOCITA = {{ velocita | tojson }};
+    var TICKER_DESTINATARI = {{ destinatari_predefiniti | tojson }};
+    var TICKER_GIORNI = {{ giorni_settimana | tojson }};
+    var TICKER_RICORRENZE = {{ ricorrenze | tojson }};
+</script>
+
+<!-- JavaScript dedicato -->
+{% include 'ticker/_scripts.html' %}
+
+{% endblock %}

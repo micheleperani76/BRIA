@@ -67,6 +67,7 @@ from app.routes_trattative import trattative_bp
 from app.routes_top_prospect import top_prospect_bp
 from app.routes_trascrizione import trascrizione_bp
 from app.routes_notifiche import notifiche_bp
+from app.routes_ticker import ticker_bp
 from app.config_notifiche import POLLING_SECONDI as NOTIFICHE_POLLING
 from app.auth import auth_context_processor, login_required
 # Import funzioni database utenti per filtro supervisioni
@@ -154,6 +155,7 @@ app.register_blueprint(trattative_bp)
 app.register_blueprint(top_prospect_bp)
 app.register_blueprint(trascrizione_bp)
 app.register_blueprint(notifiche_bp)
+app.register_blueprint(ticker_bp)
 register_note_clienti_legacy_routes(app)
 app.context_processor(auth_context_processor)
 app.context_processor(stati_context_processor)

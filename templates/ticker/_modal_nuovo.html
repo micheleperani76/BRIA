@@ -1,0 +1,214 @@
+<!-- ============================================================
+     TICKER - Modal Nuovo/Modifica Messaggio
+     Versione: 1.0
+     ============================================================ -->
+
+<div class="modal fade modal-ticker" id="modalMessaggio" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-titolo">
+                    <i class="bi bi-plus-circle me-2"></i>Nuovo Messaggio
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- ID nascosto per modifica -->
+                <input type="hidden" id="msg-id" value="">
+                
+                <!-- ===== CONTENUTO ===== -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <label class="form-label">Testo del messaggio</label>
+                        <textarea class="form-control" id="msg-testo" rows="2" 
+                                  placeholder="Scrivi il messaggio che apparir&agrave; nel ticker..."
+                                  oninput="aggiornaPreviewModal()"></textarea>
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Icona Bootstrap (opzionale)</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi" id="icona-preview-icon"></i></span>
+                            <input type="text" class="form-control" id="msg-icona" 
+                                   placeholder="es: megaphone, star, balloon-heart"
+                                   oninput="aggiornaIconaPreview(); aggiornaPreviewModal()">
+                        </div>
+                        <div class="form-text">Nome icona senza "bi-". <a href="https://icons.getbootstrap.com/" target="_blank">Lista icone</a></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Colore testo</label>
+                        <div class="input-group">
+                            <input type="color" class="form-control form-control-color" id="msg-colore" 
+                                   value="#000000" oninput="aggiornaPreviewModal()">
+                            <input type="text" class="form-control" id="msg-colore-hex" value="#000000" 
+                                   onchange="document.getElementById('msg-colore').value=this.value; aggiornaPreviewModal()">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ===== ANIMAZIONE ===== -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 fw-bold">
+                        <i class="bi bi-film me-1"></i>Animazione
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Tipo</label>
+                                <select class="form-select form-select-sm" id="msg-animazione" 
+                                        onchange="aggiornaPreviewModal()">
+                                    <option value="scroll-rtl">Scorrimento destra &rarr; sinistra</option>
+                                    <option value="scroll-ltr">Scorrimento sinistra &rarr; destra</option>
+                                    <option value="slide-up">Sale dal basso</option>
+                                    <option value="slide-down">Scende dall'alto</option>
+                                    <option value="fade">Dissolvenza</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Durata (secondi)</label>
+                                <input type="number" class="form-control form-control-sm" id="msg-durata" 
+                                       value="8" min="3" max="30" onchange="aggiornaPreviewModal()">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Velocit&agrave;</label>
+                                <select class="form-select form-select-sm" id="msg-velocita" 
+                                        onchange="aggiornaPreviewModal()">
+                                    <option value="lenta">Lenta</option>
+                                    <option value="normale" selected>Normale</option>
+                                    <option value="veloce">Veloce</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview nel modal -->
+                        <div class="mt-2">
+                            <div class="modal-preview-area" id="modal-preview-area">
+                                <span class="ticker-preview-placeholder">Scrivi un testo per vedere la preview</span>
+                            </div>
+                            <div class="text-end mt-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="playPreviewModal()">
+                                    <i class="bi bi-play-fill"></i> Riproduci
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ===== SCHEDULING ===== -->
+                <div class="card mb-3">
+                    <div class="card-header py-2 fw-bold">
+                        <i class="bi bi-calendar-event me-1"></i>Scheduling
+                    </div>
+                    <div class="card-body py-2">
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Data inizio</label>
+                                <input type="date" class="form-control form-control-sm" id="msg-data-inizio">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data fine (opzionale)</label>
+                                <input type="date" class="form-control form-control-sm" id="msg-data-fine">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ricorrenza</label>
+                                <select class="form-select form-select-sm" id="msg-ricorrenza">
+                                    <option value="nessuna">Nessuna</option>
+                                    <option value="annuale">Annuale</option>
+                                    <option value="mensile">Mensile</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Ora inizio</label>
+                                <input type="time" class="form-control form-control-sm" id="msg-ora-inizio" value="00:00">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Ora fine</label>
+                                <input type="time" class="form-control form-control-sm" id="msg-ora-fine" value="23:59">
+                            </div>
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label">Giorni della settimana</label>
+                            <div class="giorni-settimana-group" id="giorni-group">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="1" id="g1" checked>
+                                    <label class="form-check-label" for="g1">Lun</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="2" id="g2" checked>
+                                    <label class="form-check-label" for="g2">Mar</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="3" id="g3" checked>
+                                    <label class="form-check-label" for="g3">Mer</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="4" id="g4" checked>
+                                    <label class="form-check-label" for="g4">Gio</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="5" id="g5" checked>
+                                    <label class="form-check-label" for="g5">Ven</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="6" id="g6">
+                                    <label class="form-check-label" for="g6">Sab</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="7" id="g7">
+                                    <label class="form-check-label" for="g7">Dom</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ===== DESTINATARI + PRIORITA ===== -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Destinatari</label>
+                        <select class="form-select form-select-sm" id="msg-destinatari">
+                            <option value="TUTTI">Tutti gli utenti</option>
+                            <option value="RUOLO:ADMIN">Solo amministratori</option>
+                            <option value="RUOLO:COMMERCIALE">Solo commerciali</option>
+                            <option value="RUOLO:OPERATORE">Solo operatori</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Importanza</label>
+                        <div class="range-with-value">
+                            <input type="range" class="form-range" id="msg-priorita" min="1" max="10" value="5"
+                                   oninput="document.getElementById('priorita-val').textContent=this.value">
+                            <span class="range-value-display" id="priorita-val">5</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Peso random</label>
+                        <input type="number" class="form-control form-control-sm" id="msg-peso" 
+                               value="1" min="1" max="10">
+                        <div class="form-text">Pi&ugrave; alto = pi&ugrave; frequente</div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- ===== FOOTER ===== -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-outline-primary" id="btn-invia-approvazione" 
+                        onclick="inviaPerApprovazione()" style="display:none">
+                    <i class="bi bi-send me-1"></i>Invia per approvazione
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvaMessaggio()">
+                    <i class="bi bi-check-lg me-1"></i>Salva
+                </button>
+            </div>
+            
+        </div>
+    </div>
+</div>
