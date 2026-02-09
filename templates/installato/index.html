@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Veicoli Installato - Gestione Flotta{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4><i class="bi bi-check-circle-fill text-success"></i> Veicoli Installato</h4>
+    <div>
+        <a href="/installato/storico" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-clock-history"></i> Storico Dismessi ({{ totale_storico }})
+        </a>
+        <a href="/flotta" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-speedometer2"></i> Dashboard Flotta
+        </a>
+    </div>
+</div>
+
+<!-- Statistiche -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-success">{{ totale }}</div>
+            <div class="stat-label">Veicoli Installato</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-primary">{{ attivi }}</div>
+            <div class="stat-label">Contratti Attivi</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-warning">{{ in_gestione }}</div>
+            <div class="stat-label">In Gestione / Scaduti</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card text-center">
+            <div class="stat-value text-info">&euro; {{ canone_totale|format_numero }}</div>
+            <div class="stat-label">Canone Mensile</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Per noleggiatore -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header py-2">
+                <i class="bi bi-buildings"></i> Per Noleggiatore
+            </div>
+            <div class="card-body py-2">
+                {% for n in per_noleggiatore %}
+                <div class="d-flex justify-content-between align-items-center py-1 {% if not loop.last %}border-bottom{% endif %}">
+                    <a href="/installato?noleggiatore={{ n.nol|urlencode }}" class="text-decoration-none">
+                        {{ n.nol }}
+                    </a>
+                    <div>
+                        <span class="badge bg-primary">{{ n.num }}</span>
+                        <small class="text-muted ms-2">&euro; {{ n.canone_sum|format_numero }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <!-- Per commerciale -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header py-2">
+                <i class="bi bi-people"></i> Per Commerciale
+            </div>
+            <div class="card-body py-2">
+                {% for c in per_commerciale %}
+                <div class="d-flex justify-content-between align-items-center py-1 {% if not loop.last %}border-bottom{% endif %}">
+                    <a href="/installato?commerciale={{ c.commerciale_id or '' }}" class="text-decoration-none">
+                        {{ c.commerciale_nome }}
+                    </a>
+                    <div>
+                        <span class="badge bg-success">{{ c.num }}</span>
+                        <small class="text-muted ms-2">&euro; {{ c.canone_sum|format_numero }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtri e ricerca -->
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <form action="/installato" method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <input type="text" name="q" class="form-control form-control-sm" 
+                       placeholder="Cerca targa, marca, driver, cliente..."
+                       value="{{ cerca }}">
+            </div>
+            <div class="col-md-2">
+                <select name="noleggiatore" class="form-select form-select-sm">
+                    <option value="">Tutti i noleggiatori</option>
+                    {% for n in noleggiatori_lista %}
+                    <option value="{{ n }}" {% if filtro_noleggiatore == n %}selected{% endif %}>{{ n }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="stato" class="form-select form-select-sm">
+                    <option value="">Tutti gli stati</option>
+                    <option value="attivo" {% if filtro_stato == 'attivo' %}selected{% endif %}>Attivi</option>
+                    <option value="scaduto" {% if filtro_stato == 'scaduto' %}selected{% endif %}>Scaduti</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="commerciale" class="form-select form-select-sm">
+                    <option value="">Tutti i commerciali</option>
+                    {% for c in commerciali_lista %}
+                    <option value="{{ c.id }}" {% if filtro_commerciale == c.id|string %}selected{% endif %}>{{ c.cognome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="bi bi-search"></i> Filtra
+                </button>
+            </div>
+            <div class="col-md-1">
+                <a href="/installato" class="btn btn-outline-secondary btn-sm w-100" title="Reset filtri">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabella veicoli -->
+<div class="card">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table"></i> Veicoli Installato ({{ veicoli|length }})</span>
+        {% if filtro_noleggiatore or filtro_stato or filtro_commerciale or cerca %}
+        <span class="badge bg-warning text-dark">Filtri attivi</span>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Targa</th>
+                    <th>Marca</th>
+                    <th>Modello</th>
+                    <th>Noleggiatore</th>
+                    <th>Cliente</th>
+                    <th class="text-center">Scadenza</th>
+                    <th class="text-end">Canone</th>
+                    <th>Driver</th>
+                    <th class="text-center">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in veicoli %}
+                <tr>
+                    <td>
+                        <a href="/veicolo/{{ v.targa or v.id }}">
+                            <code>{{ v.targa or '-' }}</code>
+                        </a>
+                    </td>
+                    <td>{{ v.marca or "-" }}</td>
+                    <td>{{ v.modello or "-" }}</td>
+                    <td>{{ v.noleggiatore or '-' }}</td>
+                    <td>
+                        {% if v.cliente_id %}
+                        <a href="/cerca/{{ v.p_iva }}" class="text-decoration-none">
+                            {{ v.nome_cliente or v.ragione_sociale or '-' }}
+                        </a>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if v.scadenza %}
+                        <span class="{% if v.scadenza < now_str %}text-danger{% elif v.scadenza < prossimi_90 %}text-warning{% else %}text-success{% endif %}">
+                            {{ v.scadenza }}
+                        </span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-end">
+                        {% if v.canone %}&euro; {{ v.canone|format_numero }}{% else %}-{% endif %}
+                    </td>
+                    <td><small>{{ v.driver or '-' }}</small></td>
+                    <td class="text-center">
+                        {% if v.num_note %}
+                        <span class="badge bg-info">{{ v.num_note }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not veicoli %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="bi bi-search" style="font-size: 2rem;"></i>
+                        <p class="mt-2 mb-0">Nessun veicolo trovato con i filtri selezionati</p>
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.table-resizable th {
+    resize: horizontal;
+    overflow: auto;
+    min-width: 50px;
+}
+</style>
+{% endblock %}

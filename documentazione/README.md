@@ -16,220 +16,166 @@ Il progetto e' collegato a un Claude Project tramite GitHub Integration.
 **File esclusi da GitHub** (vedi `.gitignore`):
 database, dati clienti, credenziali, log, allegati, audio, backup
 
-## 📁 Struttura Cartelle
+## Struttura Cartelle
 
 ```
 gestione_flotta/
-├── app/                    # Moduli Python
+├── app/                    # Moduli Python Flask
 │   ├── __init__.py
 │   ├── config.py           # Configurazione centralizzata
 │   ├── database.py         # Gestione database SQLite
+│   ├── database_utenti.py  # Gestione utenti e permessi
+│   ├── auth.py             # Autenticazione e ruoli
 │   ├── import_creditsafe.py # Import PDF Creditsafe
-│   ├── utils.py            # Funzioni utilità
-│   └── web_server.py       # Server web Flask
-├── db/                     # Database
+│   ├── utils.py            # Funzioni utilita'
+│   ├── utils_identificativo.py # Normalizzazione P.IVA/CF
+│   ├── web_server.py       # Server web Flask (routes principali)
+│   ├── routes_sedi_cliente.py  # CRUD sedi cliente
+│   ├── routes_referenti.py     # CRUD referenti
+│   └── ...                 # Altri moduli routes
+├── db/                     # Database SQLite
 │   └── gestionale.db       # Database unico
-├── logs/                   # Log e file temporanei (retention 7 giorni)
+├── documentazione/         # Documentazione progetto
+├── import_dati/            # CSV per import CRM
+├── impostazioni/           # File Excel configurazione
+├── logs/                   # Log applicazione
 ├── pdf/                    # Input: PDF da elaborare
-├── scripts/                # Script bash
-│   ├── gestione_flotta.sh  # Script principale (menu)
-│   ├── autoimport.sh       # Per crontab (import automatico)
-│   └── avvia_server.sh     # Per crontab (@reboot)
-├── storico_pdf/            # Archivio PDF elaborati (organizzato A-Z)
-│   ├── 0-9/
-│   ├── A/
-│   ├── B/
+├── scripts/                # Script Python e Bash
+│   ├── migrazione_crm_zoho.py      # Migrazione DB per CRM
+│   ├── import_accounts_crm.py      # Import clienti da Zoho
+│   ├── import_scadenze_crm.py      # Import veicoli da Zoho
 │   └── ...
-├── templates/              # Template HTML
+├── storico_pdf/            # Archivio PDF elaborati (A-Z)
+├── templates/              # Template HTML Jinja2
 ├── main.py                 # Entry point principale
-└── README.md               # Questa documentazione
+└── README.md
 ```
 
-## 🚀 Installazione
+## Database
 
-### 1. Requisiti
+Il database `gestionale.db` contiene:
+
+### Tabelle principali
+| Tabella | Descrizione |
+|---------|-------------|
+| `clienti` | Anagrafica clienti (71 colonne), dati flotta + Creditsafe + CRM |
+| `veicoli` | Veicoli flotta (45 colonne), tipo_veicolo: Installato/Extra |
+| `storico_installato` | Veicoli dismessi INSTALLATO (retention 5 anni) |
+| `storico_modifiche` | Log di tutte le modifiche ai dati |
+
+### Tabelle satellite CRM
+| Tabella | Descrizione |
+|---------|-------------|
+| `clienti_consensi` | Consensi GDPR (Newsletter, Comunicazioni, ecc.) |
+| `clienti_dati_finanziari` | Dati economici per anno (fatturato, EBITDA, ecc.) |
+| `clienti_creditsafe_alert` | Flag rischio (protesti, pregiudizievoli, ecc.) |
+| `clienti_crm_metadata` | Dati tecnici Zoho (record_id, sync, ecc.) |
+
+### Tabelle operative
+| Tabella | Descrizione |
+|---------|-------------|
+| `sedi_cliente` | Sedi operative/filiali/fatturazione |
+| `referenti_clienti` | Referenti aziendali |
+| `note_clienti` | Note con allegati e soft delete |
+| `note_veicoli` | Note su veicoli |
+| `utenti` | Utenti sistema con ruoli e permessi |
+| `coda_trascrizioni` | Coda trascrizione audio |
+
+### Logica tipo veicolo
+- **Installato**: gestito da BR Car Service (import da CRM Zoho Scadenze)
+- **Extra**: gestito da broker esterno (import da file flotta noleggiatori)
+
+## Import CRM Zoho
+
+Importazione dati dal CRM Zoho in 3 fasi sequenziali.
+
+### Fase 1: Migrazione DB
+```bash
+python3 scripts/migrazione_crm_zoho.py --dry-run
+python3 scripts/migrazione_crm_zoho.py
+```
+
+### Fase 2: Import Accounts (clienti)
+```bash
+python3 scripts/import_accounts_crm.py import_dati/Accounts_*.csv --dry-run
+python3 scripts/import_accounts_crm.py import_dati/Accounts_*.csv
+```
+Regole: match per P.IVA (zero-pad + IT), Creditsafe ha priorita' su nome/sede.
+
+### Fase 3: Import Scadenze (veicoli)
+```bash
+python3 scripts/import_scadenze_crm.py import_dati/Scadenze_*.csv --dry-run
+python3 scripts/import_scadenze_crm.py import_dati/Scadenze_*.csv
+```
+Categorizzazione: Circolante → veicoli, Archiviata → storico_installato.
+
+### Priorita' dati
+| Dato | Fonte prioritaria | Note |
+|------|-------------------|------|
+| nome_cliente, sede legale | Creditsafe | Mai sovrascritto da CRM |
+| stato_crm, profilazione, flotta | CRM Zoho | Sempre aggiornati |
+| commerciale_id | Assegnazione interna | Mai toccato da import |
+| PEC, telefono | Creditsafe | CRM aggiorna solo se vuoti |
+| driver, note | Inserimento manuale | Mai sovrascritti |
+
+## Import PDF Creditsafe
+
+1. Copia PDF nella cartella `pdf/`
+2. Import manuale o crontab
+3. Estrazione dati con regex, match per P.IVA
+4. PDF archiviato in `storico_pdf/LETTERA/`
+
+## Avvio e Configurazione
+
+### Requisiti
 ```bash
 sudo apt install python3 python3-pip
 pip3 install flask openpyxl pillow --break-system-packages
 ```
 
-### 2. Prima esecuzione
+### Avvio server
 ```bash
-cd ~/gestione_flotta
-chmod +x scripts/*.sh
-python3 main.py init   # Inizializza database
-```
-
-### 3. Avvio server
-```bash
-# Metodo 1: Python diretto
-python3 main.py server
-
-# Metodo 2: Script bash
+python3 main.py server          # Porta 5001
 ./scripts/gestione_flotta.sh start
-
-# Metodo 3: Menu interattivo
-./scripts/gestione_flotta.sh menu
 ```
 
-### 4. Configurazione Crontab
-```bash
-crontab -e
-```
-
-Aggiungi:
+### Crontab
 ```cron
-# Gestione Flotta - Avvio server all'avvio sistema
 @reboot /home/michele/gestione_flotta/scripts/avvia_server.sh
-
-# Gestione Flotta - Import PDF ogni ora (minuto 5)
 5 * * * * /home/michele/gestione_flotta/scripts/autoimport.sh
 ```
 
-## 📊 Database Unificato
+## Interfaccia Web
 
-Il database `gestionale.db` contiene:
-
-### Tabella `clienti`
-Dati unificati da flotta + Creditsafe:
-- **Identificativi**: nome_cliente, p_iva, cod_fiscale, numero_registrazione
-- **Operativi flotta**: commerciale (NON sovrascritto da Creditsafe)
-- **Dati Creditsafe**: ragione_sociale, indirizzo, telefono, pec, forma_giuridica, ecc.
-- **Rating**: score (A-E), punteggio_rischio, credito
-- **Bilancio**: valore_produzione, patrimonio_netto, utile, debiti (anno corrente e precedente)
-
-### Tabella `veicoli`
-Dati flotta veicoli:
-- noleggiatore, targa, marca, modello, tipo, alimentazione
-- durata, inizio, scadenza, km, franchigia, canone
-- driver, contratto, commerciale
-
-### Tabella `storico_modifiche`
-Log di tutte le modifiche ai dati.
-
-## 🔄 Flusso Import PDF
-
-1. **Copia PDF** nella cartella `pdf/`
-2. **Import** (manuale o crontab):
-   - Estrae testo dal PDF (formato ZIP con immagini)
-   - Estrae dati aziendali con pattern regex
-   - Cerca cliente per P.IVA:
-     - **Se esiste**: aggiorna dati Creditsafe (NON sovrascrive commerciale)
-     - **Se non esiste**: crea nuovo cliente
-   - Copia PDF in `storico_pdf/LETTERA/` (organizzato A-Z)
-   - Rimuove PDF da cartella input
-
-## 💻 Comandi Python
-
-```bash
-# Avvia server web
-python3 main.py server
-python3 main.py server -p 8080  # Porta diversa
-
-# Import PDF
-python3 main.py import
-
-# Inizializza database
-python3 main.py init
-
-# Pulisci log vecchi
-python3 main.py pulisci
-
-# Info sistema
-python3 main.py info
-```
-
-## 🖥️ Comandi Bash
-
-```bash
-./scripts/gestione_flotta.sh start    # Avvia server
-./scripts/gestione_flotta.sh stop     # Ferma server
-./scripts/gestione_flotta.sh restart  # Riavvia
-./scripts/gestione_flotta.sh status   # Stato sistema
-./scripts/gestione_flotta.sh import   # Import PDF
-./scripts/gestione_flotta.sh clean    # Pulisci log
-./scripts/gestione_flotta.sh logs     # Visualizza log
-./scripts/gestione_flotta.sh menu     # Menu interattivo
-```
-
-## 🌐 Interfaccia Web
-
-- **Home**: http://localhost:5001
-  - Lista clienti con filtri avanzati
-  - Score, provincia, regione, forma giuridica, credito
-  - Click su card score per filtrare
-  
-- **Flotta**: http://localhost:5001/flotta
-  - Dashboard veicoli
-  - Report per noleggiatore/commerciale
-  - Gestione assegnazioni massive
-  
+- **Home**: http://localhost:5001 - Lista clienti con filtri avanzati
+- **Flotta**: http://localhost:5001/flotta - Dashboard veicoli
+- **Installato**: http://localhost:5001/installato - Veicoli gestiti BR, stats, filtri, storico dismessi
 - **Statistiche**: http://localhost:5001/statistiche
-  - Statistiche generali
-  
-- **Amministrazione**: http://localhost:5001/admin
-  - Import PDF manuale (via web)
-  - Pulizia log
-  - Info sistema
-
-## 📋 Note Importanti
-
-### Logica Aggiornamento
-- I dati **Creditsafe** sovrascrivono i dati anagrafici
-- Il campo **commerciale** viene dalla flotta e NON viene sovrascritto
-- Lo storico modifiche traccia ogni cambiamento
-
-### PDF Storico
-- I PDF originali vengono COPIATI in `storico_pdf/LETTERA/`
-- Organizzazione alfabetica per evitare sovraffollamento
-- Mai cancellati automaticamente
-
-### Log e Retention
-- Log in `logs/` con nome `tipo_YYYY-MM-DD.log`
-- Retention automatica: 7 giorni
-- Pulizia manuale o via crontab
-
-## 🔧 Configurazione
-
-Modifica `app/config.py` per:
-- Percorsi cartelle
-- Porta server web
-- Giorni retention log
-- Pattern estrazione dati
-
-## 📝 Versione
-
-- **1.0.0** (2025-01-12)
-  - Prima versione con database unificato
-  - Struttura modulare
-  - Storico PDF organizzato A-Z
+- **Amministrazione**: http://localhost:5001/admin - Import, utenti, ticker
 
 ---
 
-## Novit&agrave; Febbraio 2026
+## Novita' Febbraio 2026
+
+### Import CRM Zoho
+- Import completo anagrafica clienti (2637 clienti) e veicoli INSTALLATO (879 attivi + 507 storicizzati)
+- Migrazione DB con 5 tabelle satellite, 13+4 nuovi campi, 11 indici
+- Normalizzazione P.IVA cross-sistema (CRM senza zeri, DB con IT + 11 cifre)
+- Categorizzazione automatica veicoli: ATTIVO/IN_GESTIONE/DISMESSO/ANOMALO
+- Retention 5 anni per veicoli dismessi in storico_installato
 
 ### Trascrizione Audio
 - Trascrizione automatica file audio con faster-whisper (large-v3-turbo)
-- Upload drag & drop sempre consentito, coda con priorita', worker background systemd
+- Upload drag & drop, coda con priorita', worker background systemd
 - Spostamento trascrizioni su clienti con ricerca fuzzy
-- Riquadro trascrizioni cliente: upload diretto, rinomina, modifica testo, ricerca full-text
-- Protezione orario: posticipa job troppo lunghi, prova job piu' corti
-- Recovery automatico job bloccati, check job eliminati, graceful shutdown
-- Stima tempo coda cumulativa (minuti/ore/giorni)
-- Eliminazione job in coda (proprio o admin)
 - Performance: ~0.42x realtime (54 min audio = 22 min elaborazione)
 
 ### Sistema Notifiche
-- Hub centrale notifiche con deduplicazione e routing automatico destinatari
-- 13 categorie (SISTEMA, TASK, TRATTATIVA, TOP_PROSPECT, ecc.) + 4 livelli (INFO/AVVISO/IMPORTANTE/ALLARME)
-- Widget campanella: visibile solo con notifiche non lette, trascinabile nei 4 angoli
-- Posizione campanella rispetta sidebar, salvata in localStorage
-- Connettori modulari: ogni modulo genera notifiche tramite pubblica_notifica()
-- Regole DB per routing destinatari (TUTTI, RUOLO:ADMIN, PROPRIETARIO, ecc.)
-- API polling contatore ogni 30s, dropdown recenti, segna letta/archivia
-- Predisposto per canali futuri: email SMTP, Telegram
+- Hub centrale notifiche con deduplicazione e routing automatico
+- 13 categorie + 4 livelli, widget campanella trascinabile
+- Connettori modulari, predisposto per email SMTP e Telegram
 
 ### Export Avanzato
 - Export Top Prospect confermati in Excel/CSV
-- Export Trattative con filtri multipli (stato, tipo, noleggiatore, commerciale, date)
+- Export Trattative con filtri multipli
 - Interfaccia 3 tab unificata (Clienti, Top Prospect, Trattative)

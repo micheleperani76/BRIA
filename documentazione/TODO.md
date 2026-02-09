@@ -1,24 +1,31 @@
 # TODO - Gestione Flotta
 
-Ultimo aggiornamento: 06 Febbraio 2026
+Ultimo aggiornamento: 09 Febbraio 2026
+
+---
+
+## COMPLETATI RECENTEMENTE
+
+### Import CRM Zoho (09 Febbraio 2026)
+- [x] STEP 1: Migrazione DB (13+4 campi, 5 tabelle satellite, 11 indici)
+- [x] STEP 2: Import Accounts (24 aggiornati, 2613 creati, 4 errori dati CRM)
+- [x] STEP 3: Import Scadenze (879 veicoli INSTALLATO, 507 storicizzati, 0 errori)
+- [~] STEP 4: Frontend (in corso)
+
+### Ticker Broadcasting
+- [x] Fase 1-4 completate
+- [x] Config aspetto testo, toggle automatici, cron giornaliero
 
 ---
 
 ## IN CORSO
 
-### Ticker Broadcasting
-- [x] Fase 1: Backend (DB, config, motore, routes, blueprint)
-- [x] Fase 2: Widget topbar (polling + 5 animazioni)
-- [x] Fase 3: Pagina gestione (griglia, modal, preview, filtri)
-- [x] Fix autenticazione ruolo_base
-- [x] Pulsante accesso da pagina /admin
-- [x] Rimosso link sidebar, ticker nascosto in /admin
-- [x] Fase 4: Messaggi automatici (compleanni, festivita, gomme, deposito bilancio)
-- [x] Fase 5 eliminata: statistiche visualizzazioni (non necessarie)
-- [x] Config aspetto testo (font-size, font-family)
-- [x] Toggle automatici in riga sulla pagina
-- [x] Rimossi filtri griglia (non necessari)
-- [x] Cron giornaliero 00:05 per auto-generazione
+### Import CRM Zoho - STEP 4: Frontend
+- [ ] Box upload admin multi-funzionale (Accounts, Scadenze)
+- [x] Scheda cliente: riquadro dati CRM (stato, profilazione, flotta, consensi, alert)
+- [x] Pagina Installato dedicata con stats, filtri, colorazione scadenze
+- [ ] Filtri per tipo_veicolo (Installato/Extra) nelle viste flotta
+- [x] Pagina storico dismessi (/installato/storico) con retention 5 anni
 
 ### Top Prospect
 - [ ] Test completo sincronizzazione Google Calendar
@@ -30,6 +37,11 @@ Ultimo aggiornamento: 06 Febbraio 2026
 ---
 
 ## PROSSIMI PASSI (Priorita' Alta)
+
+### Import CRM Zoho - Sales Orders (SOSPESO)
+- [ ] Analisi file Sales Orders (933 record)
+- [ ] Script import_sales_orders_crm.py
+- [ ] Collegamento trattative esistenti
 
 ### Sistema Notifiche - Fase 2: Sistema Task + Connettore Task
 - [ ] Tabella `task` nel database (assegnatario, scadenza, stato, priorita')
@@ -71,16 +83,10 @@ Ultimo aggiornamento: 06 Febbraio 2026
 
 ## BACKLOG (Priorita' Media/Bassa)
 
-
 ### Miglioramenti UI
 - [ ] Dark mode
 - [ ] Responsive migliorato per mobile
 - [ ] Preferenze utente persistenti
-
-### Integrazioni
-- [ ] Import massivo clienti da Excel
-- [ ] Integrazione CRM esterno (quando disponibile)
-- [ ] API REST per integrazioni terze parti
 
 ### Reportistica
 - [ ] Grafici andamento flotta nel tempo
@@ -96,6 +102,3 @@ Ultimo aggiornamento: 06 Febbraio 2026
 - [ ] Test cestino note clienti (ripristina e elimina definitivo)
 - [ ] Test allegati note (carica/scarica/elimina)
 - [ ] Verificare soft delete note veicoli
-
----
-

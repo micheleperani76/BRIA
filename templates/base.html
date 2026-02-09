@@ -432,6 +432,9 @@
         <a href="/flotta" class="nav-link {% if request.endpoint == 'flotta' %}active{% endif %}" data-tooltip="Dashboard Flotta">
             <i class="bi bi-speedometer2"></i> <span>Dashboard Flotta</span>
         </a>
+        <a href="/installato" class="nav-link {% if request.endpoint and request.endpoint.startswith('installato') %}active{% endif %}" data-tooltip="Installato">
+            <i class="bi bi-check-circle-fill"></i> <span>Installato</span>
+        </a>
         <a href="/flotta/per-noleggiatore" class="nav-link" data-tooltip="Per Noleggiatore">
             <i class="bi bi-buildings"></i> <span>Per Noleggiatore</span>
         </a>

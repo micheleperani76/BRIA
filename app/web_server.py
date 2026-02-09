@@ -69,6 +69,7 @@ from app.routes_trascrizione import trascrizione_bp
 from app.routes_revisioni import revisioni_bp
 from app.routes_notifiche import notifiche_bp
 from app.routes_ticker import ticker_bp
+from app.routes_installato import installato_bp
 from app.config_notifiche import POLLING_SECONDI as NOTIFICHE_POLLING
 from app.auth import auth_context_processor, login_required
 # Import funzioni database utenti per filtro supervisioni
@@ -158,6 +159,7 @@ app.register_blueprint(trascrizione_bp)
 app.register_blueprint(notifiche_bp)
 app.register_blueprint(ticker_bp)
 app.register_blueprint(revisioni_bp)
+app.register_blueprint(installato_bp)
 register_note_clienti_legacy_routes(app)
 app.context_processor(auth_context_processor)
 app.context_processor(stati_context_processor)
@@ -938,6 +940,12 @@ def _render_dettaglio_cliente(cliente_id):
     tp_row = cursor.fetchone()
     top_prospect_info = {"presente": bool(tp_row), "stato": tp_row["stato"] if tp_row else None, "priorita": tp_row["priorita"] if tp_row else None} if tp_row else {"presente": False, "stato": None, "priorita": None}
 
+    # Query dati satellite CRM
+    cursor.execute("SELECT tipo_consenso, valore, data_consenso FROM clienti_consensi WHERE cliente_id = ? AND origine = 'CRM' ORDER BY tipo_consenso", (cliente_id,))
+    consensi_crm = [dict(row) for row in cursor.fetchall()]
+    cursor.execute("SELECT tipo_alert, valore, data_rilevazione FROM clienti_creditsafe_alert WHERE cliente_id = ? AND fonte = 'CRM' ORDER BY tipo_alert", (cliente_id,))
+    alert_crm = [dict(row) for row in cursor.fetchall()]
+
     conn.close()
     
     return render_template('dettaglio.html',
@@ -954,7 +962,9 @@ def _render_dettaglio_cliente(cliente_id):
                          ex_commerciali=ex_commerciali,
                          puo_gestire_assegnazioni=puo_gestire_assegnazioni,
                          collegamenti=collegamenti,
-                         top_prospect_info=top_prospect_info)
+                         top_prospect_info=top_prospect_info,
+                         consensi_crm=consensi_crm,
+                         alert_crm=alert_crm)
 
 
 @app.route('/cliente/<int:cliente_id>')
