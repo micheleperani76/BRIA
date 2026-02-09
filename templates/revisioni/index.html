@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Revisioni Veicoli{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rev-badge-giorni {
+        display: inline-block;
+        min-width: 80px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        text-align: center;
+    }
+    .rev-scaduta { background: #f8d7da; color: #842029; }
+    .rev-urgente { background: #fff3cd; color: #664d03; }
+    .rev-attenzione { background: #cff4fc; color: #055160; }
+    .rev-ok { background: #d1e7dd; color: #0f5132; }
+    
+    .rev-stato-fatta { color: #198754; }
+    .rev-stato-visione { color: #6c757d; }
+    .rev-stato-attesa { color: #fd7e14; }
+    .rev-stato-scaduta { color: #dc3545; font-weight: 600; }
+    
+    .rev-filtri .btn { min-width: 120px; }
+    .rev-filtri .btn.active { font-weight: 600; }
+    
+    .rev-targa {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #dc3545;
+    }
+    .rev-veicolo { font-weight: 600; }
+    .rev-specifiche { font-size: 0.75rem; color: #6c757d; }
+    .rev-cliente a { text-decoration: none; color: #0d6efd; }
+    .rev-cliente a:hover { text-decoration: underline; }
+    
+    .rev-azioni .btn { padding: 2px 8px; font-size: 0.75rem; }
+    
+    /* Colonne future (trasparenti) */
+    .rev-col-futuro { opacity: 0; pointer-events: none; width: 1px; padding: 0 !important; border: none !important; }
+    
+    .rev-counter-card {
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    .rev-counter-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .rev-counter-numero { font-size: 2rem; font-weight: 700; line-height: 1; }
+    .rev-counter-label { font-size: 0.8rem; color: #6c757d; margin-top: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-1"><i class="bi bi-clipboard-check"></i> Revisioni Veicoli</h4>
+        <small class="text-muted">Monitoraggio scadenze revisione periodica</small>
+    </div>
+</div>
+
+<!-- Counter cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="rev-counter-card bg-light">
+            <div class="rev-counter-numero">{{ contatori.totale }}</div>
+            <div class="rev-counter-label">Totale monitorati</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-counter-card" style="background: #fff3cd;">
+            <div class="rev-counter-numero text-warning">{{ contatori.da_gestire }}</div>
+            <div class="rev-counter-label">Da gestire</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-counter-card" style="background: #f8d7da;">
+            <div class="rev-counter-numero text-danger">{{ contatori.scaduti }}</div>
+            <div class="rev-counter-label">Scaduti</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="rev-counter-card" style="background: #d1e7dd;">
+            <div class="rev-counter-numero text-success">{{ contatori.gestiti }}</div>
+            <div class="rev-counter-label">Gestiti</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtri -->
+<div class="rev-filtri mb-3 d-flex gap-2 flex-wrap">
+    <a href="/revisioni?stato=tutti" class="btn btn-sm {% if filtro_stato == 'tutti' %}btn-primary active{% else %}btn-outline-primary{% endif %}">
+        Tutti ({{ contatori.totale }})
+    </a>
+    <a href="/revisioni?stato=da_gestire" class="btn btn-sm {% if filtro_stato == 'da_gestire' %}btn-warning active{% else %}btn-outline-warning{% endif %}">
+        <i class="bi bi-exclamation-circle"></i> Da gestire ({{ contatori.da_gestire }})
+    </a>
+    <a href="/revisioni?stato=scaduti" class="btn btn-sm {% if filtro_stato == 'scaduti' %}btn-danger active{% else %}btn-outline-danger{% endif %}">
+        <i class="bi bi-x-circle"></i> Scaduti ({{ contatori.scaduti }})
+    </a>
+    <a href="/revisioni?stato=gestiti" class="btn btn-sm {% if filtro_stato == 'gestiti' %}btn-success active{% else %}btn-outline-success{% endif %}">
+        <i class="bi bi-check-circle"></i> Gestiti ({{ contatori.gestiti }})
+    </a>
+</div>
+
+<!-- Tabella -->
+{% if veicoli %}
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 100px;">Targa</th>
+                    <th>Veicolo</th>
+                    <th>Cliente</th>
+                    <th>Commerciale</th>
+                    <th>Driver</th>
+                    <th style="width: 110px;" class="text-center">Scadenza</th>
+                    <th style="width: 100px;" class="text-center">Giorni</th>
+                    <th style="width: 110px;" class="text-center">Stato</th>
+                    <th style="width: 180px;" class="text-center">Azioni</th>
+                    <!-- Colonne future riservate -->
+                    <th class="rev-col-futuro"></th>
+                    <th class="rev-col-futuro"></th>
+                    <th class="rev-col-futuro"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in veicoli %}
+                <tr id="rev-row-{{ v.id }}" class="{% if v.stato_revisione == 'scaduta' %}table-danger{% elif v.stato_revisione in ('fatta', 'visione') %}table-light{% endif %}">
+                    <!-- Targa -->
+                    <td>
+                        <a href="/veicolo/{{ v.id }}" class="rev-targa text-decoration-none">
+                            {% if v.targa %}{{ v.targa }}{% else %}<span class="text-decoration-none" style="font-family: inherit; font-weight: 600; font-size: 0.75rem; color: #6f42c1;">MANCANTE</span>{% endif %}
+                        </a>
+                    </td>
+                    
+                    <!-- Veicolo -->
+                    <td>
+                        <div class="rev-veicolo">{{ v.marca }} {{ v.nome_modello }}</div>
+                        <div class="rev-specifiche">{{ v.modello }}</div>
+                    </td>
+                    
+                    <!-- Cliente -->
+                    <td class="rev-cliente">
+                        {% if v.p_iva %}
+                        <a href="/cerca/{{ v.p_iva }}">{{ v.nome_cliente or '-' }}</a>
+                        {% else %}
+                        <span class="text-muted">{{ v.nome_cliente or '-' }}</span>
+                        {% endif %}
+                        {% if v.telefono_azienda %}
+                        <div class="small text-muted">
+                            <a href="tel:{{ v.telefono_azienda }}" class="text-decoration-none">
+                                <i class="bi bi-telephone"></i> {{ v.telefono_azienda }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if v.referente_nome %}
+                        <div class="small" style="color: #6f42c1;">
+                            <i class="bi bi-person-badge"></i> {{ v.referente_nome }}
+                            {% if v.referente_telefono %}
+                            <a href="tel:{{ v.referente_telefono }}" class="text-decoration-none ms-1">
+                                <i class="bi bi-phone"></i> {{ v.referente_telefono }}
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Commerciale -->
+                    <td>
+                        <div class="small fw-bold">{{ v.nome_commerciale or '-' }}</div>
+                    </td>
+                    
+                    <!-- Driver -->
+                    <td>
+                        {% if v.driver %}
+                        <div class="small">{{ v.driver }}</div>
+                        {% if v.driver_telefono %}
+                        <div class="small text-muted">
+                            <a href="tel:{{ v.driver_telefono }}" class="text-decoration-none">
+                                <i class="bi bi-telephone"></i> {{ v.driver_telefono }}
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Scadenza revisione -->
+                    <td class="text-center">
+                        {% if v.prossima_revisione %}
+                        <div class="small">{{ v.prossima_revisione|format_data }}</div>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Giorni mancanti -->
+                    <td class="text-center">
+                        {% if v.giorni_revisione is not none %}
+                            {% if v.giorni_revisione <= 0 %}
+                            <span class="rev-badge-giorni rev-scaduta">
+                                <i class="bi bi-exclamation-triangle-fill"></i> {{ v.giorni_revisione|abs }}gg fa
+                            </span>
+                            {% elif v.giorni_revisione <= 30 %}
+                            <span class="rev-badge-giorni rev-urgente">{{ v.giorni_revisione }}gg</span>
+                            {% elif v.giorni_revisione <= 60 %}
+                            <span class="rev-badge-giorni rev-attenzione">{{ v.giorni_revisione }}gg</span>
+                            {% else %}
+                            <span class="rev-badge-giorni rev-ok">{{ v.giorni_revisione }}gg</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Stato -->
+                    <td class="text-center">
+                        {% if v.stato_revisione == 'fatta' %}
+                        <span class="rev-stato-fatta"><i class="bi bi-check-circle-fill"></i> Fatta</span>
+                        {% if v.data_revisione %}
+                        <br><small class="text-muted">{{ v.data_revisione|format_data }}</small>
+                        {% endif %}
+                        {% elif v.stato_revisione == 'visione' %}
+                        <span class="rev-stato-visione"><i class="bi bi-eye-fill"></i> Visionata</span>
+                        {% elif v.stato_revisione == 'scaduta' %}
+                        <span class="rev-stato-scaduta"><i class="bi bi-x-circle-fill"></i> Scaduta</span>
+                        {% else %}
+                        <span class="rev-stato-attesa"><i class="bi bi-clock-fill"></i> In attesa</span>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Azioni -->
+                    <td class="text-center rev-azioni">
+                        {% if v.stato_revisione not in ('fatta', 'visione') %}
+                        <button class="btn btn-success btn-sm" title="Revisione effettuata"
+                                onclick="revFatta({{ v.id }}, '{{ v.prossima_revisione }}', '{{ v.targa }}')">
+                            <i class="bi bi-check-circle"></i> Fatta
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" title="Presa visione"
+                                onclick="revVisione({{ v.id }}, '{{ v.prossima_revisione }}', '{{ v.targa }}')">
+                            <i class="bi bi-eye"></i> Visione
+                        </button>
+                        {% else %}
+                        <button class="btn btn-outline-warning btn-sm" title="Riapri gestione"
+                                onclick="revReset({{ v.id }}, '{{ v.targa }}')">
+                            <i class="bi bi-arrow-counterclockwise"></i> Riapri
+                        </button>
+                        {% endif %}
+                    </td>
+                    
+                    <!-- Colonne future -->
+                    <td class="rev-col-futuro"></td>
+                    <td class="rev-col-futuro"></td>
+                    <td class="rev-col-futuro"></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="bi bi-clipboard-check" style="font-size: 3rem;"></i>
+        <p class="mt-3 mb-0">
+            {% if filtro_stato == 'tutti' %}
+            Nessun veicolo con data immatricolazione inserita.
+            {% else %}
+            Nessun veicolo per il filtro selezionato.
+            {% endif %}
+        </p>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- ====================================================================== -->
+<!-- MODAL REVISIONE FATTA                                                  -->
+<!-- ====================================================================== -->
+<div class="modal fade" id="modalRevFatta" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Revisione Effettuata</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fw-bold mb-3" id="revFattaTarga"></p>
+                <div class="mb-3">
+                    <label class="form-label">Data revisione <small class="text-muted">(opzionale)</small></label>
+                    <input type="date" class="form-control" id="revFattaData" value="{{ oggi }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Note <small class="text-muted">(opzionale)</small></label>
+                    <input type="text" class="form-control" id="revFattaNote" placeholder="es. Centro revisioni XYZ" maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success btn-sm" id="btnConfRevFatta">
+                    <i class="bi bi-check-circle"></i> Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====================================================================== -->
+<!-- MODAL PRESA VISIONE                                                    -->
+<!-- ====================================================================== -->
+<div class="modal fade" id="modalRevVisione" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-eye"></i> Presa Visione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="fw-bold mb-3" id="revVisioneTarga"></p>
+                <p class="text-muted small">Le notifiche non verranno ripetute per questa scadenza.</p>
+                <div class="mb-3">
+                    <label class="form-label">Motivo <small class="text-muted">(opzionale)</small></label>
+                    <input type="text" class="form-control" id="revVisioneNote" 
+                           placeholder="es. Veicolo restituito" maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnConfRevVisione">
+                    <i class="bi bi-eye"></i> Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let _revId = null;
+let _revScad = null;
+
+// === REVISIONE FATTA ===
+function revFatta(id, scadenza, targa) {
+    _revId = id;
+    _revScad = scadenza;
+    document.getElementById('revFattaTarga').textContent = targa;
+    document.getElementById('revFattaData').value = '{{ oggi }}';
+    document.getElementById('revFattaNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalRevFatta')).show();
+}
+
+document.getElementById('btnConfRevFatta').addEventListener('click', function() {
+    fetch('/revisioni/' + _revId + '/gestisci', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            azione: 'fatta',
+            scadenza: _revScad,
+            data_revisione: document.getElementById('revFattaData').value,
+            note: document.getElementById('revFattaNote').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Errore: ' + d.error); })
+    .catch(e => alert('Errore: ' + e));
+});
+
+// === PRESA VISIONE ===
+function revVisione(id, scadenza, targa) {
+    _revId = id;
+    _revScad = scadenza;
+    document.getElementById('revVisioneTarga').textContent = targa;
+    document.getElementById('revVisioneNote').value = '';
+    new bootstrap.Modal(document.getElementById('modalRevVisione')).show();
+}
+
+document.getElementById('btnConfRevVisione').addEventListener('click', function() {
+    fetch('/revisioni/' + _revId + '/gestisci', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            azione: 'visione',
+            scadenza: _revScad,
+            note: document.getElementById('revVisioneNote').value
+        })
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Errore: ' + d.error); })
+    .catch(e => alert('Errore: ' + e));
+});
+
+// === RESET ===
+function revReset(id, targa) {
+    if (!confirm('Riaprire la gestione revisione per ' + targa + '?')) return;
+    
+    fetch('/revisioni/' + id + '/gestisci', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({azione: 'reset'})
+    })
+    .then(r => r.json())
+    .then(d => { if (d.success) location.reload(); else alert('Errore: ' + d.error); })
+    .catch(e => alert('Errore: ' + e));
+}
+</script>
+{% endblock %}

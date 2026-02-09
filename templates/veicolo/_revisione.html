@@ -1,0 +1,275 @@
+<!-- ==========================================================================
+     VEICOLO - Sezione Revisione (file satellite)
+     Include: card revisione + modal immatricolazione + modal revisione + JS
+     Incluso da: veicolo.html
+     ========================================================================== -->
+
+<!-- ====================================================================== -->
+<!-- CARD REVISIONE                                                         -->
+<!-- ====================================================================== -->
+
+{% if veicolo.data_immatricolazione %}
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clipboard-check"></i> Revisione</span>
+        {% if prossima_revisione and giorni_revisione is not none %}
+        <span class="badge {% if giorni_revisione <= 0 %}bg-danger{% elif giorni_revisione <= 30 %}bg-warning text-dark{% elif giorni_revisione <= 60 %}bg-info{% else %}bg-secondary{% endif %}">
+            {% if giorni_revisione <= 0 %}Scaduta
+            {% elif giorni_revisione == 1 %}Domani
+            {% else %}Tra {{ giorni_revisione }} giorni
+            {% endif %}
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="info-label">Prossima Revisione</div>
+                <div class="info-value {% if giorni_revisione is not none and giorni_revisione <= 30 %}text-danger{% elif giorni_revisione is not none and giorni_revisione <= 60 %}text-warning{% endif %}">
+                    {{ prossima_revisione|format_data if prossima_revisione else '-' }}
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="info-label">Stato</div>
+                {% if veicolo.revisione_gestita == prossima_revisione %}
+                    {% if veicolo.data_revisione %}
+                    <div class="info-value text-success">
+                        <i class="bi bi-check-circle-fill"></i> Effettuata
+                        <br><small class="text-muted">il {{ veicolo.data_revisione|format_data }}</small>
+                    </div>
+                    {% else %}
+                    <div class="info-value text-secondary">
+                        <i class="bi bi-eye-fill"></i> Presa visione
+                        {% if veicolo.note_revisione %}
+                        <br><small class="text-muted">{{ veicolo.note_revisione }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% else %}
+                <div class="info-value text-warning">
+                    <i class="bi bi-clock-fill"></i> Da gestire
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <hr class="my-3">
+        
+        {% if veicolo.revisione_gestita != prossima_revisione %}
+        <!-- Azioni: gestisci revisione -->
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-success" onclick="revisioneFatta()">
+                <i class="bi bi-check-circle"></i> Revisione effettuata
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="revisionePresaVisione()">
+                <i class="bi bi-eye"></i> Presa visione
+            </button>
+        </div>
+        {% else %}
+        <!-- Azione: riapri -->
+        <button class="btn btn-sm btn-outline-warning" onclick="revisioneReset()">
+            <i class="bi bi-arrow-counterclockwise"></i> Riapri gestione
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<!-- Nessuna data immatricolazione -->
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="bi bi-clipboard-check"></i> Revisione
+    </div>
+    <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-calendar-plus" style="font-size: 2rem;"></i>
+        <p class="mt-2 mb-2">Inserisci la data di immatricolazione per attivare il monitoraggio revisione.</p>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalImmatricolazione">
+            <i class="bi bi-pencil"></i> Inserisci data
+        </button>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- ====================================================================== -->
+<!-- MODAL IMMATRICOLAZIONE                                                 -->
+<!-- ====================================================================== -->
+
+<div class="modal fade" id="modalImmatricolazione" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-event"></i> Data Immatricolazione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label">Data prima immatricolazione</label>
+                <input type="date" class="form-control" id="inputImmatricolazione" 
+                       value="{{ veicolo.data_immatricolazione or '' }}">
+                <small class="text-muted mt-1 d-block">
+                    Usata per calcolare le scadenze revisione (5 anni + ogni 2 anni)
+                </small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaImmatricolazione()">
+                    <i class="bi bi-save"></i> Salva
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====================================================================== -->
+<!-- MODAL REVISIONE EFFETTUATA                                             -->
+<!-- ====================================================================== -->
+
+<div class="modal fade" id="modalRevisioneFatta" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Revisione Effettuata</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Data revisione <small class="text-muted">(opzionale)</small></label>
+                    <input type="date" class="form-control" id="inputDataRevisione" 
+                           value="{{ oggi }}">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Note <small class="text-muted">(opzionale)</small></label>
+                    <input type="text" class="form-control" id="inputNoteRevFatta" 
+                           placeholder="es. Centro revisioni XYZ" maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="salvaRevisioneFatta()">
+                    <i class="bi bi-check-circle"></i> Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====================================================================== -->
+<!-- MODAL PRESA VISIONE                                                    -->
+<!-- ====================================================================== -->
+
+<div class="modal fade" id="modalPresaVisione" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-eye"></i> Presa Visione</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    Le notifiche revisione non verranno ripetute per questa scadenza.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Motivo <small class="text-muted">(opzionale)</small></label>
+                    <input type="text" class="form-control" id="inputNotePresaVisione" 
+                           placeholder="es. Veicolo restituito, Non necessaria" maxlength="200">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaPresaVisione()">
+                    <i class="bi bi-eye"></i> Conferma
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- ====================================================================== -->
+<!-- JS REVISIONE                                                           -->
+<!-- ====================================================================== -->
+
+<script>
+// --- Salva data immatricolazione ---
+function salvaImmatricolazione() {
+    const data = document.getElementById('inputImmatricolazione').value;
+    if (!data) { alert('Inserisci una data'); return; }
+    
+    fetch('/veicolo/{{ veicolo.id }}/immatricolazione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({data_immatricolazione: data})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { alert('Errore: ' + (d.error || 'sconosciuto')); }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+
+// --- Revisione effettuata ---
+function revisioneFatta() {
+    new bootstrap.Modal(document.getElementById('modalRevisioneFatta')).show();
+}
+
+function salvaRevisioneFatta() {
+    fetch('/veicolo/{{ veicolo.id }}/revisione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            azione: 'fatta',
+            data_revisione: document.getElementById('inputDataRevisione').value,
+            note: document.getElementById('inputNoteRevFatta').value,
+            scadenza: '{{ prossima_revisione or "" }}'
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { alert('Errore: ' + (d.error || 'sconosciuto')); }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+
+// --- Presa visione ---
+function revisionePresaVisione() {
+    new bootstrap.Modal(document.getElementById('modalPresaVisione')).show();
+}
+
+function salvaPresaVisione() {
+    fetch('/veicolo/{{ veicolo.id }}/revisione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            azione: 'visione',
+            note: document.getElementById('inputNotePresaVisione').value,
+            scadenza: '{{ prossima_revisione or "" }}'
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { alert('Errore: ' + (d.error || 'sconosciuto')); }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+
+// --- Reset (riapri) ---
+function revisioneReset() {
+    if (!confirm('Riaprire la gestione revisione?')) return;
+    
+    fetch('/veicolo/{{ veicolo.id }}/revisione', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({azione: 'reset'})
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) { location.reload(); }
+        else { alert('Errore: ' + (d.error || 'sconosciuto')); }
+    })
+    .catch(e => alert('Errore: ' + e));
+}
+</script>

@@ -66,6 +66,7 @@ from app.routes_sedi_cliente import sedi_bp
 from app.routes_trattative import trattative_bp
 from app.routes_top_prospect import top_prospect_bp
 from app.routes_trascrizione import trascrizione_bp
+from app.routes_revisioni import revisioni_bp
 from app.routes_notifiche import notifiche_bp
 from app.routes_ticker import ticker_bp
 from app.config_notifiche import POLLING_SECONDI as NOTIFICHE_POLLING
@@ -156,6 +157,7 @@ app.register_blueprint(top_prospect_bp)
 app.register_blueprint(trascrizione_bp)
 app.register_blueprint(notifiche_bp)
 app.register_blueprint(ticker_bp)
+app.register_blueprint(revisioni_bp)
 register_note_clienti_legacy_routes(app)
 app.context_processor(auth_context_processor)
 app.context_processor(stati_context_processor)
@@ -2039,6 +2041,18 @@ def gestione_veicolo(veicolo_id):
     ''', (veicolo_id,))
     note_veicolo = [dict(r) for r in cursor.fetchall()]
     
+    # Estrai nome modello dal campo tipo (es. "Sportage / 2021 / 5P / SUV" -> "Sportage")
+    nome_modello = ''
+    if veicolo.get('tipo'):
+        nome_modello = veicolo['tipo'].split('/')[0].strip()
+    
+    # Calcolo prossima revisione
+    prossima_revisione = None
+    giorni_revisione = None
+    if veicolo.get('data_immatricolazione'):
+        from app.connettori_notifiche.revisione import calcola_prossima_revisione
+        prossima_revisione, giorni_revisione = calcola_prossima_revisione(veicolo['data_immatricolazione'])
+    
     conn.close()
     
     return render_template('veicolo.html',
@@ -2052,6 +2066,9 @@ def gestione_veicolo(veicolo_id):
                          storico_km=storico_km,
                          note_veicolo=note_veicolo,
                          link_restituzione=link_restituzione,
+                         nome_modello=nome_modello,
+                         prossima_revisione=prossima_revisione,
+                         giorni_revisione=giorni_revisione,
                          oggi=datetime.now().strftime('%Y-%m-%d'))
 
 
@@ -2339,6 +2356,105 @@ def aggiorna_franchigia_km(veicolo_id):
     
     logger.info(f"Franchigia km aggiornata a {km_franchigia} per veicolo ID {veicolo_id}")
     return redirect(url_for('gestione_veicolo', veicolo_id=veicolo_id))
+
+
+
+# ==============================================================================
+# ROUTE VEICOLO - ACCESSO PER TARGA
+# ==============================================================================
+
+@app.route('/veicolo/<targa>')
+def veicolo_per_targa(targa):
+    """Accesso scheda veicolo tramite targa (es. /veicolo/GM802NS)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM veicoli WHERE UPPER(targa) = UPPER(?)', (targa,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return "Veicolo non trovato", 404
+    veicolo_id = row['id'] if isinstance(row, dict) else row[0]
+    return gestione_veicolo(veicolo_id)
+
+
+# ==============================================================================
+# ROUTE VEICOLO - IMMATRICOLAZIONE
+# ==============================================================================
+
+@app.route('/veicolo/<int:veicolo_id>/immatricolazione', methods=['POST'])
+def salva_immatricolazione(veicolo_id):
+    """Salva data immatricolazione veicolo."""
+    data = request.get_json()
+    if not data or not data.get('data_immatricolazione'):
+        return jsonify({'success': False, 'error': 'Data mancante'}), 400
+    
+    conn = get_connection()
+    try:
+        conn.execute(
+            'UPDATE veicoli SET data_immatricolazione = ? WHERE id = ?',
+            (data['data_immatricolazione'], veicolo_id)
+        )
+        conn.commit()
+        logger.info(f"Immatricolazione veicolo {veicolo_id}: {data['data_immatricolazione']}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Errore salvataggio immatricolazione: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ==============================================================================
+# ROUTE VEICOLO - REVISIONE
+# ==============================================================================
+
+@app.route('/veicolo/<int:veicolo_id>/revisione', methods=['POST'])
+def gestione_revisione(veicolo_id):
+    """Gestione revisione veicolo (fatta/visione/reset)."""
+    data = request.get_json()
+    if not data or not data.get('azione'):
+        return jsonify({'success': False, 'error': 'Azione mancante'}), 400
+    
+    azione = data['azione']
+    conn = get_connection()
+    
+    try:
+        if azione == 'fatta':
+            conn.execute(
+                """UPDATE veicoli 
+                   SET revisione_gestita = ?, data_revisione = ?, note_revisione = ?
+                   WHERE id = ?""",
+                (data.get('scadenza'), data.get('data_revisione'), data.get('note'), veicolo_id)
+            )
+            logger.info(f"Revisione veicolo {veicolo_id}: effettuata")
+            
+        elif azione == 'visione':
+            conn.execute(
+                """UPDATE veicoli 
+                   SET revisione_gestita = ?, data_revisione = NULL, note_revisione = ?
+                   WHERE id = ?""",
+                (data.get('scadenza'), data.get('note'), veicolo_id)
+            )
+            logger.info(f"Revisione veicolo {veicolo_id}: presa visione")
+            
+        elif azione == 'reset':
+            conn.execute(
+                """UPDATE veicoli 
+                   SET revisione_gestita = NULL, data_revisione = NULL, note_revisione = NULL
+                   WHERE id = ?""",
+                (veicolo_id,)
+            )
+            logger.info(f"Revisione veicolo {veicolo_id}: reset")
+        else:
+            return jsonify({'success': False, 'error': 'Azione non valida'}), 400
+        
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Errore gestione revisione: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
 
 
 @app.route('/api/noleggiatore-assistenza/<noleggiatore>')

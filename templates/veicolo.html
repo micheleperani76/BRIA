@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ veicolo.targa or 'Nuovo' }} - {{ veicolo.marca }} {{ veicolo.modello }}{% endblock %}
+{% block title %}{{ veicolo.targa or 'Nuovo' }} - {{ veicolo.marca }} {{ nome_modello }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -73,8 +73,14 @@
             </div>
             {% endif %}
             <span class="text-muted">-</span>
-            {{ veicolo.marca }} {{ veicolo.modello }}
+            {{ veicolo.marca }} {{ nome_modello }}
+            {% set tipo_v = veicolo.tipo_veicolo or 'Extra' %}
+            {% set tipo_col = '#28a745' if tipo_v == 'Installato' else '#fd7e14' %}
+            <span class="badge ms-2" style="background-color: {{ tipo_col }}; font-size: 0.55em; vertical-align: middle;">{{ tipo_v }}</span>
         </h4>
+        {% if veicolo.modello %}
+        <small class="text-muted">{{ veicolo.modello }}</small>
+        {% endif %}
     </div>
     <div class="d-flex flex-column align-items-end gap-2">
         <!-- Nome noleggiatore -->
@@ -82,13 +88,6 @@
             {{ veicolo.noleggiatore or 'N/D' }}
         </span>
         
-        <!-- Tipo veicolo (Installato/Extra) -->
-        {% set tipo = veicolo.tipo_veicolo or 'Extra' %}
-        {% set tipo_colore = '#28a745' if tipo == 'Installato' else '#fd7e14' %}
-        {% set tipo_icona = 'bi-check-circle-fill' if tipo == 'Installato' else 'bi-arrow-right-circle-fill' %}
-        <span class="badge" style="background-color: {{ tipo_colore }};">
-            <i class="bi {{ tipo_icona }}"></i> {{ tipo }}
-        </span>
         
         {% if link_assistenza %}
         <!-- Tasto trova centro assistenza -->
@@ -180,6 +179,17 @@
                         <div class="info-value">{{ "{:,}".format(km_mese).replace(",", ".") }}</div>
                     </div>
                     {% endif %}
+                    
+                    <div class="col-12"><hr class="my-2"></div>
+                    <div class="col-6">
+                        <div class="info-label">Immatricolazione</div>
+                        <div class="info-value">{{ veicolo.data_immatricolazione|format_data if veicolo.data_immatricolazione else '-' }}</div>
+                    </div>
+                    <div class="col-6 d-flex align-items-end">
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalImmatricolazione">
+                            <i class="bi bi-pencil"></i> {{ 'Modifica' if veicolo.data_immatricolazione else 'Inserisci' }}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -441,6 +451,9 @@
                 {% endif %}
             </div>
         </div>
+        
+        <!-- Revisione -->
+        {% include "veicolo/_revisione.html" %}
         
         <!-- Storico rilevazioni -->
         {% if storico_km %}
