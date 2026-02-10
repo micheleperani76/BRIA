@@ -2,8 +2,8 @@
 # ==============================================================================
 # GESTIONE FLOTTA - Import PDF Creditsafe
 # ==============================================================================
-# Versione: 2.0.0
-# Data: 2025-01-19
+# Versione: 2.2.0
+# Data: 2026-02-10
 # Descrizione: Estrazione dati da PDF Creditsafe e inserimento nel database
 # Correzioni v1.0.2: Fix regex ATECO, descrizione attivita, capogruppo
 # Correzioni v1.0.3: Cancellazione vecchio PDF quando importa nuovo report
@@ -11,7 +11,38 @@
 # Correzioni v1.0.5: Ricomposizione indirizzi con lista province ufficiale
 # Correzioni v1.0.6: Parsing indirizzo in componenti (via, civico, cap, citta, provincia)
 # Correzioni v1.0.7: Fix ricomposizione con testo mescolato (es: "25020 C" + "...IGOLE BS")
+# Correzioni v2.1.0: Fix accento attivita/attività, euro €/&euro;, valori negativi bilancio
+# Correzioni v2.2.0: Fix capogruppo cross-page, header creditsafe, ATECO 2025
 # ==============================================================================
+#
+# ╔════════════════════════════════════════════════════════════════════════════╗
+# ║                    ⚠️  REMINDER CRITICI - LEGGERE PRIMA  ⚠️               ║
+# ╠════════════════════════════════════════════════════════════════════════════╣
+# ║                                                                          ║
+# ║  1. LAYOUT PDF CREDITSAFE - PAGINE SPEZZATE                             ║
+# ║     I PDF Creditsafe hanno riquadri che si spezzano tra due pagine.      ║
+# ║     Es: "Capogruppo" con titolo a fine pag.1 e dati a inizio pag.2.     ║
+# ║     La funzione _rimuovi_header_footer_pagine() rimuove sia i footer    ║
+# ║     ("Azienda:... Richiesto da:...", "Pagina X di Y") sia gli header    ║
+# ║     ("creditsafe" logo text) per unire le pagine in un flusso continuo. ║
+# ║     LE PRIME 2-3 PAGINE contengono TUTTI i dati che importiamo.         ║
+# ║     Devono essere trattate come UN UNICO BLOCCO di testo.               ║
+# ║                                                                          ║
+# ║  2. ENCODING UTF-8 - CARATTERI SPECIALI                                 ║
+# ║     I file trasferiti via browser corrompono UTF-8 (€ → â‚¬, à → Ã ).    ║
+# ║     Dopo ogni trasferimento, correggere con sed hexadecimal patterns.    ║
+# ║     Le regex devono accettare ENTRAMBE le varianti accento/non-accento:  ║
+# ║     "attività" e "attivita", "€" e "&euro;", ecc.                       ║
+# ║                                                                          ║
+# ║  3. REGOLA AUREA - VERIFICHE POST-MODIFICA                              ║
+# ║     Quando si riscrive il file, SEMPRE verificare che:                   ║
+# ║     - I footer E header pagine vengano rimossi (creditsafe logo)         ║
+# ║     - La regex capogruppo gestisca contenuto cross-page                  ║
+# ║     - Le regex ATECO accettino sia "2007" sia "2025" (cambiano!)         ║
+# ║     - I pattern € accettino sia "€" sia "&euro;"                         ║
+# ║                                                                          ║
+# ╚════════════════════════════════════════════════════════════════════════════╝
+#
 
 import os
 import re
@@ -199,11 +230,16 @@ def _parsa_indirizzo(indirizzo_completo):
 # ESTRAZIONE TESTO DA PDF
 # ==============================================================================
 
-def _rimuovi_footer_pagine(testo):
+def _rimuovi_header_footer_pagine(testo):
     """
-    Rimuove le righe di footer delle pagine Creditsafe.
-    Es: "Azienda: A.T.I.B. S.R.L. (IT02010541) Richiesto da: Paolo Ciotti (102003363) Richiesto il: 10:15 martedi 13 gennaio 2026"
-    Es: "Pagina 1 di 9"
+    Rimuove header e footer delle pagine Creditsafe per unire le pagine
+    in un flusso continuo di testo. CRITICO per riquadri cross-page
+    (es: Capogruppo spezzato tra pag.1 e pag.2).
+    
+    Rimuove:
+    - Header: riga "creditsafe" (logo testuale a inizio ogni pagina)
+    - Footer: "Azienda: ... Richiesto da: ..." 
+    - Footer: "Pagina X di Y"
     """
     if not testo:
         return testo
@@ -212,11 +248,17 @@ def _rimuovi_footer_pagine(testo):
     righe_pulite = []
     
     for riga in righe:
+        riga_stripped = riga.strip()
+        # Salta header "creditsafe" (logo testuale a inizio pagina)
+        # Può apparire come "creditsafe" da solo o con variazioni minori
+        if re.match(r'^creditsafe\s*$', riga_stripped, re.IGNORECASE):
+            continue
         # Salta righe footer "Azienda: ... Richiesto da: ..."
-        if re.match(r'^Azienda:\s+.+Richiesto\s+(da|il):', riga):
+        # NOTA: alcuni PDF non hanno spazio dopo "Azienda:" (es: "Azienda:COPAN...")
+        if re.match(r'^Azienda:\s*.+Richiesto\s*(da|il):', riga_stripped):
             continue
         # Salta righe "Pagina X di Y"
-        if re.match(r'^Pagina\s+\d+\s+di\s+\d+', riga):
+        if re.match(r'^Pagina\s+\d+\s+di\s+\d+', riga_stripped):
             continue
         righe_pulite.append(riga)
     
@@ -239,7 +281,7 @@ def estrai_testo_da_pdf(pdf_path):
                     testi.append(text)
         
         testo_completo = '\n'.join(testi) if testi else None
-        return _rimuovi_footer_pagine(_ricomponi_righe_spezzate(testo_completo))
+        return _rimuovi_header_footer_pagine(_ricomponi_righe_spezzate(testo_completo))
         
     except ImportError:
         print("ERRORE: pdfplumber non installato. Esegui: pip3 install pdfplumber --break-system-packages")
@@ -403,8 +445,8 @@ def estrai_dati_azienda(testo):
     if m:
         dati['data_costituzione'] = m.group(1)
     
-    # Capitale sociale (formato: Capitale Sociale &euro;1.550.000)
-    m = re.search(r'Capitale\s+[Ss]ociale\s+[&euro;]?\s*([\d.,]+)', testo)
+    # Capitale sociale (formato: Capitale Sociale €1.550.000)
+    m = re.search(r'Capitale\s+[Ss]ociale\s+(?:€|&euro;)?\s*([\d.,]+)', testo)
     if m:
         dati['capitale_sociale'] = pulisci_numero(m.group(1))
     
@@ -415,25 +457,31 @@ def estrai_dati_azienda(testo):
     
     # --- ATTIVITA ---
     
-    # Codice ATECO 2007 (case insensitive - nel PDF può essere "Codice ateco 2007")
-    m = re.search(r'Codice\s+ateco\s+2007\s+([\d.]+)', testo, re.IGNORECASE)
+    # Codice ATECO (case insensitive - nel PDF può essere "Codice ateco 2007" o "Codice ateco 2025")
+    # NOTA: Creditsafe ha cambiato da ATECO 2007 a ATECO 2025 (storico eventi 24/11/2025)
+    m = re.search(r'Codice\s+ateco\s+\d{4}\s+([\d.]+)', testo, re.IGNORECASE)
     if m:
         dati['codice_ateco'] = m.group(1)
     
-    # Descrizione ATECO 2007 (può essere su più righe, termina prima di "Descrizione attivita")
-    m = re.search(r'Descrizione\s+ateco\s+2007\s+(.+?)(?=Descrizione\s+attivita|Codice\s+SAE|Capogruppo|$)', testo, re.IGNORECASE | re.DOTALL)
+    # Descrizione ATECO (può essere su più righe, termina prima di "Descrizione attivit[aà]")
+    # NOTA: accetta sia "ateco 2007" sia "ateco 2025"
+    m = re.search(r'Descrizione\s+ateco\s+\d{4}\s+(.+?)(?=Di\s+cui\s+cancellate|Descrizione\s+attivit|Codice\s+SAE|Codice\s+RAE|Capogruppo|Dati\s+finanziari|$)', testo, re.IGNORECASE | re.DOTALL)
     if m:
         # Pulisce newline e spazi multipli
         desc = re.sub(r'\s+', ' ', m.group(1)).strip()
+        # Safety net: tronca a 200 caratteri (evita cattura intero PDF se regex sfora)
+        if len(desc) > 200:
+            desc = desc[:200].rsplit(' ', 1)[0]  # Tronca su parola intera
         dati['desc_ateco'] = pulisci_testo(desc)
     
-    # Descrizione attivita svolta (formato: "Descrizione attivita svolta XXXXX")
-    m = re.search(r'Descrizione\s+attivita\s+svolta\s+(.+?)(?:\n|Capogruppo|$)', testo)
+    # Descrizione attivita svolta (formato: "Descrizione attivit[aà] svolta XXXXX")
+    # NOTA: pdfplumber estrae "attività" con accento, servono entrambe le varianti
+    m = re.search(r'Descrizione\s+attivit.\s+svolta\s+(.+?)(?:\n|Capogruppo|Dati\s+finanziari|$)', testo)
     if m:
         dati['desc_attivita'] = pulisci_testo(m.group(1))
     else:
         # Fallback: formato alternativo senza "svolta"
-        m = re.search(r'Descrizione\s+attivita\s+([A-Z][A-Z\s]+?)(?:\n|Capogruppo|Codice|$)', testo)
+        m = re.search(r'Descrizione\s+attivit.\s+([A-Z][A-Z\s]+?)(?:\n|Capogruppo|Codice|Dati\s+finanziari|$)', testo)
         if m:
             dati['desc_attivita'] = pulisci_testo(m.group(1))
     
@@ -441,27 +489,48 @@ def estrai_dati_azienda(testo):
     # Formato PDF:
     # Capogruppo
     # Nome Nazione Codice Fiscale
-    # TINTI LUCA (IT) TNTLCU76L24B157I
+    # GIANGIULIO STEFANIA (IT) GNGSFN59L42E897P
+    #
+    # ATTENZIONE: Il riquadro Capogruppo si spezza spesso tra pagina 1 e 2!
+    # Dopo _rimuovi_header_footer_pagine() il testo dovrebbe essere continuo,
+    # ma usiamo \s+ (non \s) per tollerare newline/spazi residui tra header e dati.
     
-    # Cerca la riga dopo "Nome Nazione Codice Fiscale"
-    m = re.search(r'Capogruppo\s+Nome\s+Nazione\s+Codice\s+Fiscale\s+([A-Z][A-Z\s]+?)\s+\(([A-Z]{2})\)\s+([A-Z0-9]+)', testo)
+    # Pattern principale: Capogruppo > intestazioni > NOME (NAZIONE) CF
+    m = re.search(
+        r'Capogruppo\s+Nome\s+Nazione\s+Codice\s+Fiscale\s+'
+        r'([A-Z][A-Z\s]+?)\s+\(([A-Z]{2})\)\s+([A-Z0-9]{16})',
+        testo
+    )
     if m:
         dati['capogruppo_nome'] = pulisci_testo(m.group(1))
         dati['capogruppo_cf'] = m.group(3)
     else:
-        # Fallback: cerca pattern generico nome + CF
-        m = re.search(r'Capogruppo\s+(?:Nome\s+Nazione\s+Codice\s+Fiscale\s+)?([A-Z][A-Z\s]+?)\s+\([A-Z]{2}\)\s+([A-Z0-9]+)', testo)
+        # Fallback 1: senza intestazioni (layout diverso)
+        m = re.search(
+            r'Capogruppo\s+([A-Z][A-Z\s]+?)\s+\(([A-Z]{2})\)\s+([A-Z0-9]{16})',
+            testo
+        )
         if m:
             dati['capogruppo_nome'] = pulisci_testo(m.group(1))
-            dati['capogruppo_cf'] = m.group(2)
+            dati['capogruppo_cf'] = m.group(3)
+        else:
+            # Fallback 2: CF non standard (meno di 16 caratteri, es. aziende estere)
+            m = re.search(
+                r'Capogruppo\s+(?:Nome\s+Nazione\s+Codice\s+Fiscale\s+)?'
+                r'([A-Z][A-Z\s]+?)\s+\([A-Z]{2}\)\s+([A-Z0-9]+)',
+                testo
+            )
+            if m:
+                dati['capogruppo_nome'] = pulisci_testo(m.group(1))
+                dati['capogruppo_cf'] = m.group(2)
     
     
     # --- RATING E RISCHIO ---
-    # Formato normale: "80 A &euro;730.000 Attiva"
-    # Formato N/D: "N/D E &euro;0 -"
+    # Formato normale: "80 A €730.000 Attiva"
+    # Formato N/D: "N/D E €0 -"
     
     # Pattern 1: con punteggio numerico
-    m = re.search(r'(?:rischio|pagamento)\s*\n?\s*(\d+)\s+([A-E])\s+[&euro;]?([\d.,]+)\s+(Attiv[ao]|Inattiv[ao]|Cessat[ao])', testo)
+    m = re.search(r'(?:rischio|pagamento)\s*\n?\s*(\d+)\s+([A-E])\s+(?:€|&euro;)?([\d.,]+)\s+(Attiv[ao]|Inattiv[ao]|Cessat[ao])', testo)
     if m:
         dati['punteggio_rischio'] = int(m.group(1))
         dati['score'] = m.group(2)
@@ -469,7 +538,7 @@ def estrai_dati_azienda(testo):
         dati['stato'] = m.group(4).title()
     else:
         # Pattern 2: N/D come punteggio (aziende in scioglimento)
-        m = re.search(r'N/?D\s+([A-E])\s+[&euro;]?([\d.,]+)', testo)
+        m = re.search(r'N/?D\s+([A-E])\s+(?:€|&euro;)?([\d.,]+)', testo)
         if m:
             dati['punteggio_rischio'] = None
             dati['score'] = m.group(1)
@@ -481,7 +550,7 @@ def estrai_dati_azienda(testo):
                 dati['score'] = m.group(1)
             else:
                 # Pattern 4: generico
-                m = re.search(r'\b(\d{1,3})\s+([A-E])\s+&euro;?([\d.,]+)', testo)
+                m = re.search(r'\b(\d{1,3})\s+([A-E])\s+(?:€|&euro;)?([\d.,]+)', testo)
                 if m:
                     dati['punteggio_rischio'] = int(m.group(1))
                     dati['score'] = m.group(2)
@@ -503,7 +572,7 @@ def estrai_dati_azienda(testo):
     if m:
         dati['protesti'] = m.group(1)
     
-    m = re.search(r'Protesti\s+.+?&euro;\s*([\d.,]+)', testo)
+    m = re.search(r'Protesti\s+.+?(?:€|&euro;)\s*([\d.,]+)', testo)
     if m:
         dati['importo_protesti'] = pulisci_numero(m.group(1))
     
@@ -525,9 +594,9 @@ def estrai_dati_azienda(testo):
             dati['anno_bilancio_prec'] = int(m.group(2))
     
     # Valore produzione
-    # Pattern: "Totale valore della produzione 7.448.309 8%  6.895.310 99%"
+    # Pattern: "Totale valore della produzione 7.448.309 8%  6.895.310 99%" (anche negativo)
     m = re.search(
-        r'Totale\s+valore\s+della\s+produzione\s+([\d.,]+)\s+\d+%\s*[^\d]*([\d.,]+)',
+        r'Totale\s+valore\s+della\s+produzione\s+([-\d.,]+)\s+\d+%\s*[^\d-]*([-\d.,]+)',
         testo
     )
     if m:
@@ -535,9 +604,9 @@ def estrai_dati_azienda(testo):
         dati['valore_produzione_prec'] = pulisci_numero(m.group(2))
     
     # Patrimonio netto
-    # Pattern: "Patrimonio netto 784.925 31%  599.910 45%"
+    # Pattern: "Patrimonio netto 784.925 31%  599.910 45%" (anche negativo: -98.612)
     m = re.search(
-        r'Patrimonio\s+netto\s+([\d.,]+)\s+\d+%\s*[^\d]*([\d.,]+)',
+        r'Patrimonio\s+netto\s+([-\d.,]+)\s+\d+%\s*[^\d-]*([-\d.,]+)',
         testo
     )
     if m:

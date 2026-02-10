@@ -32,15 +32,7 @@
             {% if cliente.crm_id %}
             <div class="col-6">
                 <small class="text-muted">ID CRM Zoho</small>
-                <div>
-                    <a href="https://crm.zoho.eu/crm/org20081351105/tab/Accounts/{{ cliente.crm_id|replace('zcrm_', '') }}" 
-                       target="_blank" 
-                       class="btn btn-sm btn-outline-success py-0 px-2" 
-                       style="font-size: 0.8rem;" 
-                       title="{{ cliente.crm_id }}">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Vai al CRM &rarr;
-                    </a>
-                </div>
+                <div class="fw-bold text-muted" style="font-size: 0.75rem;">{{ cliente.crm_id }}</div>
             </div>
             {% endif %}
             {% endif %}

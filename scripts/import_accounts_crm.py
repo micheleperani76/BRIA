@@ -43,7 +43,7 @@ DB_FILE = BASE_DIR / 'db' / 'gestionale.db'
 LOG_DIR = BASE_DIR / 'logs'
 
 # ID commerciale di default per nuovi clienti (Paolo Ciotti)
-COMMERCIALE_DEFAULT_ID = 2
+COMMERCIALE_DEFAULT_ID = 1
 
 # Commerciali Consecution che NON sono "BR Car Service"
 # Questi vengono salvati come dato consultativo
