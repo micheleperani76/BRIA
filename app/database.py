@@ -265,6 +265,7 @@ def aggiorna_cliente_da_creditsafe(conn, cliente_id, dati_creditsafe, logger=Non
         'ragione_sociale', 'indirizzo', 'via', 'civico', 'cap', 'citta', 'provincia',
         'telefono', 'pec', 'forma_giuridica',
         'data_costituzione', 'desc_attivita', 'codice_ateco', 'desc_ateco',
+        'codice_sae', 'codice_rae', 'codice_ateco_2007', 'desc_ateco_2007',
         'capogruppo_nome', 'capogruppo_cf',
         'capitale_sociale', 'dipendenti', 'score', 'punteggio_rischio',
         'credito', 'stato', 'protesti', 'importo_protesti',

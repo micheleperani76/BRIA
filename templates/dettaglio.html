@@ -583,8 +583,8 @@
                         <i class="bi bi-info-circle"></i> Info
                     </div>
                     <div class="card-body py-2 small">
-                        {% if cliente.data_import_creditsafe %}
-                        <div class="d-flex justify-content-between"><span class="text-muted">Creditsafe</span><span>{{ cliente.data_import_creditsafe[:10] }}</span></div>
+                        {% if cliente.data_report_creditsafe %}
+                        <div class="d-flex justify-content-between"><span class="text-muted">Creditsafe</span><span>{{ cliente.data_report_creditsafe[:10] }}</span></div>
                         {% endif %}
                         {% if cliente.data_import_flotta %}
                         <div class="d-flex justify-content-between"><span class="text-muted">Flotta</span><span>{{ cliente.data_import_flotta[:10] }}</span></div>
@@ -681,6 +681,7 @@
                     </div>
                     <div class="card-body py-2">
                         <div class="row g-2">
+                            {# --- Riga 1: ATECO primario + Capitale Sociale --- #}
                             <div class="col-6">
                                 <small class="text-muted">ATECO</small>
                                 <div><code>{{ cliente.codice_ateco or '-' }}</code></div>
@@ -689,14 +690,35 @@
                                 <small class="text-muted">Capitale Sociale</small>
                                 <div>{% if cliente.capitale_sociale %}&euro; {{ cliente.capitale_sociale|format_numero }}{% else %}-{% endif %}</div>
                             </div>
+                            {# --- Riga 2: Descrizione ATECO (testo completo) --- #}
                             <div class="col-12">
                                 <small class="text-muted">Descrizione ATECO</small>
                                 <div>{{ cliente.desc_ateco or '-' }}</div>
                             </div>
+                            {# --- Riga 3: SAE + RAE --- #}
+                            {% if cliente.codice_sae or cliente.codice_rae %}
+                            <div class="col-6">
+                                <small class="text-muted">Codice SAE</small>
+                                <div><code>{{ cliente.codice_sae or '-' }}</code></div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Codice RAE</small>
+                                <div><code>{{ cliente.codice_rae or '-' }}</code></div>
+                            </div>
+                            {% endif %}
+                            {# --- Riga 4: ATECO 2007 (opzionale, solo se presente) --- #}
+                            {% if cliente.codice_ateco_2007 %}
                             <div class="col-12">
-                                <small class="text-muted">Descrizione </small>
+                                <small class="text-muted">ATECO 2007</small>
+                                <div><code>{{ cliente.codice_ateco_2007 }}</code> <span class="text-muted">{{ cliente.desc_ateco_2007 or '' }}</span></div>
+                            </div>
+                            {% endif %}
+                            {# --- Riga 5: Descrizione attivita svolta (testo completo) --- #}
+                            <div class="col-12">
+                                <small class="text-muted">Descrizione attivit&agrave;</small>
                                 <div>{{ cliente.desc_attivita or '-' }}</div>
                             </div>
+                            {# --- Riga 6: Dipendenti + Stato --- #}
                             <div class="col-6">
                                 <small class="text-muted">Dipendenti</small>
                                 <div>{{ cliente.dipendenti or '-' }}</div>

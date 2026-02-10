@@ -181,10 +181,6 @@ def riacquisisci_pdf(pdf_info, conn, logger, dry_run=False, solo_vuoti=False):
     
     # --- 6. Aggiorna database ---
     if not dry_run:
-        # Non aggiornare data_report_creditsafe per non perdere la data originale
-        # a meno che non sia vuota
-        if cliente['data_report_creditsafe']:
-            dati.pop('data_report_creditsafe', None)
         
         aggiorna_cliente_da_creditsafe(conn, cliente_id, dati, logger)
     

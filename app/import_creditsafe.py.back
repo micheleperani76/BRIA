@@ -2,7 +2,7 @@
 # ==============================================================================
 # GESTIONE FLOTTA - Import PDF Creditsafe
 # ==============================================================================
-# Versione: 2.3.2
+# Versione: 2.2.0
 # Data: 2026-02-10
 # Descrizione: Estrazione dati da PDF Creditsafe e inserimento nel database
 # Correzioni v1.0.2: Fix regex ATECO, descrizione attivita, capogruppo
@@ -13,9 +13,6 @@
 # Correzioni v1.0.7: Fix ricomposizione con testo mescolato (es: "25020 C" + "...IGOLE BS")
 # Correzioni v2.1.0: Fix accento attivita/attività, euro €/&euro;, valori negativi bilancio
 # Correzioni v2.2.0: Fix capogruppo cross-page, header creditsafe, ATECO 2025
-# Correzioni v2.3.0: Estrazione completa ATECO (SAE, RAE, ATECO 2007, desc multilinea)
-# Correzioni v2.3.1: Data report da footer PDF (non piu datetime.now)
-# Correzioni v2.3.2: Data report spostata in estrai_dati_azienda (usata anche da riacquisisci)
 # ==============================================================================
 #
 # ╔════════════════════════════════════════════════════════════════════════════╗
@@ -42,9 +39,6 @@
 # ║     - I footer E header pagine vengano rimossi (creditsafe logo)         ║
 # ║     - La regex capogruppo gestisca contenuto cross-page                  ║
 # ║     - Le regex ATECO accettino sia "2007" sia "2025" (cambiano!)         ║
-# ║     - SAE/RAE/ATECO 2007 vengano estratti quando presenti              ║
-# ║     - desc_ateco pulisca rumore layout 2 colonne (Di cui cancellate)   ║
-# ║     - desc_attivita sia multilinea (re.DOTALL)                         ║
 # ║     - I pattern € accettino sia "€" sia "&euro;"                         ║
 # ║                                                                          ║
 # ╚════════════════════════════════════════════════════════════════════════════╝
@@ -461,102 +455,35 @@ def estrai_dati_azienda(testo):
     if m:
         dati['dipendenti'] = int(m.group(1))
     
-    # --- ATTIVITA E CODICI ATECO ---
-    # Layout PDF Creditsafe: sezione "Informazioni settore industriale"
-    # Struttura a 2 colonne con possibili campi:
-    #   Codice ateco 2025/2007 XXXXXX | N° di società nel macro settore XXXXX
-    #   Descrizione ateco 2025/2007 ... | Di cui cancellate XXXXX
-    #   Codice SAE XXX              | Codice RAE XXX
-    #   Codice ateco 2007 XXXXXX    (opzionale, presente solo se diverso da 2025)
-    #   Descrizione ateco 2007 ...  (opzionale)
-    #   Descrizione attività svolta ... (multilinea)
+    # --- ATTIVITA ---
     
-    # Codice ATECO primario (il primo che appare: 2025 o 2007)
-    # Cattura anche l'anno per sapere quale versione e'
-    m = re.search(r'Codice\s+ateco\s+(\d{4})\s+([\d.]+)', testo, re.IGNORECASE)
+    # Codice ATECO (case insensitive - nel PDF può essere "Codice ateco 2007" o "Codice ateco 2025")
+    # NOTA: Creditsafe ha cambiato da ATECO 2007 a ATECO 2025 (storico eventi 24/11/2025)
+    m = re.search(r'Codice\s+ateco\s+\d{4}\s+([\d.]+)', testo, re.IGNORECASE)
     if m:
-        dati['codice_ateco'] = m.group(2)
+        dati['codice_ateco'] = m.group(1)
     
-    # Descrizione ATECO primario (2025 o primo che appare)
-    # ATTENZIONE: il layout a 2 colonne mescola "Di cui cancellate" sulla stessa riga
-    # Cattura tutto fino a Codice SAE/ateco 2007/Descrizione attivita, poi pulisce il rumore
-    m = re.search(
-        r'Descrizione\s+ateco\s+\d{4}\s+(.+?)(?=Codice\s+SAE|Codice\s+ateco\s+2007|Descrizione\s+attivit|Capogruppo|Dati\s+finanziari)',
-        testo, re.IGNORECASE | re.DOTALL
-    )
+    # Descrizione ATECO (può essere su più righe, termina prima di "Descrizione attivit[aà]")
+    # NOTA: accetta sia "ateco 2007" sia "ateco 2025"
+    m = re.search(r'Descrizione\s+ateco\s+\d{4}\s+(.+?)(?=Di\s+cui\s+cancellate|Descrizione\s+attivit|Codice\s+SAE|Codice\s+RAE|Capogruppo|Dati\s+finanziari|$)', testo, re.IGNORECASE | re.DOTALL)
     if m:
-        desc = m.group(1)
-        # Rimuovi rumore layout 2 colonne
-        desc = re.sub(r'Di\s+cui\s+cancellate\s+[\d.,]+', '', desc)
-        desc = re.sub(r"N..\s+di\s+societ.\s+nel\s+macro\s*\n?\s*settore\s+[\d.,]+", '', desc)
-        desc = re.sub(r'\s+', ' ', desc).strip()
-        # Safety net: tronca a 300 caratteri
-        if len(desc) > 300:
-            desc = desc[:300].rsplit(' ', 1)[0]
+        # Pulisce newline e spazi multipli
+        desc = re.sub(r'\s+', ' ', m.group(1)).strip()
+        # Safety net: tronca a 200 caratteri (evita cattura intero PDF se regex sfora)
+        if len(desc) > 200:
+            desc = desc[:200].rsplit(' ', 1)[0]  # Tronca su parola intera
         dati['desc_ateco'] = pulisci_testo(desc)
     
-    # Codice SAE (stesso layout: "Codice SAE 430 Codice RAE 830" su stessa riga)
-    m = re.search(r'Codice\s+SAE\s+(\d+)', testo)
+    # Descrizione attivita svolta (formato: "Descrizione attivit[aà] svolta XXXXX")
+    # NOTA: pdfplumber estrae "attività" con accento, servono entrambe le varianti
+    m = re.search(r'Descrizione\s+attivit.\s+svolta\s+(.+?)(?:\n|Capogruppo|Dati\s+finanziari|$)', testo)
     if m:
-        dati['codice_sae'] = m.group(1)
-    
-    # Codice RAE
-    m = re.search(r'Codice\s+RAE\s+(\d+)', testo)
-    if m:
-        dati['codice_rae'] = m.group(1)
-    
-    # Codice ATECO 2007 (opzionale - presente solo se c'e' anche il 2025)
-    m = re.search(r'Codice\s+ateco\s+2007\s+([\d.]+)', testo, re.IGNORECASE)
-    if m:
-        dati['codice_ateco_2007'] = m.group(1)
-    
-    # Descrizione ATECO 2007 (opzionale)
-    m = re.search(
-        r'Descrizione\s+ateco\s+2007\s+(.+?)(?=Descrizione\s+attivit|Codice|Capogruppo|Dati\s+finanziari|\n)',
-        testo, re.IGNORECASE
-    )
-    if m:
-        dati['desc_ateco_2007'] = pulisci_testo(m.group(1).strip())
-    
-    # Descrizione attivita svolta (MULTILINEA - può andare su più righe)
-    # Termina a: Capogruppo, Dati finanziari, o fine testo
-    m = re.search(
-        r'Descrizione\s+attivit.\s+svolta\s+(.+?)(?=Capogruppo|Dati\s+finanziari|$)',
-        testo, re.DOTALL
-    )
-    if m:
-        desc = re.sub(r'\s+', ' ', m.group(1)).strip()
-        # Safety net: tronca a 500 caratteri
-        if len(desc) > 500:
-            desc = desc[:500].rsplit(' ', 1)[0]
-        dati['desc_attivita'] = pulisci_testo(desc)
+        dati['desc_attivita'] = pulisci_testo(m.group(1))
     else:
         # Fallback: formato alternativo senza "svolta"
-        m = re.search(
-            r'Descrizione\s+attivit.\s+([A-Z][A-Z\s]+?)(?=Capogruppo|Codice|Dati\s+finanziari|\n)',
-            testo
-        )
+        m = re.search(r'Descrizione\s+attivit.\s+([A-Z][A-Z\s]+?)(?:\n|Capogruppo|Codice|Dati\s+finanziari|$)', testo)
         if m:
-            dati['desc_attivita'] = pulisci_testo(m.group(1).strip())
-    
-    # --- DATA REPORT CREDITSAFE ---
-    # Estratta dal footer/header PDF: "Richiesto il: 4:58 lunedì 9º febbraio 2026"
-    # NOTA: nel testo pulito sopravvive la versione header (pagina 1)
-    _mesi_it = {
-        'gennaio': 1, 'febbraio': 2, 'marzo': 3, 'aprile': 4,
-        'maggio': 5, 'giugno': 6, 'luglio': 7, 'agosto': 8,
-        'settembre': 9, 'ottobre': 10, 'novembre': 11, 'dicembre': 12
-    }
-    m = re.search(r'Richiesto\s+il\s*:\s*\d{1,2}:\d{2}\s+\w+\s+(\d{1,2}).?\s+(\w+)\s+(\d{4})', testo)
-    if m:
-        try:
-            _g = int(m.group(1))
-            _m = _mesi_it.get(m.group(2).lower(), 0)
-            _a = int(m.group(3))
-            if _m:
-                dati['data_report_creditsafe'] = f'{_a:04d}-{_m:02d}-{_g:02d}'
-        except (ValueError, TypeError):
-            pass
+            dati['desc_attivita'] = pulisci_testo(m.group(1))
     
     # --- CAPOGRUPPO ---
     # Formato PDF:
@@ -762,10 +689,7 @@ def processa_pdf(pdf_path, conn, logger):
     
     dati['nome_cliente'] = dati.get('ragione_sociale', estrai_nome_da_filename(nome_file))
     dati['file_pdf'] = nome_file
-    # Data report: gia estratta da estrai_dati_azienda() dal testo PDF
-    # Fallback: data odierna se non trovata
-    if not dati.get('data_report_creditsafe'):
-        dati['data_report_creditsafe'] = datetime.now().strftime('%Y-%m-%d')
+    dati['data_report_creditsafe'] = datetime.now().strftime('%Y-%m-%d')
     
     logger.info(f"  P.IVA: {dati.get('p_iva', 'N/D')}")
     logger.info(f"  Ragione sociale: {dati.get('ragione_sociale', 'N/D')}")
