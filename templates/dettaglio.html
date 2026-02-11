@@ -744,41 +744,7 @@
     </div>
 </div>
 
-<!-- Modal Modifica Capogruppo -->
-<div class="modal fade" id="modalCapogruppo" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-people"></i> Modifica Capogruppo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="post" action="/cliente/{{ cliente.id }}/capogruppo/modifica">
-                <div class="modal-body">
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="capogruppo_protetto" id="checkProteggiCapogruppo" value="1" {% if cliente.capogruppo_protetto %}checked{% endif %}>
-                        <label class="form-check-label" for="checkProteggiCapogruppo">
-                            <i class="bi bi-lock-fill text-warning"></i> <strong>Proteggi da sovrascrittura</strong>
-                            <small class="text-muted d-block">Se attivo, i prossimi import Creditsafe non modificheranno questi dati</small>
-                        </label>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nome / Ragione Sociale</label>
-                        <input type="text" class="form-control" name="capogruppo_nome" value="{{ cliente.capogruppo_nome or '' }}" placeholder="Nome persona o azienda">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Codice Fiscale / P.IVA</label>
-                        <input type="text" class="form-control" name="capogruppo_cf" value="{{ cliente.capogruppo_cf or '' }}" placeholder="CF persona (16 car.) o P.IVA azienda (11 cifre)">
-                        <small class="text-muted">Persona fisica: 16 caratteri | Azienda: 11 cifre</small>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-check"></i> Salva</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- Modal Capogruppo rimosso - ora in _content.html -->
 
 
 <!-- Modal Modifica SDI/BIC -->
@@ -1256,6 +1222,4 @@ function eliminaReferente(id, nome) {
     new bootstrap.Modal(document.getElementById('modalEliminaReferente')).show();
 }
 </script>
-{% include "dettaglio/collegamenti/_modal.html" %}
-{% include "dettaglio/collegamenti/_scripts.html" %}
 {% endblock %}

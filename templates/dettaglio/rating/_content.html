@@ -1,24 +1,35 @@
 {# ==============================================================================
-   RATING & INFO - Riquadro unificato
+   RIQUADRO RATING CREDITSAFE
+   Versione: 2.0.0
    Data: 2026-02-11
+   Modifiche v2: header standard "Rating Creditsafe", dati nel body
    ============================================================================== #}
+
 <div class="card mb-3">
+    <div class="card-header py-2">
+        <span><i class="bi bi-shield-check me-1"></i> Rating Creditsafe</span>
+    </div>
     <div class="card-body py-2">
+        {% if cliente.score %}
         <div class="d-flex align-items-center mb-2">
-            <i class="bi bi-shield-check me-2"></i>
-            {% if cliente.score %}
             <span class="score-badge score-{{ cliente.score }} me-2" style="width: 30px; height: 30px; font-size: 1rem;">{{ cliente.score }}</span>
-            <span>Rating {{ cliente.score }}{% if cliente.punteggio_rischio %} - Rischio: {{ cliente.punteggio_rischio }}/100{% endif %}</span>
-            {% else %}
-            <span class="text-muted">Nessun rating disponibile</span>
-            {% endif %}
+            <span class="">{% if cliente.punteggio_rischio %} - Rischio: {{ cliente.punteggio_rischio }}/100{% endif %}</span>
         </div>
-        <div class="border-top pt-2 small">
+        {% else %}
+        <div class="text-muted small mb-2">Nessun rating disponibile</div>
+        {% endif %}
+        <div class="small">
             {% if cliente.data_report_creditsafe %}
-            <div class="d-flex justify-content-between"><span class="text-muted">Creditsafe</span><span>{{ cliente.data_report_creditsafe[:10] }}</span></div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">PDF Creditsafe aggiornato alla data:</span>
+                <span>{{ cliente.data_report_creditsafe[:10] }}</span>
+            </div>
             {% endif %}
             {% if cliente.data_import_flotta %}
-            <div class="d-flex justify-content-between"><span class="text-muted">Flotta</span><span>{{ cliente.data_import_flotta[:10] }}</span></div>
+            <div class="d-flex justify-content-between">
+                <span class="text-muted">Flotta</span>
+                <span>{{ cliente.data_import_flotta[:10] }}</span>
+            </div>
             {% endif %}
             {% if not cliente.data_report_creditsafe and not cliente.data_import_flotta %}
             <span class="text-muted">Nessuna info disponibile</span>

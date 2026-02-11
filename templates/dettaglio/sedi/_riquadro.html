@@ -1,12 +1,20 @@
 {# ==============================================================================
-   COMPONENTE MODULARE: Sedi Aggiuntive (Collassabile + Referente)
+   COMPONENTE MODULARE: Sedi Aggiuntive (Preview + Espansione Scrollabile)
    ==============================================================================
-   Versione: 2.0.0
-   Data: 2026-01-26
+   Versione: 3.0.0
+   Data: 2026-02-11
    Descrizione: Elenco sedi aggiuntive con layout compatto
-                - Riga: [Badge] Nome | Citta | Referente
+                - Default: prime 2 righe visibili (preview)
+                - Espanso: griglia scrollabile che riempie il riquadro
                 - Clic riga espande dettagli
                 - Referente cliccabile
+                - CRUD: modifica/cancella/rinomina nel dettaglio sede
+   
+   MODIFICHE v3.0:
+   - Rimosso bootstrap collapse
+   - Preview 2 righe + espansione scrollabile
+   - Espansione nasconde dati aziendali sopra
+   - Tasto + ancorato in basso
    
    USO:
    {% include "dettaglio/sedi/_riquadro.html" %}
@@ -15,10 +23,11 @@
    - cliente: oggetto cliente con id
    ============================================================================== #}
 
-<!-- Sedi Aggiuntive (collassabile) -->
-<div class="mt-2" id="container-sedi">
-    <div class="d-flex align-items-center justify-content-between">
-        <a href="#" class="text-decoration-none text-muted small" data-bs-toggle="collapse" data-bs-target="#collapse-sedi" id="toggle-sedi">
+<!-- Sedi Aggiuntive (preview + espandibile) -->
+<div class="mt-2" id="container-sedi" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+    <!-- Header: Altre Sedi + freccia + tasto + -->
+    <div class="d-flex align-items-center justify-content-between" style="flex-shrink: 0;">
+        <a href="#" class="text-decoration-none text-muted small" onclick="toggleSediExpand(); return false;" id="toggle-sedi">
             <i class="bi bi-chevron-right me-1 collapse-icon-sedi"></i>
             <i class="bi bi-geo-alt me-1"></i>Altre Sedi (<span id="count-sedi">0</span>)
         </a>
@@ -27,8 +36,9 @@
         </button>
     </div>
     
-    <div class="collapse" id="collapse-sedi">
-        <div class="mt-2" id="lista-sedi">
+    <!-- Lista sedi (preview o espansa) -->
+    <div id="sedi-lista-wrapper" class="mt-1" style="max-height: 70px; overflow: hidden; transition: all 0.3s ease;">
+        <div id="lista-sedi">
             <div class="text-center text-muted py-2">
                 <div class="spinner-border spinner-border-sm" role="status"></div>
                 <small class="ms-2">Caricamento...</small>
@@ -48,6 +58,15 @@
             <div class="modal-body">
                 <input type="hidden" id="sede-edit-id" value="">
                 
+                <!-- Switch protezione -->
+                <div class="form-check form-switch mb-3" id="sede-protezione-wrapper" style="display:none;">
+                    <input class="form-check-input" type="checkbox" id="sede-protetto">
+                    <label class="form-check-label" for="sede-protetto">
+                        <i class="bi bi-lock-fill text-warning"></i> <strong>Proteggi da sovrascrittura</strong>
+                        <small class="text-muted d-block">Se attivo, i prossimi import CRM/Creditsafe non modificheranno questa sede</small>
+                    </label>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-label">Tipo Sede</label>
@@ -59,6 +78,7 @@
                             <option value="Ufficio">Ufficio</option>
                             <option value="Stabilimento">Stabilimento</option>
                             <option value="Punto Vendita">Punto Vendita</option>
+                            <option value="Indirizzo Fatturazione">Indirizzo Fatturazione</option>
                             <option value="Altro">Altro</option>
                         </select>
                     </div>
@@ -90,16 +110,12 @@
                         <label class="form-label">Email Sede <small class="text-muted">(opz.)</small></label>
                         <input type="email" class="form-control" id="sede-email">
                     </div>
-                    
-                    <!-- Referente collegato -->
-                    <div class="col-12">
-                        <label class="form-label"><i class="bi bi-person me-1"></i>Referente collegato <small class="text-muted">(opz.)</small></label>
+                    <div class="col-md-6">
+                        <label class="form-label">Referente <small class="text-muted">(opz.)</small></label>
                         <select class="form-select" id="sede-referente">
                             <option value="">-- Nessun referente --</option>
                         </select>
-                        <small class="text-muted">Seleziona un referente esistente da associare a questa sede</small>
                     </div>
-                    
                     <div class="col-12">
                         <label class="form-label">Note <small class="text-muted">(opz.)</small></label>
                         <textarea class="form-control" id="sede-note" rows="2"></textarea>
@@ -107,33 +123,8 @@
                 </div>
             </div>
             <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Annulla</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="salvaSede()">
-                    <i class="bi bi-check-lg"></i> Salva
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Dettaglio Sede -->
-<div class="modal fade" id="modalDettaglioSede" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <h6 class="modal-title"><i class="bi bi-geo-alt me-1"></i><span id="dettaglio-sede-title">Dettaglio Sede</span></h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="dettaglio-sede-body">
-            </div>
-            <div class="modal-footer py-2">
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btn-modifica-sede">
-                    <i class="bi bi-pencil"></i> Modifica
-                </button>
-                <button type="button" class="btn btn-outline-danger btn-sm" id="btn-elimina-sede">
-                    <i class="bi bi-trash"></i> Elimina
-                </button>
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaSede()">Salva</button>
             </div>
         </div>
     </div>
@@ -165,7 +156,8 @@
     transform: rotate(90deg);
 }
 .sede-row {
-    cursor: pointer;
+    cursor: default;
+
     padding: 6px 8px;
     border-radius: 4px;
     margin-bottom: 2px;
@@ -189,6 +181,12 @@
 .referente-link:hover {
     text-decoration: underline;
 }
+/* Wrapper sedi espanso */
+#sedi-lista-wrapper.sedi-expanded {
+    max-height: none !important;
+    overflow-y: auto !important;
+    flex: 1;
+}
 </style>
 
 <script>
@@ -196,25 +194,39 @@
 const clienteIdSedi = {{ cliente.id }};
 let sediCliente = [];
 let referentiDisponibili = [];
+let sediEspanse = false;
 
 // Carica dati iniziali
 document.addEventListener('DOMContentLoaded', function() {
     caricaSedi();
-    
-    // Ruota icona quando collassa/espande
-    const collapseSedi = document.getElementById('collapse-sedi');
-    const toggleIcon = document.querySelector('.collapse-icon-sedi');
-    
-    if (collapseSedi && toggleIcon) {
-        collapseSedi.addEventListener('show.bs.collapse', function() {
-            toggleIcon.classList.add('rotated');
-        });
-        collapseSedi.addEventListener('hide.bs.collapse', function() {
-            toggleIcon.classList.remove('rotated');
-        });
-    }
 });
 
+// =====================================================================
+// TOGGLE ESPANSIONE SEDI
+// =====================================================================
+function toggleSediExpand() {
+    sediEspanse = !sediEspanse;
+    
+    const wrapper = document.getElementById('sedi-lista-wrapper');
+    const datiRows = document.getElementById('dati-aziendali-rows');
+    const icon = document.querySelector('.collapse-icon-sedi');
+    
+    if (sediEspanse) {
+        // Espandi: nascondi dati, mostra tutte le sedi scrollabili
+        if (datiRows) datiRows.style.display = 'none';
+        wrapper.classList.add('sedi-expanded');
+        if (icon) icon.classList.add('rotated');
+    } else {
+        // Comprimi: mostra dati, preview 2 righe
+        if (datiRows) datiRows.style.display = '';
+        wrapper.classList.remove('sedi-expanded');
+        if (icon) icon.classList.remove('rotated');
+    }
+}
+
+// =====================================================================
+// CARICAMENTO E RENDERING SEDI
+// =====================================================================
 function caricaSedi() {
     fetch(`/api/cliente/${clienteIdSedi}/sedi`)
         .then(r => r.json())
@@ -260,148 +272,77 @@ function renderSedi() {
         // Nome/Denominazione
         const nome = sede.denominazione || '';
         
-        // Citta
-        const citta = sede.citta || '';
-        
-        // Referente (se presente) - cliccabile per scroll alla sezione referenti
-        let referenteHtml = '';
+        // Contatto: referente OPPURE telefono/email
+        let contattoHtml = '';
         if (sede.ref_nome) {
-            const refTel = sede.ref_cellulare || sede.ref_telefono || '';
-            const refTelIcon = refTel ? `<i class="bi bi-telephone-fill ms-1" title="${refTel}"></i>` : '';
-            referenteHtml = `<a href="#" class="referente-link" onclick="event.stopPropagation(); scrollToReferente(${sede.ref_id}); return false;" title="Vai al referente">${sede.ref_nome.trim()}${refTelIcon}</a>`;
+            contattoHtml = ' <span class="text-muted">| <i class="bi bi-person"></i> ' + sede.ref_nome.trim() + '</span>';
+        } else {
+            let parts = [];
+            if (sede.telefono) parts.push('<i class="bi bi-telephone"></i> ' + sede.telefono);
+            if (sede.email) parts.push('<i class="bi bi-envelope"></i> ' + sede.email);
+            if (parts.length > 0) contattoHtml = ' <span class="text-muted">| ' + parts.join(' ') + '</span>';
         }
         
-        // Telefono sede (se no referente)
-        let telefonoHtml = '';
-        if (!sede.ref_nome && sede.telefono) {
-            telefonoHtml = `<span class="text-muted"><i class="bi bi-telephone"></i> ${sede.telefono}</span>`;
+        // Note (se presenti)
+        let noteHtml = '';
+        if (sede.note) {
+            noteHtml = ' <span class="text-muted fst-italic">| ' + sede.note + '</span>';
         }
         
-        // Costruisci riga compatta
-        // Badge cliccabile per aprire dettaglio sede
-        // Referente cliccabile per scroll alla sezione referenti
+        // Tooltip completo
+        const sedeTooltip = [nome, sede.indirizzo, sede.cap, sede.citta, sede.provincia ? '(' + sede.provincia + ')' : '', sede.telefono, sede.email, sede.ref_nome ? 'Ref: ' + sede.ref_nome.trim() : '', sede.note].filter(Boolean).join(' ');
+
+        // Riga compatta
         html += `
-            <div class="sede-row d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center flex-wrap gap-2">
-                    <span class="badge bg-secondary sede-badge me-2 sede-badge-click" onclick="apriDettaglioSede(${sede.id})" style="cursor:pointer;" title="Vedi dettaglio sede">${sede.tipo_sede}</span>
-                    ${nome ? `<strong>${nome}</strong>` : ''}
-                    ${nome && citta ? '<span class="text-muted">|</span>' : ''}
-                    ${citta ? `<span>${citta}</span>` : ''}
-                    ${(nome || citta) && (referenteHtml || telefonoHtml) ? '<span class="text-muted">|</span>' : ''}
-                    ${referenteHtml}
-                    ${telefonoHtml}
+            <div class="sede-row d-flex align-items-center">
+                ${tipoBadge}${sede.protetto ? '<span class="badge bg-warning text-dark me-1" title="Protetto da sovrascrittura import"><i class="bi bi-lock-fill"></i></span>' : ''}
+                <span class="text-truncate" style="flex: 1; min-width: 0;" title="${sedeTooltip}">
+                    ${nome ? '<span class=\"fw-semibold\">' + nome + '</span> ' : ''}${sede.indirizzo || ''} ${sede.cap || ''} ${sede.citta || ''} ${sede.provincia ? '(' + sede.provincia + ')' : ''}${contattoHtml}${noteHtml}
+                </span>
+                <div class="ms-auto d-flex align-items-center gap-1">
+                    <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="event.stopPropagation(); modificaSede(${sede.id})" title="Modifica">
+                        <i class="bi bi-pencil" style="font-size:0.7rem"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="event.stopPropagation(); confermaCancellaSede(${sede.id}, '${(sede.denominazione || sede.citta || '').replace(/'/g, "\\'")}')" title="Elimina">
+                        <i class="bi bi-trash" style="font-size:0.7rem"></i>
+                    </button>
                 </div>
-                <i class="bi bi-chevron-right text-muted" onclick="apriDettaglioSede(${sede.id})" style="cursor:pointer;" title="Vedi dettaglio"></i>
-            </div>`;
+            </div>
+`;
     });
     
     container.innerHTML = html;
 }
 
-function apriDettaglioSede(id) {
-    const sede = sediCliente.find(s => s.id === id);
-    if (!sede) return;
-    
-    // Costruisci indirizzo
-    let indirizzo = '';
-    if (sede.indirizzo) indirizzo += sede.indirizzo;
-    if (sede.cap || sede.citta) {
-        if (indirizzo) indirizzo += ', ';
-        if (sede.cap) indirizzo += sede.cap + ' ';
-        if (sede.citta) indirizzo += sede.citta;
-    }
-    if (sede.provincia) indirizzo += ' (' + sede.provincia + ')';
-    
-    // Link Maps
-    const mapsLink = indirizzo ? 
-        `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(indirizzo)}" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt-fill text-danger"></i> ${indirizzo}</a>` : 
-        '<span class="text-muted">Non specificato</span>';
-    
-    // Referente
-    let referenteHtml = '<span class="text-muted">Nessuno</span>';
-    if (sede.ref_nome) {
-        const refTel = sede.ref_cellulare || sede.ref_telefono || '';
-        const refEmail = sede.ref_email || '';
-        referenteHtml = `
-            <div>
-                <strong>${sede.ref_nome}</strong>
-                ${sede.ref_ruolo ? `<span class="badge bg-info ms-1">${sede.ref_ruolo}</span>` : ''}
-            </div>
-            ${refTel ? `<div class="small"><i class="bi bi-telephone"></i> <a href="tel:${refTel}">${refTel}</a></div>` : ''}
-            ${refEmail ? `<div class="small"><i class="bi bi-envelope"></i> <a href="mailto:${refEmail}">${refEmail}</a></div>` : ''}
-        `;
-    }
-    
-    // Titolo
-    const titolo = sede.denominazione ? `${sede.tipo_sede} - ${sede.denominazione}` : sede.tipo_sede;
-    document.getElementById('dettaglio-sede-title').textContent = titolo;
-    
-    // Body
-    document.getElementById('dettaglio-sede-body').innerHTML = `
-        <table class="table table-sm mb-0">
-            <tr>
-                <td class="text-muted" style="width: 120px;">Indirizzo</td>
-                <td>${mapsLink}</td>
-            </tr>
-            ${sede.telefono ? `<tr><td class="text-muted">Telefono</td><td><a href="tel:${sede.telefono}">${sede.telefono}</a></td></tr>` : ''}
-            ${sede.email ? `<tr><td class="text-muted">Email</td><td><a href="mailto:${sede.email}">${sede.email}</a></td></tr>` : ''}
-            <tr>
-                <td class="text-muted">Referente</td>
-                <td>${referenteHtml}</td>
-            </tr>
-            ${sede.note ? `<tr><td class="text-muted">Note</td><td class="fst-italic">${sede.note}</td></tr>` : ''}
-        </table>
-    `;
-    
-    // Pulsanti footer
-    document.getElementById('btn-modifica-sede').onclick = function() {
-        bootstrap.Modal.getInstance(document.getElementById('modalDettaglioSede')).hide();
-        setTimeout(() => modificaSede(id), 300);
-    };
-    document.getElementById('btn-elimina-sede').onclick = function() {
-        if (confirm('Eliminare questa sede?')) {
-            eliminaSede(id);
-            bootstrap.Modal.getInstance(document.getElementById('modalDettaglioSede')).hide();
-        }
-    };
-    
-    new bootstrap.Modal(document.getElementById('modalDettaglioSede')).show();
-}
 
-function apriModalReferente(refId, nome, ruolo, cellulare, telefono, email) {
-    document.getElementById('ref-modal-nome').textContent = nome;
+
+// =====================================================================
+// DETTAGLIO REFERENTE (modal)
+// =====================================================================
+function mostraDettaglioReferente(refId) {
+    const ref = referentiDisponibili.find(r => r.id === refId);
+    if (!ref) return;
     
-    let html = '<table class="table table-sm mb-0">';
-    if (ruolo) {
-        html += `<tr><td class="text-muted" style="width:80px;">Ruolo</td><td><span class="badge bg-info">${ruolo}</span></td></tr>`;
-    }
-    if (cellulare) {
-        html += `<tr><td class="text-muted">Cellulare</td><td><a href="tel:${cellulare}"><i class="bi bi-phone"></i> ${cellulare}</a></td></tr>`;
-    }
-    if (telefono) {
-        html += `<tr><td class="text-muted">Telefono</td><td><a href="tel:${telefono}"><i class="bi bi-telephone"></i> ${telefono}</a></td></tr>`;
-    }
-    if (email) {
-        html += `<tr><td class="text-muted">Email</td><td><a href="mailto:${email}"><i class="bi bi-envelope"></i> ${email}</a></td></tr>`;
-    }
-    html += '</table>';
+    document.getElementById('ref-modal-nome').textContent = ref.nome || 'Referente';
     
-    document.getElementById('ref-modal-body').innerHTML = html;
+    let body = '';
+    if (ref.ruolo) body += `<div class="mb-2"><small class="text-muted">Ruolo</small><div>${ref.ruolo}</div></div>`;
+    if (ref.cellulare) body += `<div class="mb-2"><small class="text-muted">Cellulare</small><div><a href="tel:${ref.cellulare}">${ref.cellulare}</a></div></div>`;
+    if (ref.telefono) body += `<div class="mb-2"><small class="text-muted">Telefono</small><div><a href="tel:${ref.telefono}">${ref.telefono}</a></div></div>`;
+    if (ref.email) body += `<div class="mb-2"><small class="text-muted">Email</small><div><a href="mailto:${ref.email}">${ref.email}</a></div></div>`;
+    
+    document.getElementById('ref-modal-body').innerHTML = body || '<p class="text-muted">Nessun dettaglio disponibile</p>';
     new bootstrap.Modal(document.getElementById('modalDettaglioReferente')).show();
 }
 
-function scrollToReferente(refId) {
-    // Cerca la riga del referente nella tabella
-    const refRow = document.querySelector(`tr[data-referente-id="${refId}"]`);
-    if (refRow) {
-        refRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        refRow.classList.add('table-warning');
-        setTimeout(() => refRow.classList.remove('table-warning'), 2000);
-    }
-}
-
+// =====================================================================
+// CRUD SEDI
+// =====================================================================
 function apriModalSede() {
     document.getElementById('sede-edit-id').value = '';
+    document.getElementById('modalSedeTitle').textContent = 'Aggiungi Sede';
+    document.getElementById('sede-protezione-wrapper').style.display = 'none';
+    document.getElementById('sede-protetto').checked = false;
     document.getElementById('sede-tipo').value = 'Operativa';
     document.getElementById('sede-denominazione').value = '';
     document.getElementById('sede-indirizzo').value = '';
@@ -412,8 +353,6 @@ function apriModalSede() {
     document.getElementById('sede-email').value = '';
     document.getElementById('sede-referente').value = '';
     document.getElementById('sede-note').value = '';
-    document.getElementById('modalSedeTitle').textContent = 'Aggiungi Sede';
-    
     new bootstrap.Modal(document.getElementById('modalSede')).show();
 }
 
@@ -422,6 +361,7 @@ function modificaSede(id) {
     if (!sede) return;
     
     document.getElementById('sede-edit-id').value = id;
+    document.getElementById('modalSedeTitle').textContent = 'Modifica Sede';
     document.getElementById('sede-tipo').value = sede.tipo_sede || 'Operativa';
     document.getElementById('sede-denominazione').value = sede.denominazione || '';
     document.getElementById('sede-indirizzo').value = sede.indirizzo || '';
@@ -432,8 +372,6 @@ function modificaSede(id) {
     document.getElementById('sede-email').value = sede.email || '';
     document.getElementById('sede-referente').value = sede.referente_id || '';
     document.getElementById('sede-note').value = sede.note || '';
-    document.getElementById('modalSedeTitle').textContent = 'Modifica Sede';
-    
     new bootstrap.Modal(document.getElementById('modalSede')).show();
 }
 
@@ -450,7 +388,8 @@ function salvaSede() {
         telefono: document.getElementById('sede-telefono').value,
         email: document.getElementById('sede-email').value,
         referente_id: document.getElementById('sede-referente').value || null,
-        note: document.getElementById('sede-note').value
+        note: document.getElementById('sede-note').value,
+        protetto: document.getElementById('sede-protetto').checked ? 1 : 0
     };
     
     if (!payload.indirizzo && !payload.citta) {
@@ -477,11 +416,6 @@ function salvaSede() {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('modalSede')).hide();
             caricaSedi();
-            // Espandi la lista se era chiusa
-            const collapse = document.getElementById('collapse-sedi');
-            if (!collapse.classList.contains('show')) {
-                new bootstrap.Collapse(collapse, {show: true});
-            }
         } else {
             alert(data.error || 'Errore salvataggio');
         }
@@ -490,6 +424,12 @@ function salvaSede() {
         console.error(err);
         alert('Errore di rete');
     });
+}
+
+function confermaCancellaSede(id, nome) {
+    if (confirm('Eliminare la sede "' + nome + '"?')) {
+        eliminaSede(id);
+    }
 }
 
 function eliminaSede(id) {

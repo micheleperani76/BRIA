@@ -126,7 +126,7 @@ def get_collegamenti_cliente(conn, cliente_id):
                 WHEN cc.cliente_a_id = ? THEN cc.cliente_b_id 
                 ELSE cc.cliente_a_id 
             END as altro_cliente_id,
-            c.ragione_sociale as altro_cliente_nome,
+            COALESCE(c.ragione_sociale, c.nome_cliente) as altro_cliente_nome,
             c.p_iva as altro_cliente_piva,
             c.cod_fiscale as altro_cliente_cf,
             c.commerciale_id
@@ -213,10 +213,10 @@ def cerca_clienti_per_collegamento():
     sql = '''
         SELECT id, COALESCE(ragione_sociale, nome_cliente) as ragione_sociale, p_iva, cod_fiscale, commerciale_id
         FROM clienti
-        WHERE (ragione_sociale LIKE ? OR p_iva LIKE ? OR cod_fiscale LIKE ?)
+        WHERE (ragione_sociale LIKE ? OR nome_cliente LIKE ? OR p_iva LIKE ? OR cod_fiscale LIKE ?)
         AND id != ?
     '''
-    params = [f'%{query}%', f'%{query}%', f'%{query}%', cliente_id or 0]
+    params = [f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%', cliente_id or 0]
     
     # Filtro "solo miei clienti"
     if solo_miei and user_id:
@@ -460,3 +460,119 @@ def modifica_collegamento():
     conn.close()
     
     return jsonify({'success': True})
+
+
+# ==============================================================================
+# ROUTE: API GRAFO COLLEGAMENTI (multi-livello per D3.js)
+# ==============================================================================
+
+@collegamenti_bp.route('/api/cliente/<int:cliente_id>/grafo-collegamenti')
+@login_required
+def api_grafo_collegamenti(cliente_id):
+    """
+    Ritorna nodi e archi per il grafo D3.js force-directed.
+    Livello 1: collegamenti diretti del cliente
+    Livello 2: collegamenti dei collegati (extra, colore giallo)
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Nodo centrale
+        cursor.execute("SELECT id, COALESCE(ragione_sociale, nome_cliente) as nome FROM clienti WHERE id = ?", (cliente_id,))
+        row_centro = cursor.fetchone()
+        if not row_centro:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Cliente non trovato'})
+
+        nodi = {cliente_id: {'id': cliente_id, 'nome': row_centro['nome'], 'livello': 0}}
+        archi = []
+        archi_set = set()  # Per evitare duplicati
+
+        # === LIVELLO 1: collegamenti diretti ===
+        cursor.execute("""
+            SELECT 
+                cc.tipo_relazione,
+                cc.cliente_a_id,
+                cc.cliente_b_id,
+                CASE WHEN cc.cliente_a_id = ? THEN cc.cliente_b_id ELSE cc.cliente_a_id END as altro_id,
+                COALESCE(c.ragione_sociale, c.nome_cliente) as altro_nome
+            FROM collegamenti_clienti cc
+            JOIN clienti c ON c.id = CASE WHEN cc.cliente_a_id = ? THEN cc.cliente_b_id ELSE cc.cliente_a_id END
+            WHERE (cc.cliente_a_id = ? OR cc.cliente_b_id = ?)
+            AND cc.attivo = 1
+        """, (cliente_id, cliente_id, cliente_id, cliente_id))
+
+        collegati_livello1 = []
+        for row in cursor.fetchall():
+            altro_id = row['altro_id']
+            collegati_livello1.append(altro_id)
+
+            if altro_id not in nodi:
+                nodi[altro_id] = {'id': altro_id, 'nome': row['altro_nome'] or 'N/D', 'livello': 1}
+
+            # Determina descrizione relazione dal punto di vista del centro
+            usa_inverso = (row['cliente_b_id'] == cliente_id)
+            desc = get_descrizione_per_vista(row['tipo_relazione'], usa_inverso=usa_inverso)
+
+            # Arco source -> target
+            arco_key = tuple(sorted([cliente_id, altro_id]))
+            if arco_key not in archi_set:
+                archi_set.add(arco_key)
+                archi.append({
+                    'source': cliente_id,
+                    'target': altro_id,
+                    'relazione': desc,
+                    'livello': 1
+                })
+
+        # === LIVELLO 2: collegamenti dei collegati ===
+        for collegato_id in collegati_livello1:
+            cursor.execute("""
+                SELECT 
+                    cc.tipo_relazione,
+                    cc.cliente_a_id,
+                    cc.cliente_b_id,
+                    CASE WHEN cc.cliente_a_id = ? THEN cc.cliente_b_id ELSE cc.cliente_a_id END as altro_id,
+                    COALESCE(c.ragione_sociale, c.nome_cliente) as altro_nome
+                FROM collegamenti_clienti cc
+                JOIN clienti c ON c.id = CASE WHEN cc.cliente_a_id = ? THEN cc.cliente_b_id ELSE cc.cliente_a_id END
+                WHERE (cc.cliente_a_id = ? OR cc.cliente_b_id = ?)
+                AND cc.attivo = 1
+            """, (collegato_id, collegato_id, collegato_id, collegato_id))
+
+            for row in cursor.fetchall():
+                altro_id = row['altro_id']
+
+                # Salta se e' il nodo centrale (gia' livello 0)
+                if altro_id == cliente_id:
+                    continue
+
+                if altro_id not in nodi:
+                    nodi[altro_id] = {'id': altro_id, 'nome': row['altro_nome'] or 'N/D', 'livello': 2}
+
+                # Arco livello 2
+                usa_inverso = (row['cliente_b_id'] == collegato_id)
+                desc = get_descrizione_per_vista(row['tipo_relazione'], usa_inverso=usa_inverso)
+
+                arco_key = tuple(sorted([collegato_id, altro_id]))
+                if arco_key not in archi_set:
+                    archi_set.add(arco_key)
+                    archi.append({
+                        'source': collegato_id,
+                        'target': altro_id,
+                        'relazione': desc,
+                        'livello': 2
+                    })
+
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'nodi': list(nodi.values()),
+            'archi': archi
+        })
+
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})

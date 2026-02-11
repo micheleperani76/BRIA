@@ -1,27 +1,243 @@
 {# ==============================================================================
-   CAPOGRUPPO - File satellite (estratto da dettaglio.html)
-   Data estrazione: 2026-02-10 16:41
-   Generato da: modularizza_dettaglio.py
+   CAPOGRUPPO - Card multi-record con CRUD
+   ==============================================================================
+   Versione: 2.0.0
+   Data: 2026-02-11
+   Descrizione: Supporta piu' capogruppo per cliente
+                - Card altezza fissa con scroll
+                - Layout 2 colonne (3o sotto 1o, 4o sotto 2o)
+                - Protezione singola per record
+                - Modal aggiungi/modifica autocontenuto
+   
+   VARIABILI RICHIESTE:
+   - cliente: oggetto cliente con id
    ============================================================================== #}
-<div class="card mb-3">
+
+<div class="card mb-3" style="height: 220px; display: flex; flex-direction: column;">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
-        <span>
-            {% if cliente.capogruppo_cf and cliente.capogruppo_cf|length == 16 %}<i class="bi bi-person-fill"></i>{% else %}<i class="bi bi-building"></i>{% endif %}
-            Capogruppo
-            {% if cliente.capogruppo_protetto %}<span class="badge bg-warning text-dark ms-2" title="Protetto da sovrascrittura automatica"><i class="bi bi-lock-fill"></i></span>{% endif %}
-        </span>
-        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCapogruppo">
-            <i class="bi bi-pencil"></i> Modifica
+        <span><i class="bi bi-building"></i> Capogruppo</span>
+        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1" onclick="apriModalCapogruppo()" title="Aggiungi capogruppo">
+            <i class="bi bi-plus"></i>
         </button>
     </div>
-    <div class="card-body py-2">
-        <div class="mb-2">
-            <small class="text-muted">Nome / Ragione Sociale</small>
-            <div>{{ cliente.capogruppo_nome or '-' }}</div>
-        </div>
-        <div>
-            <small class="text-muted">Codice Fiscale / P.IVA</small>
-            <div><code>{{ cliente.capogruppo_cf or '-' }}</code></div>
+    <div class="card-body py-2" style="flex: 1; overflow-y: auto; min-height: 0;">
+        <div id="lista-capogruppo">
+            <div class="text-center text-muted py-2">
+                <div class="spinner-border spinner-border-sm" role="status"></div>
+                <small class="ms-2">Caricamento...</small>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modal Aggiungi/Modifica Capogruppo -->
+<div class="modal fade" id="modalCapogruppo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalCapogruppoTitle">Aggiungi Capogruppo</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="cg-edit-id" value="">
+
+                <!-- Switch protezione (solo in modifica) -->
+                <div class="form-check form-switch mb-3" id="cg-protezione-wrapper" style="display:none;">
+                    <input class="form-check-input" type="checkbox" id="cg-protetto">
+                    <label class="form-check-label" for="cg-protetto">
+                        <i class="bi bi-lock-fill text-warning"></i> <strong>Proteggi da sovrascrittura</strong>
+                        <small class="text-muted d-block">Se attivo, i prossimi import CRM/Creditsafe non modificheranno questo record</small>
+                    </label>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Nome / Ragione Sociale</label>
+                        <input type="text" class="form-control" id="cg-nome" placeholder="Nome persona o azienda">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Codice Fiscale / P.IVA</label>
+                        <input type="text" class="form-control" id="cg-codice-fiscale" placeholder="CF o P.IVA" style="text-transform: uppercase;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="salvaCapogruppo()">Salva</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.cg-item {
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+    position: relative;
+}
+.cg-actions {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+</style>
+
+<script>
+// Variabili locali
+const clienteIdCg = {{ cliente.id }};
+let capogruppoLista = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    caricaCapogruppo();
+});
+
+// =====================================================================
+// CARICAMENTO E RENDERING
+// =====================================================================
+function caricaCapogruppo() {
+    fetch(`/api/cliente/${clienteIdCg}/capogruppo`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                capogruppoLista = data.capogruppo;
+                renderCapogruppo();
+            }
+        })
+        .catch(err => console.error('Errore caricamento capogruppo:', err));
+}
+
+function renderCapogruppo() {
+    const container = document.getElementById('lista-capogruppo');
+
+    if (capogruppoLista.length === 0) {
+        container.innerHTML = `
+            <div class="text-muted text-center py-2 small">
+                <i class="bi bi-info-circle me-1"></i>Nessun capogruppo
+            </div>`;
+        return;
+    }
+
+    // Layout 2 colonne: disponi items in griglia
+    let html = '<div class="row g-2">';
+    capogruppoLista.forEach((cg, idx) => {
+        // Icona: persona se CF 16 char, altrimenti azienda
+        const icona = (cg.codice_fiscale && cg.codice_fiscale.length === 16) 
+            ? 'bi-person-fill' : 'bi-building';
+
+        // Badge protezione
+        const lockBadge = cg.protetto 
+            ? '<span class="badge bg-warning text-dark ms-1" title="Protetto da sovrascrittura"><i class="bi bi-lock-fill"></i></span>' 
+            : '';
+
+        html += `
+            <div class="col-6">
+                <div class="cg-item">
+                    <div class="cg-actions d-flex gap-1">
+                        <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="modificaCapogruppo(${cg.id})" title="Modifica">
+                            <i class="bi bi-pencil" style="font-size:0.7rem"></i>
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm py-0 px-1" onclick="confermaEliminaCapogruppo(${cg.id}, '${cg.nome.replace(/'/g, "\\'")}')" title="Elimina">
+                            <i class="bi bi-trash" style="font-size:0.7rem"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Nome / Ragione Sociale</small>${lockBadge}
+                    <div><i class="${icona} me-1"></i>${cg.nome}</div>
+                    <small class="text-muted">Codice Fiscale / P.IVA</small>
+                    <div><code>${cg.codice_fiscale || '-'}</code></div>
+                </div>
+            </div>`;
+    });
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+// =====================================================================
+// CRUD
+// =====================================================================
+function apriModalCapogruppo() {
+    document.getElementById('cg-edit-id').value = '';
+    document.getElementById('modalCapogruppoTitle').textContent = 'Aggiungi Capogruppo';
+    document.getElementById('cg-nome').value = '';
+    document.getElementById('cg-codice-fiscale').value = '';
+    document.getElementById('cg-protezione-wrapper').style.display = 'none';
+    document.getElementById('cg-protetto').checked = false;
+    new bootstrap.Modal(document.getElementById('modalCapogruppo')).show();
+}
+
+function modificaCapogruppo(id) {
+    const cg = capogruppoLista.find(c => c.id === id);
+    if (!cg) return;
+
+    document.getElementById('cg-edit-id').value = id;
+    document.getElementById('modalCapogruppoTitle').textContent = 'Modifica Capogruppo';
+    document.getElementById('cg-nome').value = cg.nome || '';
+    document.getElementById('cg-codice-fiscale').value = cg.codice_fiscale || '';
+    document.getElementById('cg-protezione-wrapper').style.display = '';
+    document.getElementById('cg-protetto').checked = cg.protetto == 1;
+    new bootstrap.Modal(document.getElementById('modalCapogruppo')).show();
+}
+
+function salvaCapogruppo() {
+    const editId = document.getElementById('cg-edit-id').value;
+
+    const payload = {
+        nome: document.getElementById('cg-nome').value.trim(),
+        codice_fiscale: document.getElementById('cg-codice-fiscale').value.trim(),
+        protetto: document.getElementById('cg-protetto').checked ? 1 : 0
+    };
+
+    if (!payload.nome) {
+        alert('Nome obbligatorio');
+        return;
+    }
+
+    let url, method;
+    if (editId) {
+        url = `/api/cliente/${clienteIdCg}/capogruppo/${editId}`;
+        method = 'PUT';
+    } else {
+        url = `/api/cliente/${clienteIdCg}/capogruppo`;
+        method = 'POST';
+    }
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalCapogruppo')).hide();
+            caricaCapogruppo();
+        } else {
+            alert(data.error || 'Errore salvataggio');
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Errore di rete');
+    });
+}
+
+function confermaEliminaCapogruppo(id, nome) {
+    if (confirm('Eliminare il capogruppo "' + nome + '"?')) {
+        eliminaCapogruppo(id);
+    }
+}
+
+function eliminaCapogruppo(id) {
+    fetch(`/api/cliente/${clienteIdCg}/capogruppo/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                caricaCapogruppo();
+            } else {
+                alert(data.error || 'Errore eliminazione');
+            }
+        });
+}
+</script>

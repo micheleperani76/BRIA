@@ -1,13 +1,15 @@
 {# ================================================
    RIQUADRO DATI CRM ZOHO
    Satellite per dettaglio.html (colonna destra)
-   Versione: 1.0.0 - 2026-02-09
+   Versione: 2.0.0 - 2026-02-11
+   Modifiche v2: card fissa, noleggiatori pri/sec
+                 su 2 colonne, GDPR ancorato fondo
    ================================================ #}
 
 {% set ha_dati_crm = cliente.crm_id or cliente.stato_crm or cliente.profilazione_flotta %}
 
 {% if ha_dati_crm %}
-<div class="card mb-3">
+<div class="card mb-3" style="height: 380px; display: flex; flex-direction: column;">
     <div class="card-header py-2 d-flex align-items-center justify-content-between">
         <span><i class="bi bi-cloud-arrow-down"></i> Dati CRM</span>
         {% if cliente.stato_crm %}
@@ -16,23 +18,28 @@
         </span>
         {% endif %}
     </div>
-    <div class="card-body py-2">
-        <div class="row g-2">
-            {# Profilazione Flotta e ID CRM #}
-            {% if cliente.profilazione_flotta or cliente.crm_id %}
+    <div class="card-body py-2" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-height: 0;">
+
+        {# === ZONA FISSA: Profilazione + CRM + Flotta === #}
+        <div class="row g-2" style="flex-shrink: 0;">
+            {# Profilazione Flotta #}
             <div class="col-6">
                 <small class="text-muted">Profilazione</small>
                 <div>
+                    {% if cliente.profilazione_flotta %}
                     {% set prof = cliente.profilazione_flotta %}
-                    <span class="badge {% if 'CORPORATE' in prof %}bg-danger{% elif 'LARGE' in prof %}bg-warning text-dark{% elif 'MEDIUM' in prof %}bg-info{% else %}bg-light text-dark border{% endif %}" style="font-size: 0.8rem;">
+                    <span class="badge {% if 'VIP' in prof %}bg-success{% elif 'TOP' in prof %}bg-warning text-dark{% elif 'MEDIUM' in prof %}bg-info{% elif 'SMALL' in prof or 'SINGLE' in prof %}bg-light text-dark border{% else %}bg-secondary{% endif %}" style="font-size: 0.8rem;">
                         {{ prof }}
                     </span>
+                    {% else %}-{% endif %}
                 </div>
             </div>
-            {% if cliente.crm_id %}
+
+            {# ID CRM Zoho #}
             <div class="col-6">
                 <small class="text-muted">ID CRM Zoho</small>
                 <div>
+                    {% if cliente.crm_id %}
                     <a href="https://crm.zoho.eu/crm/org20081351105/tab/Accounts/{{ cliente.crm_id|replace('zcrm_', '') }}" 
                        target="_blank" 
                        class="btn btn-sm btn-outline-success py-0 px-2" 
@@ -40,93 +47,111 @@
                        title="{{ cliente.crm_id }}">
                         <i class="bi bi-box-arrow-up-right me-1"></i>Vai al CRM &rarr;
                     </a>
+                    {% else %}-{% endif %}
                 </div>
             </div>
-            {% endif %}
-            {% endif %}
 
-            {# Flotta totale vs CNS #}
-            {% if cliente.totale_flotta_crm or cliente.flotta_cns_crm %}
+            {# Flotta totale #}
             <div class="col-6">
                 <small class="text-muted">Flotta totale</small>
                 <div class="fw-bold">{{ cliente.totale_flotta_crm or 0 }} veicoli</div>
             </div>
+
+            {# Flotta con CNS #}
             <div class="col-6">
                 <small class="text-muted">Flotta con CNS</small>
                 <div class="fw-bold text-success">{{ cliente.flotta_cns_crm or 0 }} veicoli</div>
             </div>
-            {% endif %}
+        </div>
 
-            {# Noleggiatori principali #}
+        {# === ZONA CONDIZIONALE === #}
+        <div style="flex-shrink: 0;">
+
+            {# Noleggiatori pri. / sec. (2 colonne, max 2 righe badge ciascuna) #}
             {% if cliente.noleggiatore_principale_1 or cliente.noleggiatore_principale_2 %}
-            <div class="col-12">
-                <small class="text-muted">Noleggiatori principali</small>
-                <div>
-                    {% if cliente.noleggiatore_principale_1 %}
-                    <span class="badge bg-primary me-1">{{ cliente.noleggiatore_principale_1 }}</span>
-                    {% endif %}
-                    {% if cliente.noleggiatore_principale_2 %}
-                    <span class="badge bg-outline-primary border text-primary">{{ cliente.noleggiatore_principale_2 }}</span>
-                    {% endif %}
+            <div class="row g-2 mt-1">
+                <div class="col-6">
+                    <small class="text-muted">Noleggiatore pri.</small>
+                    <div>
+                        {% if cliente.noleggiatore_principale_1 %}
+                        <span class="badge bg-primary" style="font-size: 0.8rem;">{{ cliente.noleggiatore_principale_1 }}</span>
+                        {% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="col-6">
+                    <small class="text-muted">Noleggiatore sec.</small>
+                    <div>
+                        {% if cliente.noleggiatore_principale_2 %}
+                        <span class="badge border text-primary" style="font-size: 0.8rem;">{{ cliente.noleggiatore_principale_2 }}</span>
+                        {% else %}-{% endif %}
+                    </div>
                 </div>
             </div>
             {% endif %}
 
-            {# Origine contatto #}
-            {% if cliente.origine_contatto %}
-            <div class="col-6">
-                <small class="text-muted">Origine contatto</small>
-                <div>{{ cliente.origine_contatto }}</div>
-            </div>
-            {% endif %}
-
-            {# Tipo azienda CRM #}
-
-            {# Commerciale Consecution (se diverso da BR) #}
-            {% if cliente.commerciale_consecution %}
-            <div class="col-12">
-                <small class="text-muted">Commerciale Consecution</small>
-                <div><i class="bi bi-person-badge"></i> {{ cliente.commerciale_consecution }}</div>
+            {# Origine contatto + Commerciale Consecution #}
+            {% if cliente.origine_contatto or cliente.commerciale_consecution %}
+            <div class="row g-2 mt-1">
+                {% if cliente.origine_contatto %}
+                <div class="col-6">
+                    <small class="text-muted">Origine contatto</small>
+                    <div>{{ cliente.origine_contatto }}</div>
+                </div>
+                {% endif %}
+                {% if cliente.commerciale_consecution %}
+                <div class="col-6">
+                    <small class="text-muted">Commerciale CNS</small>
+                    <div><i class="bi bi-person-badge"></i> {{ cliente.commerciale_consecution }}</div>
+                </div>
+                {% endif %}
             </div>
             {% endif %}
 
             {# Note concorrenza #}
             {% if cliente.note_concorrenza %}
-            <div class="col-12">
+            <div class="mt-1">
                 <small class="text-muted">Note concorrenza</small>
-                <div class="small text-muted" style="white-space: pre-wrap;">{{ cliente.note_concorrenza }}</div>
+                <div class="small text-muted" style="white-space: pre-wrap; max-height: 40px; overflow-y: auto;">{{ cliente.note_concorrenza }}</div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        {# === SPACER per spingere GDPR in fondo === #}
+        <div style="flex: 1;"></div>
+
+        {# === ZONA FISSA FONDO: Consensi GDPR + Alert === #}
+        <div style="flex-shrink: 0;">
+            {# Consensi GDPR #}
+            {% if consensi_crm %}
+            <hr class="my-2">
+            <small class="text-muted d-block mb-1"><i class="bi bi-shield-lock"></i> Consensi GDPR</small>
+            <div class="d-flex flex-wrap gap-1">
+                {% for c in consensi_crm %}
+                <span class="badge {% if c.valore == 'true' %}bg-success{% else %}bg-light text-muted border{% endif %}" style="font-size: 0.7rem;" title="{{ c.tipo_consenso }}">
+                    {% if c.valore == 'true' %}<i class="bi bi-check-circle"></i>{% else %}<i class="bi bi-x-circle"></i>{% endif %}
+                    {{ c.tipo_consenso }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# Alert rischio #}
+            {% if alert_crm and alert_crm|selectattr('valore', 'equalto', 'true')|list %}
+            <hr class="my-2">
+            <small class="text-muted d-block mb-1"><i class="bi bi-exclamation-triangle"></i> Alert</small>
+            <div class="d-flex flex-wrap gap-1">
+                {% for a in alert_crm %}
+                {% if a.valore == 'true' %}
+                <span class="badge bg-danger" style="font-size: 0.7rem;">
+                    <i class="bi bi-exclamation-triangle-fill"></i> {{ a.tipo_alert }}
+                </span>
+                {% endif %}
+                {% endfor %}
             </div>
             {% endif %}
         </div>
 
-        {# Consensi GDPR #}
-        {% if consensi_crm %}
-        <hr class="my-2">
-        <small class="text-muted d-block mb-1"><i class="bi bi-shield-lock"></i> Consensi GDPR</small>
-        <div class="d-flex flex-wrap gap-1">
-            {% for c in consensi_crm %}
-            <span class="badge {% if c.valore == 'true' %}bg-success{% else %}bg-light text-muted border{% endif %}" style="font-size: 0.7rem;" title="{{ c.tipo_consenso }}">
-                {% if c.valore == 'true' %}<i class="bi bi-check-circle"></i>{% else %}<i class="bi bi-x-circle"></i>{% endif %}
-                {{ c.tipo_consenso }}
-            </span>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {# Alert rischio #}
-        {% if alert_crm and alert_crm|selectattr('valore', 'equalto', 'true')|list %}
-        <hr class="my-2">
-        <small class="text-muted d-block mb-1"><i class="bi bi-exclamation-triangle"></i> Alert</small>
-        <div class="d-flex flex-wrap gap-1">
-            {% for a in alert_crm %}
-            {% if a.valore == 'true' %}
-            <span class="badge bg-danger" style="font-size: 0.7rem;">
-                <i class="bi bi-exclamation-triangle-fill"></i> {{ a.tipo_alert }}
-            </span>
-            {% endif %}
-            {% endfor %}
-        </div>
-        {% endif %}
     </div>
 </div>
 {% endif %}

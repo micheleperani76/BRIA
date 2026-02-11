@@ -25,6 +25,9 @@ TIPI_SEDE = [
     'Ufficio',
     'Stabilimento',
     'Punto Vendita',
+    'Indirizzo Fatturazione',
+    'Indirizzo Fatturazione',
+    'Indirizzo Fatturazione',
     'Altro'
 ]
 
@@ -112,6 +115,8 @@ def api_aggiungi_sede(cliente_id):
     elif referente_id:
         referente_id = int(referente_id)
     
+    protetto = 1 if data.get('protetto') else 0
+    
     if not indirizzo and not citta:
         return jsonify({'success': False, 'error': 'Indirizzo o citta obbligatorio'})
     
@@ -164,6 +169,8 @@ def api_modifica_sede(cliente_id, sede_id):
     elif referente_id:
         referente_id = int(referente_id)
     
+    protetto = 1 if data.get('protetto') else 0
+    
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -179,11 +186,12 @@ def api_modifica_sede(cliente_id, sede_id):
                 telefono = ?,
                 email = ?,
                 note = ?,
-                referente_id = ?
+                referente_id = ?,
+                protetto = 1
             WHERE id = ? AND cliente_id = ?
         ''', (tipo_sede, denominazione or None, indirizzo or None,
               cap or None, citta or None, provincia or None,
-              telefono or None, email or None, note or None, referente_id,
+              telefono or None, email or None, note or None, referente_id, protetto,
               sede_id, cliente_id))
         
         conn.commit()

@@ -63,6 +63,7 @@ from app.routes_flotta_commerciali import flotta_commerciali_bp
 from app.routes_collegamenti_clienti import collegamenti_bp
 from app.routes_noleggiatori_cliente import noleggiatori_cliente_bp
 from app.routes_sedi_cliente import sedi_bp
+from app.routes_capogruppo import capogruppo_bp
 from app.routes_trattative import trattative_bp
 from app.routes_top_prospect import top_prospect_bp
 from app.routes_trascrizione import trascrizione_bp
@@ -156,6 +157,7 @@ app.register_blueprint(note_clienti_bp)
 app.register_blueprint(collegamenti_bp)
 app.register_blueprint(noleggiatori_cliente_bp)
 app.register_blueprint(sedi_bp)
+app.register_blueprint(capogruppo_bp)
 app.register_blueprint(trattative_bp)
 app.register_blueprint(top_prospect_bp)
 app.register_blueprint(trascrizione_bp)

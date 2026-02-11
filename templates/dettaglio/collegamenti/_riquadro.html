@@ -1,46 +1,79 @@
-{# === RIQUADRO COLLEGAMENTI CLIENTI === #}
-<div class="card mb-3">
+{# ==============================================================================
+   RIQUADRO COLLEGAMENTI CLIENTI
+   Versione: 2.0.0
+   Data: 2026-02-11
+   Modifiche v2: card fissa, max 4 righe preview, tasto espandi
+                 apre modal ridimensionabile con vista Lista + Grafo
+   
+   INCLUDE RICHIESTI (da dettaglio.html o _griglia_layout):
+   - dettaglio/collegamenti/_modal.html
+   - dettaglio/collegamenti/_modal_espanso.html  (NUOVO)
+   - dettaglio/collegamenti/_scripts.html
+   ============================================================================== #}
+
+<div class="card mb-3" id="card-collegamenti">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span>
             <i class="bi bi-diagram-3"></i> Collegamenti
             <span class="badge bg-secondary ms-1" id="badge-count-collegamenti">{{ collegamenti|length if collegamenti else 0 }}</span>
         </span>
-        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalCollegamenti">
-            <i class="bi bi-plus-lg"></i> Aggiungi
-        </button>
+        <div class="d-flex gap-1">
+            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="apriModalEspanso()" title="Espandi / Mappa">
+                <i class="bi bi-arrows-fullscreen"></i>
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm py-0 px-1" data-bs-toggle="modal" data-bs-target="#modalCollegamenti" title="Aggiungi">
+                <i class="bi bi-plus-lg"></i>
+            </button>
+        </div>
     </div>
     <div class="card-body py-2">
         {% if collegamenti and collegamenti|length > 0 %}
         <ul class="list-group list-group-flush" id="lista-collegamenti">
-            {% for col in collegamenti %}
-            <li class="list-group-item px-0 py-2">
+            {% for col in collegamenti[:4] %}
+            <li class="list-group-item px-0 py-1" style="font-size: 0.85rem;">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
+                    <div class="text-truncate me-2">
                         <a href="{{ col.url }}" class="text-decoration-none fw-bold">
                             {{ col.altro_cliente_nome }}
                         </a>
-                        <span class="badge bg-info ms-2">{{ col.tipo_relazione_desc or col.tipo_relazione }}</span>
+                        <span class="badge bg-info ms-1" style="font-size: 0.7rem;">{{ col.tipo_relazione_desc or col.tipo_relazione }}</span>
                         {% if col.note %}
-                        <i class="bi bi-chat-left-text text-muted ms-1" title="{{ col.note }}" style="cursor: help;"></i>
+                        <i class="bi bi-chat-left-text text-muted ms-1" title="{{ col.note }}" style="cursor: help; font-size: 0.75rem;"></i>
                         {% endif %}
                     </div>
-                    <div class="btn-group btn-group-sm">
+                    <div class="btn-group btn-group-sm flex-shrink-0">
                         <button type="button" class="btn btn-outline-primary py-0 px-1" 
                                 onclick="apriModificaCollegamento({{ col.id }}, '{{ col.altro_cliente_nome|e }}', '{{ col.tipo_relazione }}', '{{ col.note|e if col.note else '' }}')" 
                                 title="Modifica">
-                            <i class="bi bi-pencil"></i>
+                            <i class="bi bi-pencil" style="font-size: 0.7rem;"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger py-0 px-1" 
                                 onclick="rimuoviCollegamento({{ col.id }})" title="Rimuovi">
-                            <i class="bi bi-x"></i>
+                            <i class="bi bi-x" style="font-size: 0.7rem;"></i>
                         </button>
                     </div>
                 </div>
             </li>
             {% endfor %}
         </ul>
+        {% if collegamenti|length > 4 %}
+        <div class="text-center mt-1">
+            <button class="btn btn-sm btn-link text-muted py-0" onclick="apriModalEspanso()">
+                <i class="bi bi-three-dots"></i> altri {{ collegamenti|length - 4 }}
+            </button>
+        </div>
+        {% endif %}
         {% else %}
         <p class="text-muted mb-0 small" id="no-collegamenti">Nessun collegamento</p>
         {% endif %}
     </div>
 </div>
+
+{# Include modal aggiungi (esistente) #}
+{% include 'dettaglio/collegamenti/_modal.html' %}
+
+{# Include modal espanso (nuovo) #}
+{% include 'dettaglio/collegamenti/_modal_espanso.html' %}
+
+{# Include scripts (esistente) #}
+{% include 'dettaglio/collegamenti/_scripts.html' %}

@@ -1,0 +1,423 @@
+{# ==============================================================================
+   MODAL ESPANSO COLLEGAMENTI - Ridimensionabile
+   Versione: 1.0.0
+   Data: 2026-02-11
+   Descrizione: Modal con resize dai 4 bordi
+                Tab 1: Lista completa collegamenti (livello 1)
+                Tab 2: Grafo D3.js force-directed (multi-livello)
+                Verde = diretti, Giallo = extra (livello 2+)
+   ============================================================================== #}
+
+<!-- Modal Espanso -->
+<div class="modal fade" id="modalCollegamentiEspanso" tabindex="-1">
+    <div class="modal-dialog modal-lg" id="modalEspansoDialog" style="max-width: 80vw;">
+        <div class="modal-content" id="modalEspansoContent" style="resize: both; overflow: hidden; min-width: 500px; min-height: 400px; height: 55vh;">
+            <div class="modal-header py-2" id="modalEspansoHeader" style="cursor: move;">
+                <h6 class="modal-title">
+                    <i class="bi bi-diagram-3"></i> Collegamenti
+                    <span class="badge bg-secondary ms-1" id="badge-espanso-count">0</span>
+                </h6>
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Tab switch -->
+                    <ul class="nav nav-pills nav-pills-sm" role="tablist" style="font-size: 0.8rem;">
+                        <li class="nav-item">
+                            <button class="nav-link active py-0 px-2" id="tab-lista-espanso" data-bs-toggle="tab" data-bs-target="#panelListaEspanso" type="button">
+                                <i class="bi bi-list-ul"></i> Lista
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link py-0 px-2" id="tab-grafo" data-bs-toggle="tab" data-bs-target="#panelGrafo" type="button">
+                                <i class="bi bi-share"></i> Mappa
+                            </button>
+                        </li>
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0" style="overflow: hidden; height: calc(100% - 50px);">
+                <div class="tab-content h-100">
+
+                    <!-- === TAB LISTA === -->
+                    <div class="tab-pane fade show active h-100" id="panelListaEspanso" role="tabpanel" style="overflow-y: auto; padding: 12px;">
+                        <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Relazione</th>
+                                    <th>Note</th>
+                                    <th style="width: 80px;">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-collegamenti-espanso">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- === TAB GRAFO === -->
+                    <div class="tab-pane fade h-100" id="panelGrafo" role="tabpanel">
+                        <div id="grafo-container" style="width: 100%; height: 100%; position: relative;">
+                            <div id="grafo-loading" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <div class="mt-2 text-muted">Caricamento mappa collegamenti...</div>
+                            </div>
+                            <svg id="grafo-svg" style="width: 100%; height: 100%; display: none;"></svg>
+                            <!-- Legenda -->
+                            <div id="grafo-legenda" style="position: absolute; bottom: 10px; left: 10px; background: rgba(255,255,255,0.9); padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; border: 1px solid #ddd; display: none;">
+                                <div class="d-flex gap-3">
+                                    <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#dc3545"></circle></svg> Cliente corrente</span>
+                                    <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#28a745"></circle></svg> Collegamento diretto</span>
+                                    <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#ffc107"></circle></svg> Collegamento indiretto</span>
+                                    <span><svg width="12" height="12"><circle cx="6" cy="6" r="5" fill="#17a2b8"></circle></svg> Stesso capogruppo</span>
+                                    <span><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#28a745" stroke-width="2"></line></svg> Diretto</span>
+                                    <span><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#ffc107" stroke-width="2" stroke-dasharray="4,2"></line></svg> Indiretto</span>
+                                    <span><svg width="20" height="12"><line x1="0" y1="6" x2="20" y2="6" stroke="#17a2b8" stroke-width="2" stroke-dasharray="2,2"></line></svg> Capogruppo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Resize handles sui 4 bordi */
+#modalEspansoContent {
+    position: relative;
+}
+#modalEspansoContent::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, #ccc 50%);
+    border-radius: 0 0 4px 0;
+}
+
+/* Nodi grafo */
+.grafo-nodo-label {
+    font-size: 11px;
+    pointer-events: none;
+    text-anchor: middle;
+}
+.grafo-link {
+    fill: none;
+    stroke-opacity: 0.6;
+}
+.grafo-link-label {
+    font-size: 9px;
+    fill: #666;
+    text-anchor: middle;
+}
+</style>
+
+<script>
+// Carica D3.js se non presente
+if (typeof d3 === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js';
+    script.onload = function() { console.log('D3.js caricato'); };
+    document.head.appendChild(script);
+}
+</script>
+
+<script>
+// ==============================================================
+// VARIABILI GRAFO
+// ==============================================================
+const clienteIdGrafo = {{ cliente.id }};
+const clienteNomeGrafo = "{{ cliente.ragione_sociale or cliente.nome_cliente | e }}";
+let collegamentiCompleti = {{ collegamenti | tojson if collegamenti else '[]' }};
+let grafoCaricato = false;
+let simulazione = null;
+
+// ==============================================================
+// APERTURA MODAL ESPANSO
+// ==============================================================
+function apriModalEspanso() {
+    // Popola lista completa
+    popolaListaEspansa();
+    
+    // Mostra modal
+    new bootstrap.Modal(document.getElementById('modalCollegamentiEspanso')).show();
+    
+    // Reset tab a Lista
+    const tabLista = document.getElementById('tab-lista-espanso');
+    if (tabLista) bootstrap.Tab.getOrCreateInstance(tabLista).show();
+}
+
+// ==============================================================
+// TAB LISTA COMPLETA
+// ==============================================================
+function popolaListaEspansa() {
+    const tbody = document.getElementById('tbody-collegamenti-espanso');
+    const badge = document.getElementById('badge-espanso-count');
+    
+    badge.textContent = collegamentiCompleti.length;
+    
+    if (collegamentiCompleti.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Nessun collegamento</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    collegamentiCompleti.forEach(col => {
+        const nome = col.altro_cliente_nome || 'N/D';
+        const nomeEsc = nome.replace(/'/g, "\\'");
+        const relazione = col.tipo_relazione_desc || col.descrizione_relazione || col.tipo_relazione || '';
+        const note = col.note || '';
+        const noteEsc = note.replace(/'/g, "\\'");
+        const url = col.url || `/cliente/${col.altro_cliente_id}`;
+        
+        html += `<tr>
+            <td><a href="${url}" class="text-decoration-none fw-bold">${nome}</a></td>
+            <td><span class="badge bg-info">${relazione}</span></td>
+            <td class="text-muted small">${note}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary py-0 px-1" onclick="apriModificaCollegamento(${col.id}, '${nomeEsc}', '${col.tipo_relazione}', '${noteEsc}')" title="Modifica">
+                        <i class="bi bi-pencil" style="font-size:0.7rem"></i>
+                    </button>
+                    <button class="btn btn-outline-danger py-0 px-1" onclick="rimuoviCollegamento(${col.id})" title="Rimuovi">
+                        <i class="bi bi-x" style="font-size:0.7rem"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// ==============================================================
+// TAB GRAFO D3.JS
+// ==============================================================
+const tabGrafo = document.getElementById('tab-grafo');
+if (tabGrafo) tabGrafo.addEventListener('shown.bs.tab', function() {
+    if (!grafoCaricato) {
+        caricaGrafo();
+    } else {
+        // Ricalcola dimensioni se gia' caricato
+        aggiornaGrafoDimensioni();
+    }
+});
+
+function caricaGrafo() {
+    document.getElementById('grafo-loading').style.display = '';
+    document.getElementById('grafo-svg').style.display = 'none';
+    document.getElementById('grafo-legenda').style.display = 'none';
+    
+    fetch(`/api/cliente/${clienteIdGrafo}/grafo-collegamenti`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderGrafo(data.nodi, data.archi);
+                grafoCaricato = true;
+            } else {
+                document.getElementById('grafo-loading').innerHTML = 
+                    '<div class="text-danger"><i class="bi bi-exclamation-triangle"></i> ' + (data.error || 'Errore caricamento') + '</div>';
+            }
+        })
+        .catch(err => {
+            console.error('Errore caricamento grafo:', err);
+            document.getElementById('grafo-loading').innerHTML = 
+                '<div class="text-danger"><i class="bi bi-exclamation-triangle"></i> Errore di rete</div>';
+        });
+}
+
+function renderGrafo(nodi, archi) {
+    const container = document.getElementById('grafo-container');
+    const svg = document.getElementById('grafo-svg');
+    const width = container.clientWidth || 700;
+    const height = container.clientHeight || 500;
+    
+    // Pulisci SVG
+    svg.innerHTML = '';
+    
+    // Nascondi loading, mostra svg + legenda
+    document.getElementById('grafo-loading').style.display = 'none';
+    svg.style.display = '';
+    document.getElementById('grafo-legenda').style.display = '';
+    
+    // Setup D3
+    const svgD3 = d3.select(svg)
+        .attr('viewBox', [0, 0, width, height]);
+    
+    // Zoom
+    const g = svgD3.append('g');
+    svgD3.call(d3.zoom()
+        .scaleExtent([0.3, 3])
+        .on('zoom', (event) => g.attr('transform', event.transform)));
+    
+    // Frecce per archi direzionali
+    g.append('defs').selectAll('marker')
+        .data(['diretto', 'indiretto', 'capogruppo'])
+        .enter().append('marker')
+        .attr('id', d => 'arrow-' + d)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 25)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('fill', d => d === 'diretto' ? '#28a745' : (d === 'capogruppo' ? '#17a2b8' : '#ffc107'))
+        .attr('d', 'M0,-5L10,0L0,5');
+    
+    // Archi
+    const link = g.selectAll('.grafo-link')
+        .data(archi)
+        .enter().append('line')
+        .attr('class', 'grafo-link')
+        .attr('stroke', d => d.livello === 1 ? '#28a745' : (d.livello === 3 ? '#17a2b8' : '#ffc107'))
+        .attr('stroke-width', d => d.livello === 1 ? 2.5 : 1.5)
+        .attr('stroke-dasharray', d => d.livello === 1 ? null : (d.livello === 3 ? '3,3' : '6,3'))
+        .attr('marker-end', d => d.livello === 1 ? 'url(#arrow-diretto)' : (d.livello === 3 ? 'url(#arrow-capogruppo)' : 'url(#arrow-indiretto)'));
+    
+    // Etichette archi
+    const linkLabel = g.selectAll('.grafo-link-label')
+        .data(archi)
+        .enter().append('text')
+        .attr('class', 'grafo-link-label')
+        .text(d => d.relazione || '');
+    
+    // Nodi
+    const node = g.selectAll('.grafo-nodo')
+        .data(nodi)
+        .enter().append('g')
+        .attr('class', 'grafo-nodo')
+        .style('cursor', d => d.id === clienteIdGrafo ? 'default' : 'pointer')
+        .on('click', (event, d) => {
+            if (d.id !== clienteIdGrafo) {
+                window.open(`/cliente/${d.id}`, '_blank');
+            }
+        })
+        .call(d3.drag()
+            .on('start', dragStarted)
+            .on('drag', dragged)
+            .on('end', dragEnded));
+    
+    // Cerchi nodi
+    node.append('circle')
+        .attr('r', d => d.id === clienteIdGrafo ? 18 : (d.livello <= 1 || d.livello === 3 ? 14 : 10))
+        .attr('fill', d => {
+            if (d.id === clienteIdGrafo) return '#dc3545';   // Rosso: corrente
+            if (d.livello === 1) return '#28a745';            // Verde: diretto
+            if (d.livello === 3) return '#17a2b8';            // Azzurro: capogruppo
+            return '#ffc107';                                  // Giallo: indiretto
+        })
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 2);
+    
+    // Etichette nodi
+    node.append('text')
+        .attr('class', 'grafo-nodo-label')
+        .attr('dy', d => (d.id === clienteIdGrafo ? 30 : (d.livello <= 1 || d.livello === 3 ? 26 : 22)))
+        .text(d => {
+            const nome = d.nome || '';
+            return nome.length > 25 ? nome.substring(0, 22) + '...' : nome;
+        })
+        .style('font-weight', d => d.id === clienteIdGrafo ? 'bold' : 'normal');
+    
+    // Tooltip
+    node.append('title')
+        .text(d => d.nome + (d.id === clienteIdGrafo ? ' (corrente)' : ''));
+    
+    // Simulazione forze
+    simulazione = d3.forceSimulation(nodi)
+        .force('link', d3.forceLink(archi).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30))
+        .on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+            
+            linkLabel
+                .attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2 - 5);
+            
+            node.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+}
+
+function dragStarted(event, d) {
+    if (!event.active) simulazione.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+}
+
+function dragged(event, d) {
+    d.fx = event.x;
+    d.fy = event.y;
+}
+
+function dragEnded(event, d) {
+    if (!event.active) simulazione.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+}
+
+function aggiornaGrafoDimensioni() {
+    if (!simulazione) return;
+    const container = document.getElementById('grafo-container');
+    const width = container.clientWidth || 700;
+    const height = container.clientHeight || 500;
+    
+    d3.select('#grafo-svg').attr('viewBox', [0, 0, width, height]);
+    simulazione.force('center', d3.forceCenter(width / 2, height / 2));
+    simulazione.alpha(0.3).restart();
+}
+
+// Osserva resize del modal per aggiornare grafo
+const resizeObserver = new ResizeObserver(() => {
+    if (grafoCaricato && document.getElementById('panelGrafo').classList.contains('active')) {
+        aggiornaGrafoDimensioni();
+    }
+});
+document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById('modalEspansoContent');
+    if (el) resizeObserver.observe(el);
+});
+
+// Drag modal dall'header
+document.addEventListener('DOMContentLoaded', function() {
+    const header = document.getElementById('modalEspansoHeader');
+    const dialog = document.getElementById('modalEspansoDialog');
+    if (!header || !dialog) return;
+    
+    let isDragging = false, startX, startY, origX, origY;
+    
+    header.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.btn-close, .nav-link')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = dialog.getBoundingClientRect();
+        origX = rect.left;
+        origY = rect.top;
+        dialog.style.margin = '0';
+        dialog.style.position = 'fixed';
+        dialog.style.left = origX + 'px';
+        dialog.style.top = origY + 'px';
+        e.preventDefault();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        dialog.style.left = (origX + e.clientX - startX) + 'px';
+        dialog.style.top = (origY + e.clientY - startY) + 'px';
+    });
+    
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+    });
+});
+</script>
