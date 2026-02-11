@@ -1,0 +1,53 @@
+{# ==============================================================================
+   FINANZIARI - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+{% if cliente.valore_produzione or cliente.utile %}
+<div class="card h-100">
+    <div class="card-header py-2">
+        <i class="bi bi-bar-chart"></i> Bilancio
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Voce</th>
+                    <th class="text-end">{{ cliente.anno_bilancio or 'Corrente' }}</th>
+                    <th class="text-end">{{ cliente.anno_bilancio_prec or 'Prec.' }}</th>
+                    <th class="text-end">Var.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% macro bilancio_row_fw(label, val, val_prec) %}
+                <tr>
+                    <td>{{ label }}</td>
+                    <td class="text-end">{% if val %}&euro; {{ val|format_numero }}{% else %}-{% endif %}</td>
+                    <td class="text-end">{% if val_prec %}&euro; {{ val_prec|format_numero }}{% else %}-{% endif %}</td>
+                    <td class="text-end">
+                        {% if val and val_prec and val_prec != 0 %}
+                        {% set var = ((val - val_prec) / val_prec * 100) %}
+                        <span class="{% if var >= 0 %}text-success{% else %}text-danger{% endif %}">{{ "%.1f"|format(var) }}%</span>
+                        {% else %}-{% endif %}
+                    </td>
+                </tr>
+                {% endmacro %}
+                {{ bilancio_row_fw('Valore Produzione', cliente.valore_produzione, cliente.valore_produzione_prec) }}
+                {{ bilancio_row_fw('Patrimonio Netto', cliente.patrimonio_netto, cliente.patrimonio_netto_prec) }}
+                {{ bilancio_row_fw('Utile/Perdita', cliente.utile, cliente.utile_prec) }}
+                {{ bilancio_row_fw('Debiti', cliente.debiti, cliente.debiti_prec) }}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card h-100">
+    <div class="card-header py-2">
+        <i class="bi bi-bar-chart"></i> Bilancio
+    </div>
+    <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-file-earmark-x" style="font-size: 2rem;"></i>
+        <p class="mb-0 mt-2">Dati non disponibili</p>
+    </div>
+</div>
+{% endif %}

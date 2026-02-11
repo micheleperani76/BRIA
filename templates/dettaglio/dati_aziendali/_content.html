@@ -1,0 +1,56 @@
+{# ==============================================================================
+   DATI AZIENDALI - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <i class="bi bi-building"></i> Dati Aziendali
+    </div>
+    <div class="card-body py-2">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <small class="text-muted">Ragione Sociale</small>
+                <div class="fw-bold">{{ cliente.ragione_sociale or '-' }}</div>
+            </div>
+            <div class="col-md-6">
+                <small class="text-muted">Forma Giuridica</small>
+                <div>{{ cliente.forma_giuridica or '-' }}</div>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">P.IVA</small>
+                <div><code>{{ cliente.p_iva or '-' }}</code></div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">C.F.</small>
+                <div><code>{{ cliente.cod_fiscale or '-' }}</code></div>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">N. Reg.</small>
+                <div><code>{{ cliente.numero_registrazione or '-' }}</code></div>
+            </div>
+            <div class="col-md-2">
+                <small class="text-muted">SDI <a href="#" class="ms-1 text-primary" data-bs-toggle="modal" data-bs-target="#modalSDIBIC" title="Modifica SDI/BIC"><i class="bi bi-pencil-square"></i></a></small>
+                <div><code>{{ cliente.sdi or '-' }}</code></div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">BIC <a href="#" class="ms-1 text-primary" data-bs-toggle="modal" data-bs-target="#modalSDIBIC" title="Modifica SDI/BIC"><i class="bi bi-pencil-square"></i></a></small>
+                <div><code>{{ cliente.bic or '-' }}</code></div>
+            </div>
+            <div class="col-md-9">
+                <small class="text-muted">Sede Legale 
+                    {% if cliente.indirizzo_protetto %}<span class="badge bg-warning text-dark" title="Protetto da sovrascrittura automatica"><i class="bi bi-lock-fill"></i></span>{% endif %}
+                    <a href="#" class="ms-2 text-primary" data-bs-toggle="modal" data-bs-target="#modalIndirizzo" title="Modifica sede legale"><i class="bi bi-pencil-square"></i></a>
+                </small>
+                <div>{% if cliente.indirizzo %}<a href="https://www.google.com/maps/search/?api=1&query={{ cliente.indirizzo|urlencode }}" target="_blank" class="text-decoration-none"><i class="bi bi-geo-alt"></i> {{ cliente.indirizzo }}</a>{% else %}-{% endif %}</div>
+
+                <!-- Sedi Aggiuntive (collassabile) -->
+                {% include "dettaglio/sedi/_riquadro.html" %}
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Data Costituzione</small>
+                <div>{{ cliente.data_costituzione or '-' }}</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,15 @@
+{# ==============================================================================
+   FIDO - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <i class="bi bi-credit-card"></i> Fido Consigliato
+    </div>
+    <div class="card-body text-center py-2">
+        {% if cliente.credito %}
+        <div class="h4 text-success mb-0">&euro; {{ cliente.credito|format_numero }}</div>
+        {% else %}<div class="text-muted">N/D</div>{% endif %}
+    </div>
+</div>

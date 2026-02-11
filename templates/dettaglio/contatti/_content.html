@@ -1,0 +1,33 @@
+{# ==============================================================================
+   CONTATTI - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="card mb-3">
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-telephone"></i> Contatti Generali</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalContatti">
+            <i class="bi bi-pencil"></i> Modifica
+        </button>
+    </div>
+    <div class="card-body py-2">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <small class="text-muted">Telefono</small>
+                <div>{% if cliente.telefono %}<a href="tel:{{ cliente.telefono }}">{{ cliente.telefono }}</a>{% else %}-{% endif %}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Email</small>
+                <div>{% if cliente.email %}<a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>{% else %}-{% endif %}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">PEC</small>
+                <div>{% if cliente.pec %}<a href="mailto:{{ cliente.pec }}">{{ cliente.pec }}</a>{% else %}-{% endif %}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Sito Web</small>
+                <div>{% if cliente.sito_web %}<a href="{{ cliente.sito_web }}" target="_blank">{{ cliente.sito_web }}</a>{% else %}-{% endif %}</div>
+            </div>
+        </div>
+    </div>
+</div>

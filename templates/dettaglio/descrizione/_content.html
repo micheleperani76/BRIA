@@ -1,0 +1,60 @@
+{# ==============================================================================
+   DESCRIZIONE - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="card h-100">
+    <div class="card-header py-2">
+        <i class="bi bi-briefcase"></i> Descrizione 
+    </div>
+    <div class="card-body py-2">
+        <div class="row g-2">
+            {# --- Riga 1: ATECO primario + Capitale Sociale --- #}
+            <div class="col-6">
+                <small class="text-muted">ATECO</small>
+                <div><code>{{ cliente.codice_ateco or '-' }}</code></div>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Capitale Sociale</small>
+                <div>{% if cliente.capitale_sociale %}&euro; {{ cliente.capitale_sociale|format_numero }}{% else %}-{% endif %}</div>
+            </div>
+            {# --- Riga 2: Descrizione ATECO (testo completo) --- #}
+            <div class="col-12">
+                <small class="text-muted">Descrizione ATECO</small>
+                <div>{{ cliente.desc_ateco or '-' }}</div>
+            </div>
+            {# --- Riga 3: SAE + RAE --- #}
+            {% if cliente.codice_sae or cliente.codice_rae %}
+            <div class="col-6">
+                <small class="text-muted">Codice SAE</small>
+                <div><code>{{ cliente.codice_sae or '-' }}</code></div>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Codice RAE</small>
+                <div><code>{{ cliente.codice_rae or '-' }}</code></div>
+            </div>
+            {% endif %}
+            {# --- Riga 4: ATECO 2007 (opzionale, solo se presente) --- #}
+            {% if cliente.codice_ateco_2007 %}
+            <div class="col-12">
+                <small class="text-muted">ATECO 2007</small>
+                <div><code>{{ cliente.codice_ateco_2007 }}</code> <span class="text-muted">{{ cliente.desc_ateco_2007 or '' }}</span></div>
+            </div>
+            {% endif %}
+            {# --- Riga 5: Descrizione attivita svolta (testo completo) --- #}
+            <div class="col-12">
+                <small class="text-muted">Descrizione attivit&agrave;</small>
+                <div>{{ cliente.desc_attivita or '-' }}</div>
+            </div>
+            {# --- Riga 6: Dipendenti + Stato --- #}
+            <div class="col-6">
+                <small class="text-muted">Dipendenti</small>
+                <div>{{ cliente.dipendenti or '-' }}</div>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Stato</small>
+                <div>{% if cliente.stato %}<span class="badge {% if 'Attiv' in cliente.stato %}bg-success{% else %}bg-warning{% endif %}">{{ cliente.stato }}</span>{% else %}-{% endif %}</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -70,6 +70,8 @@ from app.routes_revisioni import revisioni_bp
 from app.routes_notifiche import notifiche_bp
 from app.routes_ticker import ticker_bp
 from app.routes_installato import installato_bp
+from app.routes_layout import layout_bp
+from app.layout_config import init_layout, get_layout_quadri
 from app.config_notifiche import POLLING_SECONDI as NOTIFICHE_POLLING
 from app.auth import auth_context_processor, login_required
 # Import funzioni database utenti per filtro supervisioni
@@ -132,6 +134,7 @@ app.config['MAX_CONTENT_LENGTH'] = 256 * 1024 * 1024  # 256 MB max
 
 # Inizializza database all'avvio
 init_database()
+init_layout()
 
 # Secret key per sessioni (cambiare in produzione!)
 app.secret_key = "BR-CAR-SERVICE-2025-chiave-segreta-cambiarla-in-produzione"
@@ -160,6 +163,7 @@ app.register_blueprint(notifiche_bp)
 app.register_blueprint(ticker_bp)
 app.register_blueprint(revisioni_bp)
 app.register_blueprint(installato_bp)
+app.register_blueprint(layout_bp)
 register_note_clienti_legacy_routes(app)
 app.context_processor(auth_context_processor)
 app.context_processor(stati_context_processor)
@@ -964,7 +968,8 @@ def _render_dettaglio_cliente(cliente_id):
                          collegamenti=collegamenti,
                          top_prospect_info=top_prospect_info,
                          consensi_crm=consensi_crm,
-                         alert_crm=alert_crm)
+                         alert_crm=alert_crm,
+                         layout_quadri=get_layout_quadri())
 
 
 @app.route('/cliente/<int:cliente_id>')

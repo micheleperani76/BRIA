@@ -1,0 +1,129 @@
+{
+  "nome": "Layout Originale",
+  "descrizione": "Layout che replica la struttura originale",
+  "versione": "2.0",
+  "griglia": {
+    "colonne": 12
+  },
+  "quadri": [
+    {
+      "id": "dati_aziendali",
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "h": 1
+    },
+    {
+      "id": "crm",
+      "x": 8,
+      "y": 0,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "capogruppo",
+      "x": 0,
+      "y": 1,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "collegamenti",
+      "x": 4,
+      "y": 1,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "rating",
+      "x": 8,
+      "y": 1,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "contatti",
+      "x": 0,
+      "y": 2,
+      "w": 8,
+      "h": 1
+    },
+    {
+      "id": "fido",
+      "x": 8,
+      "y": 2,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "flotta",
+      "x": 0,
+      "y": 3,
+      "w": 8,
+      "h": 1
+    },
+    {
+      "id": "noleggiatori",
+      "x": 8,
+      "y": 3,
+      "w": 4,
+      "h": 1
+    },
+    {
+      "id": "referenti",
+      "x": 0,
+      "y": 4,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "id": "descrizione",
+      "x": 0,
+      "y": 5,
+      "w": 6,
+      "h": 1
+    },
+    {
+      "id": "finanziari",
+      "x": 6,
+      "y": 5,
+      "w": 6,
+      "h": 1
+    },
+    {
+      "id": "documenti",
+      "x": 0,
+      "y": 6,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "id": "veicoli",
+      "x": 0,
+      "y": 7,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "id": "vetture_stock",
+      "x": 0,
+      "y": 8,
+      "w": 8,
+      "h": 1
+    },
+    {
+      "id": "storico",
+      "x": 0,
+      "y": 9,
+      "w": 12,
+      "h": 1
+    },
+    {
+      "id": "commerciale_storico",
+      "x": 0,
+      "y": 99,
+      "w": 0,
+      "h": 0
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{# ==============================================================================
+   RATING & INFO - Riquadro unificato
+   Data: 2026-02-11
+   ============================================================================== #}
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="d-flex align-items-center mb-2">
+            <i class="bi bi-shield-check me-2"></i>
+            {% if cliente.score %}
+            <span class="score-badge score-{{ cliente.score }} me-2" style="width: 30px; height: 30px; font-size: 1rem;">{{ cliente.score }}</span>
+            <span>Rating {{ cliente.score }}{% if cliente.punteggio_rischio %} - Rischio: {{ cliente.punteggio_rischio }}/100{% endif %}</span>
+            {% else %}
+            <span class="text-muted">Nessun rating disponibile</span>
+            {% endif %}
+        </div>
+        <div class="border-top pt-2 small">
+            {% if cliente.data_report_creditsafe %}
+            <div class="d-flex justify-content-between"><span class="text-muted">Creditsafe</span><span>{{ cliente.data_report_creditsafe[:10] }}</span></div>
+            {% endif %}
+            {% if cliente.data_import_flotta %}
+            <div class="d-flex justify-content-between"><span class="text-muted">Flotta</span><span>{{ cliente.data_import_flotta[:10] }}</span></div>
+            {% endif %}
+            {% if not cliente.data_report_creditsafe and not cliente.data_import_flotta %}
+            <span class="text-muted">Nessuna info disponibile</span>
+            {% endif %}
+        </div>
+    </div>
+</div>

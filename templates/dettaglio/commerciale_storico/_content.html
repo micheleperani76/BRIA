@@ -1,0 +1,81 @@
+{# ==============================================================================
+   COMMERCIALE STORICO - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="modal fade" id="modalStoricoCommerciali" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history me-2"></i>Storico Commerciali
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if storico_commerciali %}
+                <div class="timeline">
+                    {% for s in storico_commerciali %}
+                    <div class="timeline-item mb-3 pb-3 {% if not loop.last %}border-bottom{% endif %}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong class="text-success">
+                                    <i class="bi bi-person-check me-1"></i>{{ s.a }}
+                                </strong>
+                                {% if s.da != 'Non assegnato' %}
+                                <br><small class="text-muted">
+                                    <i class="bi bi-arrow-right-short"></i> da: {{ s.da }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ s.data_ora[:10] }}</small>
+                        </div>
+                        {% if s.note %}
+                        <small class="text-muted d-block mt-1">{{ s.note }}</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-inbox me-2"></i>Nessuno storico disponibile
+                </div>
+                {% endif %}
+
+                <!-- Ex-commerciali manuali -->
+                {% if ex_commerciali %}
+                <hr>
+                <h6 class="text-muted mb-2">
+                    <i class="bi bi-people me-1"></i>Ex-Commerciali
+                </h6>
+                {% for ex in ex_commerciali %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not loop.last %}border-bottom{% endif %}">
+                    <div>
+                        <i class="bi bi-person text-secondary me-1"></i>
+                        <strong>{{ ex.nome }}</strong>
+                        {% if ex.note %}
+                        <br><small class="text-muted">{{ ex.note }}</small>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">
+                        {{ ex.data_inizio or '?' }} - {{ ex.data_fine or '?' }}
+                    </small>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                {% if puo_gestire_assegnazioni %}
+                <hr>
+                <div class="text-center">
+                    <a href="/admin/utenti/storico-assegnazioni?cliente={{ cliente.p_iva }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-1"></i>Modifica Storico
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>

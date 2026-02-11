@@ -1,0 +1,24 @@
+{# ==============================================================================
+   VEICOLI - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+{% if veicoli %}
+<div class="card mb-3">
+    <div class="card-header py-2 d-flex align-items-center">
+        <span><i class="bi bi-car-front"></i> Veicoli</span>
+        {% if stats_veicoli.installato > 0 %}
+        <span class="badge ms-2" style="background-color: #28a745;" title="Installato - Gestiti da BR">
+            <i class="bi bi-check-circle-fill"></i> {{ stats_veicoli.installato }}
+        </span>
+        {% endif %}
+        {% if stats_veicoli.extra > 0 %}
+        <span class="badge ms-2" style="background-color: #fd7e14;" title="Extra - Altri broker">
+            <i class="bi bi-arrow-right-circle-fill"></i> {{ stats_veicoli.extra }}
+        </span>
+        {% endif %}
+    </div>
+    {% set veicoli_lista = veicoli %}
+    {% include "componenti/veicoli/_tabella.html" %}
+</div>
+{% endif %}

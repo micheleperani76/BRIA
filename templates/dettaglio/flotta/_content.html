@@ -1,0 +1,72 @@
+{# ==============================================================================
+   FLOTTA - File satellite (estratto da dettaglio.html)
+   Data estrazione: 2026-02-10 16:41
+   Generato da: modularizza_dettaglio.py
+   ============================================================================== #}
+<div class="card mb-3">
+    <div class="card-header py-2">
+        <i class="bi bi-car-front"></i> Flotta
+    </div>
+    <div class="card-body py-2">
+        {% if stats_veicoli.totale > 0 %}
+        <!-- Installato (verde) -->
+        {% if stats_veicoli.installato > 0 %}
+        <div class="d-flex justify-content-between" style="color: #28a745;">
+            <span><i class="bi bi-check-circle-fill"></i> Installato</span>
+            <span><strong>{{ stats_veicoli.installato }}</strong> &middot; &euro; {{ stats_veicoli.canone_installato|format_numero }}</span>
+        </div>
+        {% endif %}
+        <!-- Extra (arancione) -->
+        {% if stats_veicoli.extra > 0 %}
+        <div class="d-flex justify-content-between" style="color: #fd7e14;">
+            <span><i class="bi bi-arrow-right-circle-fill"></i> Extra</span>
+            <span><strong>{{ stats_veicoli.extra }}</strong> &middot; &euro; {{ stats_veicoli.canone_extra|format_numero }}</span>
+        </div>
+        {% endif %}
+        <!-- Separatore e Totale -->
+        {% if stats_veicoli.installato > 0 and stats_veicoli.extra > 0 %}
+        <hr class="my-1">
+        <div class="d-flex justify-content-between">
+            <span><strong>Totale</strong></span>
+            <span><strong>{{ stats_veicoli.totale }}</strong> &middot; <strong>&euro; {{ stats_veicoli.canone_totale|format_numero }}</strong></span>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="text-muted small mb-2"><i class="bi bi-info-circle"></i> Nessun veicolo caricato</div>
+        {% endif %}
+
+        <!-- Separatore prima dei campi editabili -->
+        <hr class="my-2">
+
+        <!-- Parco Potenziale (editabile inline) -->
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="text-muted small">Parco Potenziale</span>
+            <div class="d-flex align-items-center gap-1">
+                <input type="number" class="form-control form-control-sm text-end" 
+                       id="inputParcoPotenziale" 
+                       value="{{ cliente.parco_potenziale or '' }}" 
+                       style="width: 70px;" 
+                       placeholder="-"
+                       onchange="salvaParcoPotenziale(this.value)">
+            </div>
+        </div>
+
+        <!-- Veicoli Rilevati (editabile inline con data) -->
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted small">Veicoli Rilevati</span>
+            <div class="d-flex align-items-center gap-1">
+                {% if cliente.data_rilevazione %}
+                <small class="text-muted" id="dataRilevazione">({{ cliente.data_rilevazione }})</small>
+                {% else %}
+                <small class="text-muted" id="dataRilevazione"></small>
+                {% endif %}
+                <input type="number" class="form-control form-control-sm text-end" 
+                       id="inputVeicoliRilevati" 
+                       value="{{ cliente.veicoli_rilevati or '' }}" 
+                       style="width: 70px;" 
+                       placeholder="-"
+                       onchange="salvaVeicoliRilevati(this.value)">
+            </div>
+        </div>
+    </div>
+</div>

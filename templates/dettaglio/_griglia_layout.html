@@ -1,0 +1,38 @@
+{# ==============================================================================
+   GRIGLIA LAYOUT DINAMICO - Pagina Dettaglio Cliente
+   ==============================================================================
+   Data: 2026-02-10
+   Descrizione: Renderizza i quadri della pagina dettaglio usando il layout
+                attivo da impostazioni/layout/.
+                Ogni gruppo di y uguale -> <div class="row g-3 mb-3">
+                Ogni quadro -> <div class="col-lg-{w}">
+   
+   Variabili richieste:
+     layout_quadri  - lista quadri ordinata per (y, x), ciascuno con:
+                      id, x, y, w, h, template
+   ============================================================================== #}
+
+{% if layout_quadri %}
+{% set ns = namespace(current_y=-1) %}
+{% for q in layout_quadri %}
+
+{# --- Nuova riga quando cambia y --- #}
+{% if q.y != ns.current_y %}
+{% if ns.current_y >= 0 %}
+        </div>
+{% endif %}
+        <div class="row g-3 mb-3">
+{% set ns.current_y = q.y %}
+{% endif %}
+
+            <div class="col-lg-{{ q.w }}">
+                {% include q.template %}
+            </div>
+
+{% endfor %}
+{# --- Chiudi ultima riga --- #}
+        </div>
+{% endif %}
+
+{# --- Modal storico commerciali: sempre presente, fuori dalla griglia --- #}
+{% include "dettaglio/commerciale_storico/_content.html" %}
