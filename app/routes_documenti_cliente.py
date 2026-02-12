@@ -413,7 +413,7 @@ def api_upload_documento(cliente_id, tipo_doc):
     
     if not allowed_file_for_type(file.filename, tipo_doc):
         if tipo_doc == 'car-policy':
-            return jsonify({'success': False, 'error': 'Car Policy accetta solo: PDF, DOC, DOCX, ODT'}), 400
+            return jsonify({'success': False, 'error': 'Car Policy accetta solo: PDF, DOC, DOCX, ODT, XLS, XLSX'}), 400
         return jsonify({'success': False, 'error': 'Tipo file non consentito'}), 400
     
     sovrascrivi = request.form.get('sovrascrivi', '').split(',')

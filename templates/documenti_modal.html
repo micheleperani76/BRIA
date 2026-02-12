@@ -313,7 +313,7 @@
                             <i class="bi bi-arrow-repeat"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger" 
-                                onclick="eliminaDocumento('${doc.tipo}')" title="Elimina">
+                                onclick="eliminaDocStrutturato('${doc.tipo}')" title="Elimina">
                             <i class="bi bi-trash"></i>
                         </button>
                     ` : `
@@ -643,7 +643,7 @@
     };
     
     // Elimina documento
-    window.eliminaDocumento = function(tipo) {
+    window.eliminaDocStrutturato = function(tipo) {
         if (!confirm('Eliminare questo documento?')) return;
         
         fetch(`/api/cliente/${clienteId}/documenti-strutturati/elimina`, {

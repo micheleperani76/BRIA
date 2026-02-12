@@ -105,6 +105,12 @@
     function refreshDocumenti(tipo) {
         if (tipo === 'car-policy' && typeof window.caricaCarPolicy === 'function') {
             window.caricaCarPolicy();
+        } else if (tipo === 'contratti' && typeof window.caricaContratti === 'function') {
+            window.caricaContratti();
+        } else if (tipo === 'ordini' && typeof window.caricaOrdini === 'function') {
+            window.caricaOrdini();
+        } else if (tipo === 'quotazioni' && typeof window.caricaQuotazioni === 'function') {
+            window.caricaQuotazioni();
         } else if (typeof window.caricaDocumenti === 'function') {
             window.caricaDocumenti(tipo);
         }
@@ -157,9 +163,13 @@
     
     // === ESEGUI UPLOAD ===
     window.eseguiUpload = function(tipo, file, fileInput, sovrascrivi) {
-        const container = tipo === 'car-policy' 
-            ? document.getElementById('car-policy-file-list')
-            : document.getElementById('lista-' + tipo);
+        const containerMap = {
+            'car-policy': 'car-policy-file-list',
+            'contratti': 'contratti-file-list',
+            'ordini': 'ordini-file-list',
+            'quotazioni': 'quotazioni-file-list'
+        };
+        const container = document.getElementById(containerMap[tipo] || 'lista-' + tipo);
         
         if (container) {
             container.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2">Caricamento...</p></div>';
