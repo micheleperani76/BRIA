@@ -1011,6 +1011,7 @@ def dettaglio_cliente(cliente_id):
 
 
 @app.route('/cliente/<int:cliente_id>/evernote')
+@login_required
 def export_evernote(cliente_id):
     """Esporta i dati cliente in formato Evernote (.txt)."""
     conn = get_connection()
@@ -2540,6 +2541,7 @@ def get_link_assistenza(noleggiatore):
 
 
 @app.route('/cliente/<int:cliente_id>/note/cerca')
+@login_required
 def cerca_note_cliente(cliente_id):
     """Cerca nelle note di un cliente."""
     q = request.args.get('q', '').strip()
@@ -2552,14 +2554,14 @@ def cerca_note_cliente(cliente_id):
         search_param = f'%{q}%'
         cursor.execute('''
             SELECT * FROM note_clienti 
-            WHERE cliente_id = ? AND eliminato = 0
+            WHERE cliente_id = ? AND (eliminato = 0 OR eliminato IS NULL)
               AND (titolo LIKE ? OR testo LIKE ?)
             ORDER BY fissata DESC, data_creazione DESC
         ''', (cliente_id, search_param, search_param))
     else:
         cursor.execute('''
             SELECT * FROM note_clienti 
-            WHERE cliente_id = ? AND eliminato = 0
+            WHERE cliente_id = ? AND (eliminato = 0 OR eliminato IS NULL)
             ORDER BY fissata DESC, data_creazione DESC
         ''', (cliente_id,))
     
@@ -2580,6 +2582,7 @@ def cerca_note_cliente(cliente_id):
 
 
 @app.route('/cliente/<int:cliente_id>/allegato/elimina', methods=['POST'])
+@login_required
 def elimina_allegato_cliente(cliente_id):
     """Elimina un singolo allegato di una nota cliente."""
     conn = get_connection()
@@ -3202,6 +3205,7 @@ def api_cerca_utenti():
 # ==============================================================================
 
 @app.route('/cliente/<int:cliente_id>/note')
+@login_required
 def note_fullscreen(cliente_id):
     """Vista fullscreen per gestione note cliente."""
     conn = get_connection()

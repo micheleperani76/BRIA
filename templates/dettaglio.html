@@ -214,12 +214,38 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
     50% { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
 }
+/* FAB - Pulsante Note fluttuante */
+.fab-notes {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #ffc107;
+    color: #333;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    cursor: pointer;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1050;
+    transition: all 0.2s;
+}
+.fab-notes:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+.fab-notes.hidden { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="main-container notes-hidden" id="mainContainer">
     
+<script>if(localStorage.getItem("notesPanelOpen_{{ cliente.id }}")==="1"){document.getElementById("mainContainer").className="main-container notes-visible";document.getElementById("fabNotes").classList.add("hidden");}</script>
     <!-- AREA CONTENUTO (scrollabile) -->
     <div class="content-area" id="contentArea">
         
@@ -251,10 +277,7 @@
                     </h4>
                 </div>
                 <div>
-                    <!-- PULSANTE NOTE -->
-                    <button type="button" class="btn btn-warning btn-sm" id="btnToggleNotes" onclick="toggleNotes()">
-                        <i class="bi bi-journal-text"></i> Note
-                    </button>
+<!-- Tasto Note spostato in FAB fluttuante -->
                     
                     <!-- PULSANTE TRATTATIVA (attivo solo per commerciali/admin) -->
                     {% if session.get('ruolo_base') in ['admin', 'commerciale'] %}
@@ -300,7 +323,7 @@
                 <span class="badge bg-warning text-dark" id="noteCount">{{ note_cliente|length }}</span>
             </h5>
             <div>
-                <a href="/cliente/{{ cliente.id }}/note" class="btn btn-outline-primary btn-sm me-2" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
+                <a href="/cliente/{{ cliente.id }}/note" target="_blank" class="btn btn-outline-primary btn-sm me-2" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
                 <button class="btn btn-success btn-sm me-2" onclick="mostraFormNuovaNota()">
                     <i class="bi bi-plus"></i> Nuova
                 </button>
@@ -366,7 +389,7 @@
                         </div>
                         <div class="btn-group btn-group-sm">
                             <button type="button" class="btn btn-sm btn-pin {% if nota.fissata %}active{% endif %}" onclick="toggleFissaNota({{ nota.id }})" title="Fissa/Sfissa"><i class="bi bi-pin-fill"></i></button>
-                            <a href="/cliente/{{ cliente.id }}/note?nota={{ nota.id }}" class="btn btn-outline-secondary btn-sm" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
+                            <a href="/cliente/{{ cliente.id }}/note?nota={{ nota.id }}" target="_blank" class="btn btn-outline-secondary btn-sm" title="Tutto schermo"><i class="bi bi-arrows-fullscreen"></i></a>
                             <button type="button" class="btn btn-outline-primary btn-sm" onclick="modificaNota({{ nota.id }})" title="Modifica">
                                 <i class="bi bi-pencil"></i>
                             </button>
@@ -776,6 +799,10 @@
         </div>
     </div>
 </div>
+<!-- FAB Pulsante Note fluttuante -->
+<button type="button" class="fab-notes" id="fabNotes" onclick="toggleNotes()" title="Note cliente">
+    <i class="bi bi-journal-text"></i>
+</button>
 {% endblock %}
 
 {% block extra_js %}
@@ -822,13 +849,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // === TOGGLE PANNELLO NOTE ===
 function toggleNotes() {
     const container = document.getElementById('mainContainer');
-    const btn = document.getElementById('btnToggleNotes');
+    const fab = document.getElementById('fabNotes');
     
     if (container.classList.contains('notes-hidden')) {
         container.classList.remove('notes-hidden');
         container.classList.add('notes-visible');
-        btn.classList.add('btn-notes-active');
-        btn.innerHTML = '<i class="bi bi-x-lg"></i> Chiudi Note';
+        fab.classList.add('hidden');
+        // FAB nascosto quando note aperte
         
         // Salva stato in localStorage
         localStorage.setItem('notesPanelOpen_{{ cliente.id }}', '1');
@@ -838,8 +865,8 @@ function toggleNotes() {
     } else {
         container.classList.remove('notes-visible');
         container.classList.add('notes-hidden');
-        btn.classList.remove('btn-notes-active');
-        btn.innerHTML = '<i class="bi bi-journal-text"></i> Note';
+        fab.classList.remove('hidden');
+        // FAB visibile quando note chiuse
         
         // Salva stato in localStorage
         localStorage.setItem('notesPanelOpen_{{ cliente.id }}', '0');
@@ -849,7 +876,7 @@ function toggleNotes() {
 // Riapri pannello note se era aperto prima del reload
 document.addEventListener('DOMContentLoaded', function() {
     if (localStorage.getItem('notesPanelOpen_{{ cliente.id }}') === '1') {
-        toggleNotes();
+        setTimeout(initResize, 100);
     }
 });
 
