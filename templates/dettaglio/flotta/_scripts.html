@@ -1,0 +1,52 @@
+{# ==============================================================================
+   FLOTTA - Scripts satellite
+   ==============================================================================
+   Versione: 1.0.0
+   Data: 2026-02-11
+   Descrizione: JS per salvataggio Parco Potenziale e Veicoli Rilevati
+   ============================================================================== #}
+<script>
+const CLIENTE_ID_FLOTTA = {{ cliente.id }};
+
+function salvaParcoPotenziale(valore) {
+    fetch(`/api/cliente/${CLIENTE_ID_FLOTTA}/parco-potenziale`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const input = document.getElementById('inputParcoPotenziale');
+            input.style.backgroundColor = '#d4edda';
+            setTimeout(() => input.style.backgroundColor = '', 500);
+        }
+    })
+    .catch(err => console.error('Errore salvataggio parco potenziale:', err));
+}
+
+function salvaVeicoliRilevati(valore) {
+    fetch(`/api/cliente/${CLIENTE_ID_FLOTTA}/veicoli-rilevati`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const input = document.getElementById('inputVeicoliRilevati');
+            input.style.backgroundColor = '#d4edda';
+            setTimeout(() => input.style.backgroundColor = '', 500);
+            const dataSpan = document.getElementById('dataRilevazione');
+            if (dataSpan) {
+                if (data.data_rilevazione) {
+                    dataSpan.textContent = `(${data.data_rilevazione})`;
+                } else {
+                    dataSpan.textContent = '';
+                }
+            }
+        }
+    })
+    .catch(err => console.error('Errore salvataggio veicoli rilevati:', err));
+}
+</script>

@@ -37,15 +37,15 @@ def get_noleggiatori_cliente(cliente_id):
     cursor = conn.cursor()
     cursor.execute("""
         SELECT 
-            cn.id, cn.noleggiatore, cn.stato_relazione, cn.stato_crm, cn.note, cn.data_inserimento,
+            cn.id, cn.noleggiatore, cn.stato_relazione, cn.stato_crm, cn.note, cn.data_inserimento, cn.ordine,
             COALESCE(SUM(CASE WHEN v.tipo_veicolo = 'Installato' THEN 1 ELSE 0 END), 0) as veicoli_installato,
             COALESCE(SUM(CASE WHEN v.tipo_veicolo = 'Extra' OR v.tipo_veicolo IS NULL THEN 1 ELSE 0 END), 0) as veicoli_extra,
             COALESCE(COUNT(v.id), 0) as veicoli_totale
         FROM clienti_noleggiatori cn
         LEFT JOIN veicoli v ON v.cliente_id = cn.cliente_id AND v.noleggiatore = cn.noleggiatore
         WHERE cn.cliente_id = ?
-        GROUP BY cn.id, cn.noleggiatore, cn.stato_relazione, cn.stato_crm, cn.note, cn.data_inserimento
-        ORDER BY cn.noleggiatore
+        GROUP BY cn.id, cn.noleggiatore, cn.stato_relazione, cn.stato_crm, cn.note, cn.data_inserimento, cn.ordine
+        ORDER BY cn.ordine, cn.noleggiatore
     """, (cliente_id,))
     
     rows = cursor.fetchall()
@@ -250,10 +250,14 @@ def api_add_noleggiatore(cliente_id):
         conn = get_connection()
         cursor = conn.cursor()
         
+        # Calcola prossimo ordine
+        cursor.execute("SELECT COALESCE(MAX(ordine), -1) + 1 FROM clienti_noleggiatori WHERE cliente_id = ?", (cliente_id,))
+        prossimo_ordine = cursor.fetchone()[0]
+        
         cursor.execute("""
-            INSERT INTO clienti_noleggiatori (cliente_id, noleggiatore, stato_crm, stato_relazione, note)
-            VALUES (?, ?, ?, ?, ?)
-        """, (cliente_id, noleggiatore, stato_crm or None, stato, note or None))
+            INSERT INTO clienti_noleggiatori (cliente_id, noleggiatore, stato_crm, stato_relazione, note, ordine)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (cliente_id, noleggiatore, stato_crm or None, stato, note or None, prossimo_ordine))
         
         conn.commit()
         new_id = cursor.lastrowid
@@ -348,6 +352,125 @@ def api_delete_noleggiatore(cliente_id, noleg_id):
     except Exception as e:
         logger.error(f"Errore delete noleggiatore: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+
+@noleggiatori_cliente_bp.route('/api/cliente/<int:cliente_id>/noleggiatori/riordina', methods=['POST'])
+@login_required
+def api_riordina_noleggiatore(cliente_id):
+    """
+    POST: Sposta un noleggiatore su o giu nella lista.
+    Materializza automaticamente tutti i noleggiatori da veicoli se necessario.
+    """
+    try:
+        data = request.get_json()
+        noleg_id = data.get('noleg_id')
+        noleggiatore_nome = data.get('noleggiatore', '').strip().upper()
+        direzione = data.get('direzione', '')
+        
+        if direzione not in ('su', 'giu'):
+            return jsonify({'success': False, 'error': 'Direzione non valida'}), 400
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # === MATERIALIZZA: porta tutti i noleggiatori da veicoli in clienti_noleggiatori ===
+        cursor.execute("""
+            SELECT DISTINCT v.noleggiatore
+            FROM veicoli v
+            WHERE v.cliente_id = ? AND v.noleggiatore IS NOT NULL AND v.noleggiatore != ''
+            AND v.noleggiatore NOT IN (
+                SELECT cn.noleggiatore FROM clienti_noleggiatori cn WHERE cn.cliente_id = ?
+            )
+        """, (cliente_id, cliente_id))
+        mancanti = cursor.fetchall()
+        
+        if mancanti:
+            # Prossimo ordine disponibile
+            cursor.execute("SELECT COALESCE(MAX(ordine), -1) + 1 FROM clienti_noleggiatori WHERE cliente_id = ?", (cliente_id,))
+            prossimo = cursor.fetchone()[0] or 0
+            
+            for row in mancanti:
+                nome = row['noleggiatore']
+                # Determina stato da veicoli
+                cursor.execute("""
+                    SELECT SUM(CASE WHEN tipo_veicolo = 'Installato' THEN 1 ELSE 0 END) as inst
+                    FROM veicoli WHERE cliente_id = ? AND noleggiatore = ?
+                """, (cliente_id, nome))
+                vrow = cursor.fetchone()
+                stato = 'NOSTRI' if vrow and vrow['inst'] > 0 else 'ALTRO_BROKER'
+                
+                cursor.execute("""
+                    INSERT INTO clienti_noleggiatori (cliente_id, noleggiatore, stato_relazione, ordine)
+                    VALUES (?, ?, ?, ?)
+                """, (cliente_id, nome, stato, prossimo))
+                prossimo += 1
+            
+            conn.commit()
+            logger.info(f"Materializzati {len(mancanti)} noleggiatori da veicoli per cliente {cliente_id}")
+        
+        # === Normalizza ordini (riempie buchi) ===
+        cursor.execute("""
+            SELECT id FROM clienti_noleggiatori 
+            WHERE cliente_id = ? ORDER BY ordine, noleggiatore
+        """, (cliente_id,))
+        tutti = cursor.fetchall()
+        for i, r in enumerate(tutti):
+            cursor.execute("UPDATE clienti_noleggiatori SET ordine = ? WHERE id = ?", (i, r['id']))
+        conn.commit()
+        
+        # === Trova il record da spostare ===
+        if noleg_id:
+            cursor.execute("SELECT id, ordine FROM clienti_noleggiatori WHERE id = ? AND cliente_id = ?",
+                           (noleg_id, cliente_id))
+        else:
+            cursor.execute("SELECT id, ordine FROM clienti_noleggiatori WHERE noleggiatore = ? AND cliente_id = ?",
+                           (noleggiatore_nome, cliente_id))
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Record non trovato'}), 404
+        
+        noleg_id = row['id']
+        ordine_corrente = row['ordine']
+        
+        # === Trova il vicino ===
+        if direzione == 'su':
+            cursor.execute("""
+                SELECT id, ordine FROM clienti_noleggiatori 
+                WHERE cliente_id = ? AND ordine < ?
+                ORDER BY ordine DESC LIMIT 1
+            """, (cliente_id, ordine_corrente))
+        else:
+            cursor.execute("""
+                SELECT id, ordine FROM clienti_noleggiatori 
+                WHERE cliente_id = ? AND ordine > ?
+                ORDER BY ordine ASC LIMIT 1
+            """, (cliente_id, ordine_corrente))
+        
+        vicino = cursor.fetchone()
+        
+        if not vicino:
+            conn.close()
+            return jsonify({'success': True, 'message': 'Gia al limite'})
+        
+        # === Scambia ordini ===
+        cursor.execute("UPDATE clienti_noleggiatori SET ordine = ? WHERE id = ?",
+                       (vicino['ordine'], noleg_id))
+        cursor.execute("UPDATE clienti_noleggiatori SET ordine = ? WHERE id = ?",
+                       (ordine_corrente, vicino['id']))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Ordine aggiornato'})
+        
+    except Exception as e:
+        logger.error(f"Errore riordina noleggiatore: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 
 @noleggiatori_cliente_bp.route('/api/noleggiatori/lista', methods=['GET'])

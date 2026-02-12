@@ -17,9 +17,14 @@
 <div class="card mb-3" id="card-noleggiatori">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
         <span><i class="bi bi-buildings me-1"></i> Noleggiatori</span>
-        <button type="button" class="btn btn-sm btn-outline-primary" onclick="apriModalNoleggiatore()" title="Aggiungi noleggiatore">
-            <i class="bi bi-plus-lg"></i>
-        </button>
+        <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary" id="btnRiordinaNoleg" onclick="toggleRiordinaNoleg()" title="Riordina">
+                    <i class="bi bi-arrow-down-up"></i>
+                </button>
+                <button type="button" class="btn btn-outline-primary" onclick="apriModalNoleggiatore()" title="Aggiungi noleggiatore">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
     </div>
     <div class="card-body py-2" style="font-size: 0.875rem;">
         <!-- CRM Cliente (fisso in alto) -->
@@ -40,7 +45,7 @@
         </div>
         
         <!-- Lista Noleggiatori -->
-        <div id="lista-noleggiatori">
+        <div id="lista-noleggiatori" style="max-height: 130px; overflow-y: auto;">
             <div class="text-center text-muted py-2">
                 <div class="spinner-border spinner-border-sm" role="status"></div>
                 <small class="ms-2">Caricamento...</small>
@@ -196,6 +201,13 @@ function renderNoleggiatori(manuali, daVeicoli) {
     }
     
     let html = '';
+    const isRiordino = document.getElementById('btnRiordinaNoleg') && document.getElementById('btnRiordinaNoleg').classList.contains('active');
+    
+    // Conta totale per frecce
+    const totaleManual = manuali.length;
+    const totaleDaVeicoli = daVeicoli.length;
+    const totale = totaleManual + totaleDaVeicoli;
+    let idx = 0;
     
     // Noleggiatori manuali
     manuali.forEach(n => {
@@ -206,18 +218,24 @@ function renderNoleggiatori(manuali, daVeicoli) {
             statoBadge = `<span class="badge" style="background-color: ${stato.colore}; font-size: 0.7rem;">${stato.etichetta}</span>`;
         }
         
-        // Conteggio veicoli se presente
         let veicoliBadge = '';
         if (n.veicoli_totale && n.veicoli_totale > 0) {
             const badgeClass = n.veicoli_installato > 0 ? 'bg-success' : 'bg-secondary';
             veicoliBadge = `<span class="badge ${badgeClass} ms-1" style="font-size: 0.7rem;">${n.veicoli_totale} veic.</span>`;
         }
         
-        // Nota troncata (primi 20 caratteri)
         let notaTroncata = '';
         if (n.note && n.note.length > 0) {
             const notaText = n.note.length > 20 ? n.note.substring(0, 20) + '...' : n.note;
             notaTroncata = `<span class="text-muted ms-2" title="${n.note}">${notaText}</span>`;
+        }
+        
+        // Frecce solo in modalita riordino
+        let frecce = '';
+        if (isRiordino) {
+            const disSu = idx === 0 ? 'disabled' : '';
+            const disGiu = idx === totale - 1 ? 'disabled' : '';
+            frecce = `<button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(${n.id}, '${n.noleggiatore}', 'su')" ${disSu} title="Su"><i class="bi bi-chevron-up" style="font-size:0.7rem;"></i></button><button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(${n.id}, '${n.noleggiatore}', 'giu')" ${disGiu} title="Giu"><i class="bi bi-chevron-down" style="font-size:0.7rem;"></i></button>`;
         }
         
         html += `
@@ -229,6 +247,7 @@ function renderNoleggiatori(manuali, daVeicoli) {
                     ${notaTroncata}
                 </div>
                 <div class="btn-group btn-group-sm">
+                    ${frecce}
                     <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="modificaNoleggiatore(${n.id})" title="Modifica">
                         <i class="bi bi-pencil"></i>
                     </button>
@@ -237,20 +256,26 @@ function renderNoleggiatori(manuali, daVeicoli) {
                     </button>
                 </div>
             </div>`;
+        idx++;
     });
     
     // Noleggiatori rilevati dai veicoli
     daVeicoli.forEach(nol => {
         const statoAuto = statiDisponibili.find(s => s.codice === nol.stato_auto) || {colore: '#dc3545', etichetta: 'Altro Broker'};
-        
-        // Badge veicoli: verde se almeno uno Installato, grigio se tutti Extra
         const badgeVeicoliClass = nol.veicoli_installato > 0 ? 'bg-success' : 'bg-secondary';
         
-        // Nota troncata (primi 20 caratteri)
         let notaTroncata = '';
         if (nol.note && nol.note.length > 0) {
             notaTroncata = nol.note.length > 20 ? nol.note.substring(0, 20) + '...' : nol.note;
             notaTroncata = `<span class="text-muted ms-2" title="${nol.note}">${notaTroncata}</span>`;
+        }
+        
+        // Frecce solo in modalita riordino
+        let frecce = '';
+        if (isRiordino) {
+            const disSu = idx === 0 ? 'disabled' : '';
+            const disGiu = idx === totale - 1 ? 'disabled' : '';
+            frecce = `<button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, '${nol.noleggiatore}', 'su')" ${disSu} title="Su"><i class="bi bi-chevron-up" style="font-size:0.7rem;"></i></button><button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, '${nol.noleggiatore}', 'giu')" ${disGiu} title="Giu"><i class="bi bi-chevron-down" style="font-size:0.7rem;"></i></button>`;
         }
         
         html += `
@@ -261,10 +286,14 @@ function renderNoleggiatori(manuali, daVeicoli) {
                     <span class="badge ${badgeVeicoliClass}" style="font-size: 0.7rem;">${nol.veicoli_totale} veic.</span>
                     ${notaTroncata}
                 </div>
-                <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="aggiungiDaVeicolo('${nol.noleggiatore}', '${nol.stato_auto}')" title="Configura">
-                    <i class="bi bi-pencil"></i>
-                </button>
+                <div class="btn-group btn-group-sm">
+                    ${frecce}
+                    <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="aggiungiDaVeicolo('${nol.noleggiatore}', '${nol.stato_auto}')" title="Configura">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
             </div>`;
+        idx++;
     });
     
     container.innerHTML = html;
@@ -401,5 +430,36 @@ function eliminaNoleggiatore(id, nome) {
                 alert(data.error || 'Errore eliminazione');
             }
         });
+}
+
+
+
+function toggleRiordinaNoleg() {
+    const btn = document.getElementById('btnRiordinaNoleg');
+    btn.classList.toggle('active');
+    btn.classList.toggle('btn-outline-secondary');
+    btn.classList.toggle('btn-secondary');
+    caricaNoleggiatori();
+}
+
+function spostaNoleggiatore(id, nome, direzione) {
+    fetch(`/api/cliente/${clienteIdNoleg}/noleggiatori/riordina`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            noleg_id: id,
+            noleggiatore: nome,
+            direzione: direzione
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            caricaNoleggiatori();
+        } else {
+            alert(data.error || 'Errore riordinamento');
+        }
+    })
+    .catch(err => console.error('Errore spostamento:', err));
 }
 </script>

@@ -780,54 +780,6 @@
 
 {% block extra_js %}
 <script>
-// === VARIABILE GLOBALE CLIENTE ===
-const CLIENTE_ID = {{ cliente.id }};
-
-// === SALVATAGGIO PARCO POTENZIALE E VEICOLI RILEVATI ===
-function salvaParcoPotenziale(valore) {
-    fetch(`/api/cliente/${CLIENTE_ID}/parco-potenziale`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Feedback visivo breve
-            const input = document.getElementById('inputParcoPotenziale');
-            input.style.backgroundColor = '#d4edda';
-            setTimeout(() => input.style.backgroundColor = '', 500);
-        }
-    })
-    .catch(err => console.error('Errore salvataggio parco potenziale:', err));
-}
-
-function salvaVeicoliRilevati(valore) {
-    fetch(`/api/cliente/${CLIENTE_ID}/veicoli-rilevati`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({valore: valore ? parseInt(valore) : null})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Feedback visivo breve
-            const input = document.getElementById('inputVeicoliRilevati');
-            input.style.backgroundColor = '#d4edda';
-            setTimeout(() => input.style.backgroundColor = '', 500);
-            // Aggiorna data rilevazione
-            const dataSpan = document.getElementById('dataRilevazione');
-            if (dataSpan) {
-                if (data.data_rilevazione) {
-                    dataSpan.textContent = `(${data.data_rilevazione})`;
-                } else {
-                    dataSpan.textContent = '';
-                }
-            }
-        }
-    })
-    .catch(err => console.error('Errore salvataggio veicoli rilevati:', err));
-}
 
 // === AGGIORNAMENTO ANTEPRIMA INDIRIZZO ===
 function aggiornaAnteprimaIndirizzo() {
@@ -1175,7 +1127,7 @@ function rimuoviAllegato(id, nome) {
 console.log('Commerciali disponibili: {% for c in commerciali %}{{ c }}, {% endfor %}');
 
 // === GESTIONE DROPDOWN AGENTI ===
-document.getElementById('selectAutoreNuovo').addEventListener('change', function() {
+var _selAutore = document.getElementById('selectAutoreNuovo'); if (_selAutore) _selAutore.addEventListener('change', function() {
     const input = document.getElementById('inputAutoreNuovo');
     if (this.value === '__ALTRO__') {
         input.style.display = 'block';
