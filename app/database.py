@@ -149,6 +149,24 @@ def init_database():
     ''')
     
     # =========================================================================
+    # TABELLA NOLEGGIATORI (anagrafica unica)
+    # =========================================================================
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS noleggiatori (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            codice TEXT NOT NULL UNIQUE,
+            nome_display TEXT NOT NULL,
+            colore TEXT DEFAULT '#6c757d',
+            link_assistenza TEXT,
+            ordine INTEGER DEFAULT 0,
+            note TEXT,
+            attivo INTEGER DEFAULT 1,
+            origine TEXT DEFAULT 'PREDEFINITO',
+            data_inserimento TEXT DEFAULT (datetime('now', 'localtime'))
+        )
+    ''')
+    
+    # =========================================================================
     # INDICI
     # =========================================================================
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_clienti_piva ON clienti(p_iva)')
@@ -159,6 +177,8 @@ def init_database():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_veicoli_cliente ON veicoli(cliente_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_veicoli_targa ON veicoli(targa)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_storico_data ON storico_modifiche(data_modifica)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_noleggiatori_codice ON noleggiatori(codice)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_veicoli_noleggiatore_id ON veicoli(noleggiatore_id)')
     
     conn.commit()
     return conn

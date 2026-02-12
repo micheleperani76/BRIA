@@ -81,9 +81,11 @@ def pagina_installato():
 
     # Lista noleggiatori per filtro
     cursor.execute("""
-        SELECT DISTINCT noleggiatore FROM veicoli
-        WHERE tipo_veicolo = 'Installato' AND noleggiatore IS NOT NULL
-        ORDER BY noleggiatore
+        SELECT DISTINCT COALESCE(n.nome_display, v.noleggiatore) as nome_noleggiatore
+        FROM veicoli v
+        LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
+        WHERE v.tipo_veicolo = 'Installato' AND v.noleggiatore IS NOT NULL
+        ORDER BY nome_noleggiatore
     """)
     noleggiatori_lista = [row[0] for row in cursor.fetchall()]
 
@@ -208,8 +210,11 @@ def pagina_storico():
 
     # Noleggiatori per filtro
     cursor.execute("""
-        SELECT DISTINCT noleggiatore FROM storico_installato
-        WHERE noleggiatore IS NOT NULL ORDER BY noleggiatore
+        SELECT DISTINCT COALESCE(n.nome_display, s.noleggiatore) as nome_noleggiatore
+        FROM storico_installato s
+        LEFT JOIN noleggiatori n ON n.codice = UPPER(REPLACE(s.noleggiatore, ' ', '_'))
+        WHERE s.noleggiatore IS NOT NULL 
+        ORDER BY nome_noleggiatore
     """)
     noleggiatori_lista = [row[0] for row in cursor.fetchall()]
 

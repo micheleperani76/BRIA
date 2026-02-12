@@ -168,7 +168,12 @@ function popolaSelectNoleggiatori() {
     const select = document.getElementById('noleg-nome');
     select.innerHTML = '<option value="">-- Seleziona --</option>';
     listaNoleggiatori.forEach(n => {
-        select.innerHTML += `<option value="${n}">${n}</option>`;
+        // n puo' essere oggetto {id, codice, nome_display} o stringa (retrocompatibilita)
+        if (typeof n === 'object') {
+            select.innerHTML += `<option value="${n.id}" data-codice="${n.codice}">${n.nome_display}</option>`;
+        } else {
+            select.innerHTML += `<option value="${n}">${n}</option>`;
+        }
     });
 }
 
@@ -275,7 +280,7 @@ function renderNoleggiatori(manuali, daVeicoli) {
         if (isRiordino) {
             const disSu = idx === 0 ? 'disabled' : '';
             const disGiu = idx === totale - 1 ? 'disabled' : '';
-            frecce = `<button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, '${nol.noleggiatore}', 'su')" ${disSu} title="Su"><i class="bi bi-chevron-up" style="font-size:0.7rem;"></i></button><button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, '${nol.noleggiatore}', 'giu')" ${disGiu} title="Giu"><i class="bi bi-chevron-down" style="font-size:0.7rem;"></i></button>`;
+            frecce = `<button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, ${nol.noleggiatore_id || 0}, 'su')" ${disSu} title="Su"><i class="bi bi-chevron-up" style="font-size:0.7rem;"></i></button><button class="btn btn-outline-secondary btn-sm py-0 px-1" onclick="spostaNoleggiatore(null, ${nol.noleggiatore_id || 0}, 'giu')" ${disGiu} title="Giu"><i class="bi bi-chevron-down" style="font-size:0.7rem;"></i></button>`;
         }
         
         html += `
@@ -288,7 +293,7 @@ function renderNoleggiatori(manuali, daVeicoli) {
                 </div>
                 <div class="btn-group btn-group-sm">
                     ${frecce}
-                    <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="aggiungiDaVeicolo('${nol.noleggiatore}', '${nol.stato_auto}')" title="Configura">
+                    <button class="btn btn-outline-primary btn-sm py-0 px-1" onclick="aggiungiDaVeicolo('${nol.noleggiatore}', '${nol.stato_auto}', ${nol.noleggiatore_id || 'null'})" title="Configura">
                         <i class="bi bi-pencil"></i>
                     </button>
                 </div>
@@ -383,8 +388,11 @@ function salvaNoleggiatore() {
         return;
     }
     
+    // Se nome e' un numero, e' un noleggiatore_id dalla nuova API
+    const isId = !isNaN(nome) && nome !== '';
     const payload = {
-        noleggiatore: nome,
+        noleggiatore_id: isId ? parseInt(nome) : null,
+        noleggiatore: isId ? '' : nome,
         stato_relazione: stato || null,
         note: note
     };
@@ -448,7 +456,8 @@ function spostaNoleggiatore(id, nome, direzione) {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             noleg_id: id,
-            noleggiatore: nome,
+            noleggiatore_id: typeof nome === 'number' ? nome : null,
+            noleggiatore: typeof nome === 'string' ? nome : '',
             direzione: direzione
         })
     })

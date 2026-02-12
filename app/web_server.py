@@ -805,10 +805,13 @@ def _render_dettaglio_cliente(cliente_id):
     # Recupera veicoli tramite cliente_id (con conteggio note)
     cursor.execute('''
         SELECT v.*, 
+               COALESCE(n.nome_display, v.noleggiatore) as noleggiatore_display,
+               n.colore as noleggiatore_colore,
                (SELECT COUNT(*) FROM note_veicoli WHERE veicolo_id = v.id AND eliminato = 0) as num_note
         FROM veicoli v
+        LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
         WHERE v.cliente_id = ?
-        ORDER BY v.noleggiatore, v.scadenza
+        ORDER BY COALESCE(n.nome_display, v.noleggiatore), v.scadenza
     ''', (cliente_id,))
     veicoli = [dict(row) for row in cursor.fetchall()]
     
@@ -1000,7 +1003,11 @@ def export_evernote(cliente_id):
     
     # Recupera veicoli
     cursor.execute('''
-        SELECT * FROM veicoli WHERE cliente_id = ? ORDER BY noleggiatore, targa
+        SELECT v.*, COALESCE(n.nome_display, v.noleggiatore) as noleggiatore_display
+        FROM veicoli v
+        LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
+        WHERE v.cliente_id = ? 
+        ORDER BY COALESCE(n.nome_display, v.noleggiatore), v.targa
     ''', (cliente_id,))
     veicoli = [dict(row) for row in cursor.fetchall()]
     
