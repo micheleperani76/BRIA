@@ -1,11 +1,16 @@
 {# ==============================================================================
-   VEICOLI - File satellite (estratto da dettaglio.html)
-   Data estrazione: 2026-02-10 16:41
-   Generato da: modularizza_dettaglio.py
+   VEICOLI - File satellite
+   Versione: 2.1.0
+   Data: 2026-02-12
+   Modifiche v2.1:
+   - Collassato di default
+   - Controlli paginazione DENTRO il body (no conflitto collapse)
+   - Mostra primi 10, input + "Tutti" sopra la tabella
    ============================================================================== #}
 {% if veicoli %}
+{% set tot_veicoli = veicoli|length %}
 <div class="card mb-3">
-    <div class="card-header py-2 d-flex align-items-center">
+    <div class="card-header py-2 d-flex align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#collapse-veicoli" aria-expanded="false">
         <span><i class="bi bi-car-front"></i> Veicoli</span>
         {% if stats_veicoli.installato > 0 %}
         <span class="badge ms-2" style="background-color: #28a745;" title="Installato - Gestiti da BR">
@@ -17,8 +22,296 @@
             <i class="bi bi-arrow-right-circle-fill"></i> {{ stats_veicoli.extra }}
         </span>
         {% endif %}
+        <i class="bi bi-chevron-down ms-auto mt-1" style="transition: transform 0.2s;"></i>
     </div>
-    {% set veicoli_lista = veicoli %}
-    {% include "componenti/veicoli/_tabella.html" %}
+    <div class="collapse" id="collapse-veicoli">
+        {% if tot_veicoli <= 10 %}
+        <div class="d-flex align-items-center px-3 py-1 border-bottom bg-light">
+            <small class="text-muted">Totale: {{ tot_veicoli }}</small>
+            <div class="ms-3 d-flex align-items-center">
+                <i class="bi bi-search text-muted me-1"></i>
+                <input type="text" class="form-control form-control-sm" id="veicoli-search-targa"
+                       placeholder="Cerca targa..." style="width: 120px; height: 26px; font-size: 0.8rem;"
+                       autocomplete="one-time-code" oninput="filtraTargaVeicoli()">
+            </div>
+        </div>
+        {% endif %}
+        {% if tot_veicoli > 10 %}
+        <div class="d-flex align-items-center px-3 py-1 border-bottom bg-light">
+            <small class="text-muted">Visualizzati: <strong id="veicoli-showing">10</strong> / {{ tot_veicoli }}</small>
+            <div class="ms-3 d-flex align-items-center">
+                <i class="bi bi-search text-muted me-1"></i>
+                <input type="text" class="form-control form-control-sm" id="veicoli-search-targa"
+                       placeholder="Cerca targa..." style="width: 120px; height: 26px; font-size: 0.8rem;"
+                       autocomplete="one-time-code" oninput="filtraTargaVeicoli()">
+            </div>
+            <div class="ms-auto d-flex align-items-center">
+                <small class="text-muted me-1">Mostra:</small>
+                <input type="number" class="form-control form-control-sm" id="veicoli-limit-input"
+                       value="10" min="1" max="{{ tot_veicoli }}" style="width: 60px; height: 26px; font-size: 0.8rem;"
+                       autocomplete="one-time-code" onchange="applicaLimiteVeicoli()">
+                <button class="btn btn-outline-secondary btn-sm ms-1 py-0 px-1" onclick="mostraTuttiVeicoli()" style="font-size: 0.75rem;">
+                    Tutti
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        {% set veicoli_lista = veicoli %}
+        {% include "componenti/veicoli/_tabella.html" %}
+    </div>
 </div>
+
+{% if tot_veicoli > 10 %}
+<script>
+(function() {
+    var defaultLimit = 10;
+    var totalRows = {{ tot_veicoli }};
+
+    function applicaLimite(n) {
+        var rows = document.querySelectorAll('#collapse-veicoli tbody tr');
+        var tot = rows.length;
+        if (n <= 0 || n > tot) n = tot;
+        for (var i = 0; i < tot; i++) {
+            rows[i].style.display = (i < n) ? '' : 'none';
+        }
+        document.getElementById('veicoli-limit-input').value = n;
+        document.getElementById('veicoli-showing').textContent = n;
+    }
+
+    // Applica limite al primo expand
+    var collapseEl = document.getElementById('collapse-veicoli');
+    if (collapseEl) {
+        collapseEl.addEventListener('shown.bs.collapse', function handler() {
+            applicaLimite(defaultLimit);
+            collapseEl.removeEventListener('shown.bs.collapse', handler);
+        }, {once: true});
+    }
+
+    window.applicaLimiteVeicoli = function() {
+        var v = parseInt(document.getElementById('veicoli-limit-input').value) || defaultLimit;
+        applicaLimite(v);
+    };
+
+    window.mostraTuttiVeicoli = function() {
+        applicaLimite(totalRows);
+    };
+
+    // Ricerca targa
+    window.filtraTargaVeicoli = function() {
+        var input = document.getElementById('veicoli-search-targa');
+        if (!input) return;
+        var query = input.value.trim().toUpperCase();
+        var rows = document.querySelectorAll('#collapse-veicoli tbody tr');
+        var shown = 0;
+
+        if (query === '') {
+            // Reset: riapplica limite normale
+            rows.forEach(function(r) { r.removeAttribute('data-search-hidden'); });
+            if (typeof window.applicaLimiteVeicoli === 'function') {
+                window.applicaLimiteVeicoli();
+            } else {
+                rows.forEach(function(r) { r.style.display = ''; });
+                shown = rows.length;
+            }
+            updateShowing();
+            return;
+        }
+
+        // Filtra per targa (prima colonna code o colonna targa)
+        rows.forEach(function(r) {
+            var targaEl = r.querySelector('code');
+            var targa = targaEl ? targaEl.textContent.trim().toUpperCase() : '';
+            if (targa.indexOf(query) >= 0) {
+                r.style.display = '';
+                r.removeAttribute('data-search-hidden');
+                shown++;
+            } else {
+                r.style.display = 'none';
+                r.setAttribute('data-search-hidden', '1');
+            }
+        });
+
+        var showEl = document.getElementById('veicoli-showing');
+        if (showEl) showEl.textContent = shown;
+    };
+
+    function updateShowing() {
+        var rows = document.querySelectorAll('#collapse-veicoli tbody tr');
+        var visible = 0;
+        rows.forEach(function(r) { if (r.style.display !== 'none') visible++; });
+        var showEl = document.getElementById('veicoli-showing');
+        if (showEl) showEl.textContent = visible;
+    }
+
+})();
+</script>
+{% endif %}
+
+<script>
+(function() {
+    var sortCol = -1, sortAsc = true;
+
+    function parseDate(s) {
+        // Formato dd/mm/yyyy o yyyy-mm-dd
+        s = s.trim().split('\n')[0].trim();
+        var m = s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m) return new Date(m[3], m[2]-1, m[1]).getTime();
+        m = s.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return new Date(m[1], m[2]-1, m[3]).getTime();
+        return 99999999999999; // senza data = in fondo
+    }
+
+    function parseMoney(s) {
+        s = s.replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+        return parseFloat(s) || 0;
+    }
+
+    function getCellValue(row, idx) {
+        var td = row.children[idx];
+        if (!td) return '';
+        return (td.textContent || '').trim();
+    }
+
+    function detectType(table, idx) {
+        var rows = table.querySelectorAll('tbody tr');
+        for (var i = 0; i < Math.min(rows.length, 5); i++) {
+            var v = getCellValue(rows[i], idx);
+            if (v.match(/\d{2}\/\d{2}\/\d{4}/)) return 'date';
+            if (v.match(/€|EUR/i) || v.match(/^\d[\d.,]+$/)) return 'number';
+        }
+        return 'text';
+    }
+
+    function sortTable(table, colIdx) {
+        if (sortCol === colIdx) {
+            sortAsc = !sortAsc;
+        } else {
+            sortCol = colIdx;
+            sortAsc = true;
+        }
+
+        var type = detectType(table, colIdx);
+        var tbody = table.querySelector('tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort(function(a, b) {
+            var va = getCellValue(a, colIdx);
+            var vb = getCellValue(b, colIdx);
+            var result = 0;
+
+            if (type === 'date') {
+                result = parseDate(va) - parseDate(vb);
+            } else if (type === 'number') {
+                result = parseMoney(va) - parseMoney(vb);
+            } else {
+                result = va.localeCompare(vb, 'it');
+            }
+            return sortAsc ? result : -result;
+        });
+
+        rows.forEach(function(r) { tbody.appendChild(r); });
+
+        // Aggiorna frecce
+        var ths = table.querySelectorAll('thead th');
+        ths.forEach(function(th, i) {
+            var arrow = th.querySelector('.sort-arrow');
+            if (arrow) arrow.remove();
+            if (i === colIdx) {
+                var span = document.createElement('span');
+                span.className = 'sort-arrow ms-1';
+                span.textContent = sortAsc ? '\u25B2' : '\u25BC';
+                th.appendChild(span);
+            }
+        });
+
+        // Riapplica limite visibilita
+        if (typeof window.applicaLimiteVeicoli === 'function') {
+            window.applicaLimiteVeicoli();
+        }
+    }
+
+    function initSort() {
+        var table = document.querySelector('#collapse-veicoli table');
+        if (!table) return;
+
+        var ths = table.querySelectorAll('thead th');
+        ths.forEach(function(th, i) {
+            // Salta colonna Azioni (ultima) e colonna Tipo (badge)
+            var text = th.textContent.trim();
+            if (text === 'Azioni' || text === 'T') return;
+
+            th.style.cursor = 'pointer';
+            th.title = 'Clicca per ordinare';
+            th.addEventListener('click', function() { sortTable(table, i); });
+        });
+
+        // Ordinamento iniziale: colonna Scadenza (ascendente = piu vicina)
+        var scadIdx = -1;
+        ths.forEach(function(th, i) {
+            if (th.textContent.trim() === 'Scadenza') scadIdx = i;
+        });
+        if (scadIdx >= 0) {
+            sortCol = -1; sortAsc = true;
+            sortTable(table, scadIdx);
+        }
+    }
+
+    // Init al primo expand
+    var collapseEl = document.getElementById('collapse-veicoli');
+    if (collapseEl) {
+        collapseEl.addEventListener('shown.bs.collapse', function handler() {
+            initSort();
+        }, {once: true});
+    }
+
+    // Ricerca targa
+    window.filtraTargaVeicoli = function() {
+        var input = document.getElementById('veicoli-search-targa');
+        if (!input) return;
+        var query = input.value.trim().toUpperCase();
+        var rows = document.querySelectorAll('#collapse-veicoli tbody tr');
+        var shown = 0;
+
+        if (query === '') {
+            // Reset: riapplica limite normale
+            rows.forEach(function(r) { r.removeAttribute('data-search-hidden'); });
+            if (typeof window.applicaLimiteVeicoli === 'function') {
+                window.applicaLimiteVeicoli();
+            } else {
+                rows.forEach(function(r) { r.style.display = ''; });
+                shown = rows.length;
+            }
+            updateShowing();
+            return;
+        }
+
+        // Filtra per targa (prima colonna code o colonna targa)
+        rows.forEach(function(r) {
+            var targaEl = r.querySelector('code');
+            var targa = targaEl ? targaEl.textContent.trim().toUpperCase() : '';
+            if (targa.indexOf(query) >= 0) {
+                r.style.display = '';
+                r.removeAttribute('data-search-hidden');
+                shown++;
+            } else {
+                r.style.display = 'none';
+                r.setAttribute('data-search-hidden', '1');
+            }
+        });
+
+        var showEl = document.getElementById('veicoli-showing');
+        if (showEl) showEl.textContent = shown;
+    };
+
+    function updateShowing() {
+        var rows = document.querySelectorAll('#collapse-veicoli tbody tr');
+        var visible = 0;
+        rows.forEach(function(r) { if (r.style.display !== 'none') visible++; });
+        var showEl = document.getElementById('veicoli-showing');
+        if (showEl) showEl.textContent = visible;
+    }
+
+})();
+</script>
+
 {% endif %}

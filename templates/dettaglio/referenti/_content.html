@@ -1,81 +1,130 @@
 {# ==============================================================================
-   REFERENTI - File satellite (estratto da dettaglio.html)
-   Data estrazione: 2026-02-10 16:41
-   Generato da: modularizza_dettaglio.py
+   REFERENTI - Riquadro card (file satellite)
+   Versione: 2.0.0
+   Data: 2026-02-12
+   Cartella: templates/dettaglio/referenti/
+   
+   Modifiche v2.0:
+   - Altezza minima 4 righe (righe vuote se meno di 4 referenti)
+   - Espansione automatica dal 5&deg; referente in poi
+   - Note visibili tramite icona popover (click)
+   - Codice completamente separato: modal + scripts + styles in file dedicati
    ============================================================================== #}
-<div class="card mb-3">
+
+{# --- Stili dedicati --- #}
+{% include "dettaglio/referenti/_styles.html" %}
+
+<div class="card mb-3" id="cardReferenti">
     <div class="card-header py-2 d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-people"></i> Referenti</span>
+        <span><i class="bi bi-people"></i> Referenti
+            {% set n_ref = referenti|default([])|length %}
+            {% if n_ref > 0 %}
+            <span class="badge bg-secondary ms-1">{{ n_ref }}</span>
+            {% endif %}
+        </span>
         <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuovoReferente">
             <i class="bi bi-plus"></i> Aggiungi
         </button>
     </div>
     <div class="card-body p-0">
-        {% if referenti %}
         <div class="table-responsive">
-            <table class="table table-hover table-sm mb-0">
+            <table class="table table-hover table-sm mb-0 tabella-referenti">
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 15%">Nome</th>
-                        <th style="width: 10%">Ruolo</th>
-                        <th style="width: 10%">Cellulare</th>
+                        <th style="width: 18%">Nome</th>
+                        <th style="width: 3%" class="text-center" title="Note"><i class="bi bi-sticky"></i></th>
+                        <th style="width: 11%">Ruolo</th>
+                        <th style="width: 12%">Cellulare</th>
                         <th style="width: 12%">Telefono</th>
-                        <th style="width: 18%">Email Principale</th>
-                        <th style="width: 15%">Email Secondarie</th>
-                        <th style="width: 5%">in</th>
-                        <th style="width: 5%">Azioni</th>
+                        <th style="width: 19%">Email</th>
+                        <th style="width: 12%">Email Sec.</th>
+                        <th style="width: 3%" class="text-center" title="LinkedIn"><i class="bi bi-linkedin"></i></th>
+                        <th style="width: 7%" class="text-center">Azioni</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for ref in referenti %}
+                    {% for ref in referenti|default([]) %}
                     <tr data-referente-id="{{ ref.id }}">
                         <td>
                             {% if ref.principale %}<i class="bi bi-star-fill text-warning me-1" title="Referente principale"></i>{% endif %}
-                            <strong>{{ ref.cognome or '' }}</strong> {{ ref.nome or '' }}
+                            <strong>{{ ref.cognome|default('', true) }}</strong> {{ ref.nome|default('', true) }}
                         </td>
-                        <td>{% if ref.ruolo %}<span class="badge bg-info">{{ ref.ruolo }}</span>{% endif %}</td>
-                        <td>{% if ref.cellulare %}<a href="tel:{{ ref.cellulare }}">{{ ref.cellulare }}</a>{% endif %}</td>
+                        <td class="text-center">
+                            {% if ref.note %}
+                            <i class="bi bi-sticky-fill text-warning ref-nota-icon" role="button" tabindex="0"
+                               data-bs-toggle="popover"
+                               data-bs-trigger="click"
+                               data-bs-placement="right"
+                               data-bs-html="true"
+                               title="Note - {{ ref.cognome|default('', true) }}"
+                               data-bs-content="{{ ref.note|e }}"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ref.ruolo %}<span class="badge bg-info text-dark">{{ ref.ruolo }}</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if ref.cellulare %}<a href="tel:{{ ref.cellulare }}">{{ ref.cellulare }}</a>{% endif %}
+                        </td>
                         <td>
                             {% if ref.telefono %}<a href="tel:{{ ref.telefono }}">{{ ref.telefono }}</a>{% endif %}
-                            {% if ref.interno %}<small class="text-muted">int.{{ ref.interno }}</small>{% endif %}
+                            {% if ref.interno %}<small class="text-muted"> int.{{ ref.interno }}</small>{% endif %}
                         </td>
-                        <td>{% if ref.email_principale %}<a href="mailto:{{ ref.email_principale }}">{{ ref.email_principale }}</a>{% endif %}</td>
-                        <td><small>{{ ref.email_secondarie or '' }}</small></td>
-                        <td>{% if ref.linkedin %}<a href="{{ ref.linkedin }}" target="_blank" class="text-primary"><i class="bi bi-linkedin"></i></a>{% endif %}</td>
                         <td>
-                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-1"
-                                    onclick="modificaReferente({{ ref.id }}, '{{ ref.ruolo|default('', true)|replace("'", "\\'")|e }}', '{{ ref.nome|default('', true)|replace("'", "\\'")|e }}', '{{ ref.cognome|default('', true)|replace("'", "\\'")|e }}', '{{ ref.telefono|default('', true)|e }}', '{{ ref.interno|default('', true)|e }}', '{{ ref.cellulare|default('', true)|e }}', '{{ ref.email_principale|default('', true)|e }}', '{{ ref.email_secondarie|default('', true)|replace("'", "\\'")|e }}', '{{ ref.linkedin|default('', true)|e }}', '{{ ref.note|default('', true)|replace("'", "\\'")|replace("\n", " ")|e }}', {{ ref.principale|default(0, true) }})" title="Modifica">
+                            {% if ref.email_principale %}
+                            <a href="mailto:{{ ref.email_principale }}" class="text-truncate d-inline-block" style="max-width: 180px;" title="{{ ref.email_principale }}">{{ ref.email_principale }}</a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ref.email_secondarie %}
+                            <span class="text-muted small text-truncate d-inline-block" style="max-width: 140px;" title="{{ ref.email_secondarie }}">{{ ref.email_secondarie }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if ref.linkedin %}
+                            <a href="{{ ref.linkedin }}" target="_blank" rel="noopener" title="Profilo LinkedIn">
+                                <i class="bi bi-linkedin text-primary"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                        <td class="text-center text-nowrap">
+                            <button class="btn btn-outline-primary btn-sm py-0 px-1" title="Modifica"
+                                onclick="modificaReferente({{ ref.id }}, '{{ ref.ruolo|default('', true)|e }}', '{{ ref.nome|default('', true)|e }}', '{{ ref.cognome|default('', true)|e }}', '{{ ref.telefono|default('', true) }}', '{{ ref.interno|default('', true) }}', '{{ ref.cellulare|default('', true) }}', '{{ ref.email_principale|default('', true) }}', '{{ ref.email_secondarie|default('', true) }}', '{{ ref.linkedin|default('', true) }}', '{{ ref.note|default('', true)|e }}', {{ ref.principale|default(0) }})">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
-                                    onclick="eliminaReferente({{ ref.id }}, '{{ ref.cognome|default('', true)|e }} {{ ref.nome|default('', true)|e }}')" title="Elimina">
+                            <button class="btn btn-outline-danger btn-sm py-0 px-1" title="Elimina"
+                                onclick="eliminaReferente({{ ref.id }}, '{{ ref.cognome|default('', true)|e }} {{ ref.nome|default('', true)|e }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
                     </tr>
-                    {% if ref.note %}
-                    <tr class="table-light">
-                        <td colspan="8" class="py-1 ps-4"><small class="text-muted"><i class="bi bi-chat-left-text"></i> {{ ref.note }}</small></td>
-                    </tr>
-                    {% endif %}
-                    {% if ref.sedi_collegate %}
-                    <tr class="table-light">
-                        <td colspan="8" class="py-1 ps-4">
-                            <small class="text-muted"><i class="bi bi-geo-alt me-1"></i>Sedi:</small>
-                            {% for sede in ref.sedi_collegate %}
-                            <span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">{{ sede.tipo_sede }}{% if sede.denominazione %} - {{ sede.denominazione }}{% endif %}{% if sede.citta %} ({{ sede.citta }}){% endif %}</span>
-                            {% endfor %}
-                        </td>
-                    </tr>
-                    {% endif %}
                     {% endfor %}
+
+                    {# === Righe vuote per garantire minimo 4 righe visibili === #}
+                    {% set n_ref = referenti|default([])|length %}
+                    {% if n_ref < 4 %}
+                        {% for _ in range(4 - n_ref) %}
+                        <tr class="riga-vuota">
+                            <td>&nbsp;</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div class="text-muted text-center py-3">
-            <i class="bi bi-people"></i> Nessun referente inserito
-        </div>
-        {% endif %}
     </div>
 </div>
+
+{# --- Modal dedicati (nuovo, modifica, elimina) --- #}
+{% include "dettaglio/referenti/_modal.html" %}
+
+{# --- Script dedicati --- #}
+{% include "dettaglio/referenti/_scripts.html" %}

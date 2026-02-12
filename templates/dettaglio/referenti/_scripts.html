@@ -1,0 +1,73 @@
+{# ==============================================================================
+   REFERENTI - Script JavaScript dedicati
+   Versione: 2.0.0
+   Data: 2026-02-12
+   
+   Contiene:
+   - modificaReferente() - Apre modal modifica con dati precompilati
+   - eliminaReferente() - Apre modal conferma eliminazione
+   - Inizializzazione popover Bootstrap per icone note
+   ============================================================================== #}
+<script>
+/* === Referenti: Modifica === */
+function modificaReferente(id, ruolo, nome, cognome, telefono, interno, cellulare, emailPrinc, emailSec, linkedin, note, principale) {
+    document.getElementById('formModificaReferente').action = '/cliente/{{ cliente.id }}/referente/' + id + '/modifica';
+    document.getElementById('modRefRuolo').value = ruolo;
+    document.getElementById('modRefNome').value = nome;
+    document.getElementById('modRefCognome').value = cognome;
+    document.getElementById('modRefTelefono').value = telefono;
+    document.getElementById('modRefInterno').value = interno;
+    document.getElementById('modRefCellulare').value = cellulare;
+    document.getElementById('modRefEmailPrinc').value = emailPrinc;
+    document.getElementById('modRefEmailSec').value = emailSec;
+    document.getElementById('modRefLinkedin').value = linkedin;
+    document.getElementById('modRefNote').value = note;
+    document.getElementById('modRefPrincipale').checked = principale == 1;
+    new bootstrap.Modal(document.getElementById('modalModificaReferente')).show();
+}
+
+/* === Referenti: Elimina === */
+function eliminaReferente(id, nome) {
+    document.getElementById('formEliminaReferente').action = '/cliente/{{ cliente.id }}/referente/' + id + '/elimina';
+    document.getElementById('elimRefNome').textContent = nome;
+    new bootstrap.Modal(document.getElementById('modalEliminaReferente')).show();
+}
+
+/* === Referenti: Inizializzazione popover note === */
+document.addEventListener('DOMContentLoaded', function() {
+    /* Popover per icone note referenti */
+    var popoverList = document.querySelectorAll('.ref-nota-icon[data-bs-toggle="popover"]');
+    popoverList.forEach(function(el) {
+        new bootstrap.Popover(el, {
+            container: 'body',
+            sanitize: false
+        });
+    });
+
+    /* Chiudi popover cliccando fuori */
+    document.addEventListener('click', function(e) {
+        if (!e.target.classList.contains('ref-nota-icon')) {
+            popoverList.forEach(function(el) {
+                var popover = bootstrap.Popover.getInstance(el);
+                if (popover) popover.hide();
+            });
+        }
+    });
+});
+
+/* === Scroll preservation: posizione esatta in pixel === */
+(function() {
+    function salvaScroll() { sessionStorage.setItem('scrollY', window.scrollY); }
+    ['formModificaReferente', 'formEliminaReferente'].forEach(function(fid) {
+        var f = document.getElementById(fid);
+        if (f) f.addEventListener('submit', salvaScroll);
+    });
+    var mn = document.querySelector('#modalNuovoReferente form');
+    if (mn) mn.addEventListener('submit', salvaScroll);
+    var sy = sessionStorage.getItem('scrollY');
+    if (sy) {
+        sessionStorage.removeItem('scrollY');
+        setTimeout(function() { window.scrollTo(0, parseInt(sy)); }, 200);
+    }
+})();
+</script>

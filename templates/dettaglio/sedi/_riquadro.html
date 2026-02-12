@@ -84,37 +84,40 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Denominazione <small class="text-muted">(opz.)</small></label>
-                        <input type="text" class="form-control" id="sede-denominazione" placeholder="Es: Filiale Nord">
+                        <input type="text" class="form-control" id="sede-denominazione" autocomplete="one-time-code" placeholder="Es: Filiale Nord">
                     </div>
                     <div class="col-12">
                         <label class="form-label">Indirizzo</label>
-                        <input type="text" class="form-control" id="sede-indirizzo" placeholder="Via e numero civico">
+                        <input type="text" class="form-control" id="sede-indirizzo" autocomplete="one-time-code" placeholder="Via e numero civico">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">CAP</label>
-                        <input type="text" class="form-control" id="sede-cap" maxlength="5">
+                        <input type="text" class="form-control" id="sede-cap" autocomplete="one-time-code" maxlength="5">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Citt&agrave;</label>
-                        <input type="text" class="form-control" id="sede-citta" style="text-transform: uppercase;">
+                        <input type="text" class="form-control" id="sede-citta" autocomplete="one-time-code" style="text-transform: uppercase;">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Prov.</label>
-                        <input type="text" class="form-control" id="sede-provincia" maxlength="2" style="text-transform: uppercase;">
+                        <input type="text" class="form-control" id="sede-provincia" autocomplete="one-time-code" maxlength="2" style="text-transform: uppercase;">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Telefono Sede <small class="text-muted">(opz.)</small></label>
-                        <input type="text" class="form-control" id="sede-telefono">
+                        <input type="text" class="form-control" id="sede-telefono" autocomplete="one-time-code">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Email Sede <small class="text-muted">(opz.)</small></label>
-                        <input type="email" class="form-control" id="sede-email">
+                        <input type="email" class="form-control" id="sede-email" autocomplete="one-time-code">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Referente <small class="text-muted">(opz.)</small></label>
-                        <select class="form-select" id="sede-referente">
+                        <div class="input-group">
+                            <select class="form-select" id="sede-referente">
                             <option value="">-- Nessun referente --</option>
                         </select>
+                            <button type="button" class="btn btn-outline-success" onclick="apriReferenteRapido()" title="Crea nuovo referente"><i class="bi bi-person-plus"></i></button>
+                        </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">Note <small class="text-muted">(opz.)</small></label>
@@ -146,6 +149,8 @@
         </div>
     </div>
 </div>
+
+{% include "dettaglio/sedi/_referente_rapido.html" %}
 
 <style>
 .collapse-icon-sedi {
@@ -416,6 +421,7 @@ function salvaSede() {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('modalSede')).hide();
             caricaSedi();
+            if (window.referenteRapidoCreato) { window.referenteRapidoCreato = false; sessionStorage.setItem('scrollY', window.scrollY); setTimeout(function(){ location.reload(); }, 600); }
         } else {
             alert(data.error || 'Errore salvataggio');
         }

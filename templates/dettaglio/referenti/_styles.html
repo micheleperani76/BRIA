@@ -1,0 +1,39 @@
+{# ==============================================================================
+   REFERENTI - Stili CSS dedicati
+   Versione: 2.0.0
+   Data: 2026-02-12
+   ============================================================================== #}
+<style>
+/* --- Tabella Referenti: altezza minima 4 righe --- */
+.tabella-referenti tbody tr {
+    height: 36px;
+}
+.tabella-referenti tbody tr.riga-vuota {
+    height: 36px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.tabella-referenti tbody tr.riga-vuota:hover {
+    background-color: transparent !important;
+}
+
+/* --- Icona note: cursore e hover --- */
+.ref-nota-icon {
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: transform 0.15s;
+}
+.ref-nota-icon:hover {
+    transform: scale(1.2);
+}
+
+/* --- Popover note: larghezza max --- */
+.popover {
+    max-width: 300px;
+}
+.popover-body {
+    white-space: pre-wrap;
+    font-size: 0.85rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+</style>

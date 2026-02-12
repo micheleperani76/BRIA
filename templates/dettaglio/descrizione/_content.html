@@ -4,10 +4,10 @@
    Generato da: modularizza_dettaglio.py
    ============================================================================== #}
 <div class="card h-100">
-    <div class="card-header py-2">
-        <i class="bi bi-briefcase"></i> Descrizione 
+    <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#collapse-descrizione" aria-expanded="false">
+        <i class="bi bi-briefcase"></i> Descrizione <i class="bi bi-chevron-down float-end mt-1" style="transition: transform 0.2s;"></i> 
     </div>
-    <div class="card-body py-2">
+    <div class="card-body py-2 collapse" id="collapse-descrizione">
         <div class="row g-2">
             {# --- Riga 1: ATECO primario + Capitale Sociale --- #}
             <div class="col-6">

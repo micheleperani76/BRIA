@@ -26,8 +26,6 @@ TIPI_SEDE = [
     'Stabilimento',
     'Punto Vendita',
     'Indirizzo Fatturazione',
-    'Indirizzo Fatturazione',
-    'Indirizzo Fatturazione',
     'Altro'
 ]
 
@@ -187,7 +185,7 @@ def api_modifica_sede(cliente_id, sede_id):
                 email = ?,
                 note = ?,
                 referente_id = ?,
-                protetto = 1
+                protetto = ?
             WHERE id = ? AND cliente_id = ?
         ''', (tipo_sede, denominazione or None, indirizzo or None,
               cap or None, citta or None, provincia or None,
@@ -224,6 +222,51 @@ def api_elimina_sede(cliente_id, sede_id):
         conn.close()
         
         return jsonify({'success': True})
+        
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+
+# ==============================================================================
+# API: Creazione referente rapido (dal modal sede)
+# ==============================================================================
+
+@sedi_bp.route('/api/cliente/<int:cliente_id>/referente-rapido', methods=['POST'])
+@login_required
+def api_crea_referente_rapido(cliente_id):
+    """Crea un referente con campi essenziali e ritorna l'ID."""
+    data = request.get_json()
+    
+    cognome = (data.get('cognome') or '').strip()
+    if not cognome:
+        return jsonify({'success': False, 'error': 'Cognome obbligatorio'})
+    
+    nome = (data.get('nome') or '').strip()
+    ruolo = (data.get('ruolo') or '').strip()
+    cellulare = (data.get('cellulare') or '').strip()
+    email_principale = (data.get('email_principale') or '').strip()
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute('''
+            INSERT INTO referenti_clienti
+            (cliente_id, nome, cognome, ruolo, cellulare, email_principale)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (cliente_id, nome or None, cognome, ruolo or None,
+              cellulare or None, email_principale or None))
+        
+        referente_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'id': referente_id,
+            'nome': ((nome or '') + ' ' + cognome).strip()
+        })
         
     except Exception as e:
         conn.close()

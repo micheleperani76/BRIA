@@ -43,7 +43,6 @@ CATALOGO_QUADRI = {
     "referenti":        {"nome": "Referenti",              "icona": "bi-people",            "template": "dettaglio/referenti/_riquadro.html"},
     "veicoli":          {"nome": "Veicoli Flotta",         "icona": "bi-car-front",         "template": "dettaglio/veicoli/_riquadro.html"},
     "consensi_crm":     {"nome": "Consensi / Alert CRM",   "icona": "bi-shield-check",      "template": "dettaglio/consensi_crm/_riquadro.html"},
-    "storico":          {"nome": "Storico Modifiche",      "icona": "bi-clock-history",     "template": "dettaglio/storico/_riquadro.html"},
     "crm":              {"nome": "Dati CRM Zoho",          "icona": "bi-cloud-arrow-down",  "template": "componenti/crm/_riquadro.html"},
     "rating":           {"nome": "Rating / Score",         "icona": "bi-shield-check",      "template": "dettaglio/rating/_riquadro.html"},
     "fido":             {"nome": "Fido Consigliato",       "icona": "bi-credit-card",       "template": "dettaglio/fido/_riquadro.html"},
@@ -350,7 +349,6 @@ TEMPLATE_MAP = {
     'documenti':            'documenti_cliente.html',
     'veicoli':              'dettaglio/veicoli/_content.html',
     'vetture_stock':        'dettaglio/vetture_stock/_content.html',
-    'storico':              'dettaglio/storico/_content.html',
     'commerciale_storico':  'dettaglio/commerciale_storico/_content.html',
 }
 

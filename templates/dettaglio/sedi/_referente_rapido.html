@@ -1,0 +1,191 @@
+{# ==============================================================================
+   SEDI - Referente Rapido (file satellite)
+   Versione: 1.0.0
+   Data: 2026-02-12
+   Cartella: templates/dettaglio/sedi/
+   
+   Contiene:
+   - Mini-modal creazione referente rapido (dal modal sede)
+   - Funzioni JS: apriReferenteRapido, chiudiReferenteRapido,
+                   ripristinaSede, salvaReferenteRapido
+   
+   USO: {% include "dettaglio/sedi/_referente_rapido.html" %}
+   RICHIEDE: variabile clienteIdSedi definita in _riquadro.html
+   ============================================================================== #}
+
+<!-- Modal Referente Rapido (da modal sede) -->
+<div class="modal fade" id="modalReferenteRapido" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-success text-white">
+                <h6 class="modal-title"><i class="bi bi-person-plus me-1"></i>Nuovo Referente (rapido)</h6>
+                <button type="button" class="btn-close btn-close-white" onclick="chiudiReferenteRapido()"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label small">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="rapido-ref-nome" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Cognome <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="rapido-ref-cognome" autocomplete="off">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Ruolo</label>
+                        <select class="form-select form-select-sm" id="rapido-ref-ruolo">
+                            <option value="">-- Seleziona --</option>
+                            <option value="Titolare">Titolare</option>
+                            <option value="Amministratore">Amministratore</option>
+                            <option value="Commerciale">Commerciale</option>
+                            <option value="Fleet Manager">Fleet Manager</option>
+                            <option value="HR">HR</option>
+                            <option value="Segreteria">Segreteria</option>
+                            <option value="Contabilita">Contabilita</option>
+                            <option value="Altro">Altro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small">Cellulare</label>
+                        <input type="tel" class="form-control form-control-sm" id="rapido-ref-cellulare" autocomplete="off">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label small">Email</label>
+                        <input type="email" class="form-control form-control-sm" id="rapido-ref-email" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="chiudiReferenteRapido()">Annulla</button>
+                <button type="button" class="btn btn-success btn-sm" onclick="salvaReferenteRapido()">
+                    <i class="bi bi-check"></i> Crea e Collega
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// =====================================================================
+// CREAZIONE REFERENTE RAPIDO (dal modal sede)
+// =====================================================================
+let sedeModalStateSaved = null;
+
+function apriReferenteRapido() {
+    // Salva stato corrente del modal sede
+    sedeModalStateSaved = {
+        editId: document.getElementById('sede-edit-id').value,
+        tipo: document.getElementById('sede-tipo').value,
+        denominazione: document.getElementById('sede-denominazione').value,
+        indirizzo: document.getElementById('sede-indirizzo').value,
+        cap: document.getElementById('sede-cap').value,
+        citta: document.getElementById('sede-citta').value,
+        provincia: document.getElementById('sede-provincia').value,
+        telefono: document.getElementById('sede-telefono').value,
+        email: document.getElementById('sede-email').value,
+        referente: document.getElementById('sede-referente').value,
+        note: document.getElementById('sede-note').value
+    };
+
+    // Nascondi modal sede
+    bootstrap.Modal.getInstance(document.getElementById('modalSede')).hide();
+
+    // Pulisci e apri mini-modal referente
+    document.getElementById('rapido-ref-nome').value = '';
+    document.getElementById('rapido-ref-cognome').value = '';
+    document.getElementById('rapido-ref-ruolo').value = '';
+    document.getElementById('rapido-ref-cellulare').value = '';
+    document.getElementById('rapido-ref-email').value = '';
+
+    setTimeout(function() {
+        new bootstrap.Modal(document.getElementById('modalReferenteRapido')).show();
+    }, 300);
+}
+
+function chiudiReferenteRapido() {
+    bootstrap.Modal.getInstance(document.getElementById('modalReferenteRapido')).hide();
+    // Riapri modal sede con stato salvato
+    if (sedeModalStateSaved) {
+        setTimeout(function() { ripristinaSede(); }, 300);
+    }
+}
+
+function ripristinaSede() {
+    var s = sedeModalStateSaved;
+    if (!s) return;
+
+    document.getElementById('sede-edit-id').value = s.editId;
+    document.getElementById('modalSedeTitle').textContent = s.editId ? 'Modifica Sede' : 'Aggiungi Sede';
+    document.getElementById('sede-tipo').value = s.tipo;
+    document.getElementById('sede-denominazione').value = s.denominazione;
+    document.getElementById('sede-indirizzo').value = s.indirizzo;
+    document.getElementById('sede-cap').value = s.cap;
+    document.getElementById('sede-citta').value = s.citta;
+    document.getElementById('sede-provincia').value = s.provincia;
+    document.getElementById('sede-telefono').value = s.telefono;
+    document.getElementById('sede-email').value = s.email;
+    document.getElementById('sede-note').value = s.note;
+
+    new bootstrap.Modal(document.getElementById('modalSede')).show();
+
+    // Seleziona referente dopo che il modal si apre
+    setTimeout(function() {
+        document.getElementById('sede-referente').value = s.referente;
+    }, 100);
+}
+
+function salvaReferenteRapido() {
+    var cognome = document.getElementById('rapido-ref-cognome').value.trim();
+    if (!cognome) {
+        alert('Il cognome e\' obbligatorio');
+        document.getElementById('rapido-ref-cognome').focus();
+        return;
+    }
+
+    var payload = {
+        nome: document.getElementById('rapido-ref-nome').value.trim(),
+        cognome: cognome,
+        ruolo: document.getElementById('rapido-ref-ruolo').value,
+        cellulare: document.getElementById('rapido-ref-cellulare').value.trim(),
+        email_principale: document.getElementById('rapido-ref-email').value.trim()
+    };
+
+    fetch('/api/cliente/' + clienteIdSedi + '/referente-rapido', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.referenteRapidoCreato = true;
+            // Chiudi mini-modal
+            bootstrap.Modal.getInstance(document.getElementById('modalReferenteRapido')).hide();
+
+            // Aggiorna lista referenti dal server
+            fetch('/api/cliente/' + clienteIdSedi + '/sedi')
+                .then(function(r) { return r.json(); })
+                .then(function(sediData) {
+                    if (sediData.success) {
+                        referentiDisponibili = sediData.referenti || [];
+                        popolaSelectReferenti();
+                    }
+
+                    // Imposta il nuovo referente come selezionato
+                    if (sedeModalStateSaved) {
+                        sedeModalStateSaved.referente = data.id;
+                    }
+
+                    // Riapri modal sede
+                    setTimeout(function() { ripristinaSede(); }, 300);
+                });
+        } else {
+            alert(data.error || 'Errore creazione referente');
+        }
+    })
+    .catch(function(err) {
+        console.error(err);
+        alert('Errore di rete');
+    });
+}
+</script>

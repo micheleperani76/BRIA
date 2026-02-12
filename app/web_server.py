@@ -315,8 +315,8 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
             FROM referenti_clienti r
             WHERE r.cliente_id IN ({placeholders})
             AND (r.nome LIKE ? OR r.cognome LIKE ? OR r.telefono LIKE ? 
-                 OR r.cellulare LIKE ? OR r.email_principale LIKE ?)
-        """, ids_list + [search_param]*5)
+                 OR r.cellulare LIKE ? OR r.email_principale LIKE ? OR r.note LIKE ?)
+        """, ids_list + [search_param]*6)
         for row in cursor.fetchall():
             cid, ref_nome = row[0], row[1].strip() if row[1] else ''
             if ref_nome:
@@ -330,11 +330,11 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
         
         # Driver
         cursor.execute(f"""
-            SELECT v.cliente_id, v.driver
+            SELECT v.cliente_id, COALESCE(v.driver, v.driver_telefono, v.driver_email) as driver
             FROM veicoli v
             WHERE v.cliente_id IN ({placeholders})
-            AND v.driver LIKE ? AND v.driver IS NOT NULL AND v.driver != ''
-        """, ids_list + [search_param])
+            AND (v.driver LIKE ? OR v.driver_telefono LIKE ? OR v.driver_email LIKE ?)
+        """, ids_list + [search_param]*3)
         for row in cursor.fetchall():
             cid, driver = row[0], row[1]
             if driver:
@@ -405,16 +405,35 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
             SELECT id
             FROM clienti
             WHERE id IN ({placeholders})
-            AND (telefono LIKE ? OR pec LIKE ?)
-        """, ids_list + [search_param, search_param])
+            AND (telefono LIKE ? OR pec LIKE ? OR email LIKE ?)
+        """, ids_list + [search_param, search_param, search_param])
         for row in cursor.fetchall():
             cid = row[0]
             if 'contatto' not in matches_per_cliente[cid]:
-                matches_per_cliente[cid]['contatto'] = ['Tel/PEC']
+                matches_per_cliente[cid]['contatto'] = ['Tel/PEC/Email']
         # Conta per globale
         contatto_clienti = sum(1 for cid in matches_per_cliente if matches_per_cliente[cid].get('contatto'))
         if contatto_clienti > 0:
             matches_globali['contatto'] = [f"{contatto_clienti} cliente/i"]
+        
+        # Sedi
+        cursor.execute(f"""
+            SELECT s.cliente_id, COALESCE(s.denominazione, s.citta, s.indirizzo) as sede_info
+            FROM sedi_cliente s
+            WHERE s.cliente_id IN ({placeholders})
+            AND (s.indirizzo LIKE ? OR s.citta LIKE ? OR s.denominazione LIKE ? 
+                 OR s.provincia LIKE ? OR s.cap LIKE ?)
+        """, ids_list + [search_param]*5)
+        for row in cursor.fetchall():
+            cid, sede = row[0], row[1]
+            if sede:
+                if 'sede' not in matches_per_cliente[cid]:
+                    matches_per_cliente[cid]['sede'] = []
+                matches_per_cliente[cid]['sede'].append(sede)
+                if 'sede' not in matches_globali:
+                    matches_globali['sede'] = []
+                if sede not in matches_globali['sede']:
+                    matches_globali['sede'].append(sede)
             
     except Exception as e:
         print(f"Errore get_search_matches_per_cliente: {e}")
@@ -485,21 +504,26 @@ def index():
         query += """ AND (
             c.nome_cliente LIKE ? OR c.ragione_sociale LIKE ? 
             OR c.p_iva LIKE ? OR c.cod_fiscale LIKE ? OR c.numero_registrazione LIKE ?
-            OR c.telefono LIKE ? OR c.pec LIKE ?
+            OR c.telefono LIKE ? OR c.pec LIKE ? OR c.email LIKE ?
             OR c.capogruppo_nome LIKE ? OR c.capogruppo_cf LIKE ?
             OR EXISTS (SELECT 1 FROM referenti_clienti r WHERE r.cliente_id = c.id 
                        AND (r.nome LIKE ? OR r.cognome LIKE ? 
                             OR r.telefono LIKE ? OR r.cellulare LIKE ? 
                             OR r.email_principale LIKE ? OR r.email_secondarie LIKE ?
                             OR (r.nome || ' ' || r.cognome) LIKE ?
-                            OR (r.cognome || ' ' || r.nome) LIKE ?))
+                            OR (r.cognome || ' ' || r.nome) LIKE ?
+                            OR r.note LIKE ?))
             OR EXISTS (SELECT 1 FROM veicoli v WHERE v.cliente_id = c.id 
-                       AND (v.targa LIKE ? OR v.driver LIKE ?))
+                       AND (v.targa LIKE ? OR v.driver LIKE ?
+                            OR v.driver_telefono LIKE ? OR v.driver_email LIKE ?))
             OR EXISTS (SELECT 1 FROM note_clienti n WHERE n.cliente_id = c.id 
                        AND (n.titolo LIKE ? OR n.testo LIKE ?))
+            OR EXISTS (SELECT 1 FROM sedi_cliente s WHERE s.cliente_id = c.id 
+                       AND (s.indirizzo LIKE ? OR s.citta LIKE ? 
+                            OR s.denominazione LIKE ? OR s.provincia LIKE ? OR s.cap LIKE ?))
         )"""
         search_param = f'%{search}%'
-        params.extend([search_param] * 21)
+        params.extend([search_param] * 30)
     
     # Filtro score (incluso NS per senza score)
     if score:
