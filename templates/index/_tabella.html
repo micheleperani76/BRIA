@@ -88,6 +88,8 @@
                         <span class="badge bg-secondary" style="font-size: 0.65rem;" title="Capogruppo: {{ valori|join(', ') }}"><i class="bi bi-building"></i> Capogr.</span>
                         {% elif tipo == 'note' %}
                         <span class="badge bg-info" style="font-size: 0.65rem;" title="Trovato in nota"><i class="bi bi-chat-text"></i> Nota</span>
+                        {% elif tipo == 'alias' %}
+                        <span class="badge bg-purple" style="font-size: 0.65rem; background-color: #6f42c1;" title="Alias: {{ valori|join(', ') }}"><i class="bi bi-tags"></i> Alias</span>
                         {% elif tipo == 'contatto' %}
                         <span class="badge bg-dark" style="font-size: 0.65rem;" title="Tel/PEC cliente"><i class="bi bi-telephone"></i> Tel/PEC</span>
                         {% endif %}

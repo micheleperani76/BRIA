@@ -383,6 +383,24 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
                 if capo not in matches_globali['capogruppo']:
                     matches_globali['capogruppo'].append(capo)
         
+        # Nomi alternativi / Alias
+        cursor.execute(f"""
+            SELECT na.cliente_id, na.nome_alternativo
+            FROM clienti_nomi_alternativi na
+            WHERE na.cliente_id IN ({placeholders})
+            AND na.nome_alternativo LIKE ?
+        """, ids_list + [search_param])
+        for row in cursor.fetchall():
+            cid, alias = row[0], row[1]
+            if alias:
+                if 'alias' not in matches_per_cliente[cid]:
+                    matches_per_cliente[cid]['alias'] = []
+                matches_per_cliente[cid]['alias'].append(alias)
+                if 'alias' not in matches_globali:
+                    matches_globali['alias'] = []
+                if alias not in matches_globali['alias']:
+                    matches_globali['alias'].append(alias)
+        
         # Note (titolo + testo)
         cursor.execute(f"""
             SELECT n.cliente_id, n.titolo
@@ -521,9 +539,11 @@ def index():
             OR EXISTS (SELECT 1 FROM sedi_cliente s WHERE s.cliente_id = c.id 
                        AND (s.indirizzo LIKE ? OR s.citta LIKE ? 
                             OR s.denominazione LIKE ? OR s.provincia LIKE ? OR s.cap LIKE ?))
+            OR EXISTS (SELECT 1 FROM clienti_nomi_alternativi na WHERE na.cliente_id = c.id 
+                       AND na.nome_alternativo LIKE ?)
         )"""
         search_param = f'%{search}%'
-        params.extend([search_param] * 30)
+        params.extend([search_param] * 31)
     
     # Filtro score (incluso NS per senza score)
     if score:
@@ -3028,9 +3048,12 @@ def api_cerca_cliente():
            OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.nome_cliente, '.', ''), ' ', ''), '-', ''), '&', ''), char(39), '')) LIKE ?
            -- Ricerca fuzzy: normalizza ragione_sociale
            OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(c.ragione_sociale, '.', ''), ' ', ''), '-', ''), '&', ''), char(39), '')) LIKE ?
+           -- Ricerca in nomi alternativi / keyword
+           OR c.id IN (SELECT na.cliente_id FROM clienti_nomi_alternativi na WHERE na.nome_alternativo LIKE ? OR LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(na.nome_alternativo, '.', ''), ' ', ''), '-', ''), '&', ''), char(39), '')) LIKE ?)
         ORDER BY c.nome_cliente LIMIT ?
     """, (search_param, search_param, search_param, search_param, 
-          search_normalized, search_normalized, limit))
+          search_normalized, search_normalized,
+          search_param, search_normalized, limit))
     
     risultati = []
     for row in cursor.fetchall():
@@ -3048,6 +3071,80 @@ def api_cerca_cliente():
 # ==============================================================================
 # API: Referente principale
 # ==============================================================================
+
+
+# ==============================================================================
+# API: Nomi Alternativi / Keyword Ricerca Cliente
+# ==============================================================================
+
+@app.route('/api/cliente/<int:cliente_id>/nomi-alternativi', methods=['GET'])
+@login_required
+def api_nomi_alternativi_lista(cliente_id):
+    """Lista nomi alternativi di un cliente."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, nome_alternativo, data_creazione FROM clienti_nomi_alternativi WHERE cliente_id = ? ORDER BY nome_alternativo COLLATE NOCASE', (cliente_id,))
+    nomi = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return jsonify({'success': True, 'nomi': nomi})
+
+
+@app.route('/api/cliente/<int:cliente_id>/nomi-alternativi', methods=['POST'])
+@login_required
+def api_nomi_alternativi_aggiungi(cliente_id):
+    """Aggiunge un nome alternativo a un cliente."""
+    data = request.get_json()
+    nome = data.get('nome_alternativo', '').strip()
+    if not nome:
+        return jsonify({'success': False, 'error': 'Nome alternativo vuoto'}), 400
+    if len(nome) > 200:
+        return jsonify({'success': False, 'error': 'Nome troppo lungo (max 200 caratteri)'}), 400
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id FROM clienti_nomi_alternativi WHERE cliente_id = ? AND LOWER(nome_alternativo) = LOWER(?)', (cliente_id, nome))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({'success': False, 'error': 'Nome alternativo gia presente'})
+    try:
+        cursor.execute('INSERT INTO clienti_nomi_alternativi (cliente_id, nome_alternativo, creato_da) VALUES (?, ?, ?)', (cliente_id, nome, session.get('user_id')))
+        conn.commit()
+        try:
+            cursor.execute('INSERT INTO log_attivita (utente_id, azione, dettaglio, ip_address) VALUES (?, ?, ?, ?)', (session.get('user_id'), 'AGGIUNGI_NOME_ALTERNATIVO', 'Cliente ID {}: aggiunto "{}"'.format(cliente_id, nome), request.remote_addr))
+            conn.commit()
+        except:
+            pass
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/cliente/<int:cliente_id>/nomi-alternativi/<int:nome_id>', methods=['DELETE'])
+@login_required
+def api_nomi_alternativi_rimuovi(cliente_id, nome_id):
+    """Rimuove un nome alternativo."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT nome_alternativo FROM clienti_nomi_alternativi WHERE id = ? AND cliente_id = ?', (nome_id, cliente_id))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Nome alternativo non trovato'}), 404
+    nome_rimosso = row['nome_alternativo']
+    try:
+        cursor.execute('DELETE FROM clienti_nomi_alternativi WHERE id = ?', (nome_id,))
+        conn.commit()
+        try:
+            cursor.execute('INSERT INTO log_attivita (utente_id, azione, dettaglio, ip_address) VALUES (?, ?, ?, ?)', (session.get('user_id'), 'RIMUOVI_NOME_ALTERNATIVO', 'Cliente ID {}: rimosso "{}"'.format(cliente_id, nome_rimosso), request.remote_addr))
+            conn.commit()
+        except:
+            pass
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/cliente/<int:cliente_id>/referente-principale')
 def api_referente_principale(cliente_id):

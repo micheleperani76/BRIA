@@ -1,0 +1,137 @@
+{# ==============================================================================
+   NOMI ALTERNATIVI - Scripts dedicati
+   Versione: 1.0.0
+   Data: 2026-02-12
+   Cartella: templates/dettaglio/nomi_alternativi/
+   ============================================================================== #}
+
+<script>
+// =====================================================
+// NOMI ALTERNATIVI - CRUD
+// =====================================================
+
+const CLIENTE_ID_NOMI_ALT = {{ cliente.id }};
+
+/**
+ * Carica lista nomi alternativi dal server
+ */
+function caricaNomiAlternativi() {
+    fetch('/api/cliente/' + CLIENTE_ID_NOMI_ALT + '/nomi-alternativi')
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            renderNomiAlternativi(data.nomi);
+            var badge = document.getElementById('badgeNomiAlternativi');
+            if (badge) {
+                if (data.nomi.length > 0) {
+                    badge.textContent = data.nomi.length;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        }
+    })
+    .catch(function(err) { console.error('Errore caricamento nomi alternativi:', err); });
+}
+
+/**
+ * Renderizza lista nomi nel modal
+ */
+function renderNomiAlternativi(nomi) {
+    var container = document.getElementById('listaNomiAlternativi');
+    
+    if (!nomi || nomi.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-inbox"></i> Nessun nome alternativo</div>';
+        return;
+    }
+    
+    var html = '<ul class="list-group list-group-flush">';
+    nomi.forEach(function(n) {
+        html += '<li class="list-group-item d-flex justify-content-between align-items-center py-2">';
+        html += '<span><i class="bi bi-tag me-2 text-muted"></i>' + escapeHtmlNA(n.nome_alternativo) + '</span>';
+        html += '<button class="btn btn-outline-danger btn-sm" onclick="rimuoviNomeAlternativo(' + n.id + ')" title="Rimuovi">';
+        html += '<i class="bi bi-trash"></i>';
+        html += '</button>';
+        html += '</li>';
+    });
+    html += '</ul>';
+    
+    container.innerHTML = html;
+}
+
+/**
+ * Aggiunge un nuovo nome alternativo
+ */
+function aggiungiNomeAlternativo() {
+    var input = document.getElementById('inputNomeAlternativo');
+    var valore = input.value.trim();
+    
+    if (!valore) {
+        input.classList.add('is-invalid');
+        setTimeout(function() { input.classList.remove('is-invalid'); }, 2000);
+        return;
+    }
+    
+    fetch('/api/cliente/' + CLIENTE_ID_NOMI_ALT + '/nomi-alternativi', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nome_alternativo: valore})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            caricaNomiAlternativi();
+        } else {
+            alert(data.error || 'Errore durante il salvataggio');
+        }
+    })
+    .catch(function(err) {
+        console.error('Errore:', err);
+        alert('Errore di comunicazione con il server');
+    });
+}
+
+/**
+ * Rimuove un nome alternativo
+ */
+function rimuoviNomeAlternativo(id) {
+    if (!confirm('Rimuovere questo nome alternativo?')) return;
+    
+    fetch('/api/cliente/' + CLIENTE_ID_NOMI_ALT + '/nomi-alternativi/' + id, {
+        method: 'DELETE'
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            caricaNomiAlternativi();
+        } else {
+            alert(data.error || 'Errore durante la rimozione');
+        }
+    })
+    .catch(function(err) {
+        console.error('Errore:', err);
+        alert('Errore di comunicazione con il server');
+    });
+}
+
+/**
+ * Escape HTML per evitare XSS
+ */
+function escapeHtmlNA(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
+
+// Carica al click sul modal
+document.getElementById('modalNomiAlternativi').addEventListener('show.bs.modal', function() {
+    caricaNomiAlternativi();
+});
+
+// Carica anche all'apertura pagina (per il badge)
+document.addEventListener('DOMContentLoaded', function() {
+    caricaNomiAlternativi();
+});
+</script>

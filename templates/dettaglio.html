@@ -308,6 +308,9 @@
         </div>
 
         {% include "dettaglio/_griglia_layout.html" %}
+
+        {# --- Modal Nomi Alternativi --- #}
+        {% include "dettaglio/nomi_alternativi/_modal.html" %}
         
     </div>
     
@@ -1201,4 +1204,8 @@ function eliminaReferente(id, nome) {
     new bootstrap.Modal(document.getElementById('modalEliminaReferente')).show();
 }
 </script>
+
+{# --- Scripts Nomi Alternativi --- #}
+{% include "dettaglio/nomi_alternativi/_scripts.html" %}
+
 {% endblock %}

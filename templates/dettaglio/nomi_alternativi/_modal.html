@@ -1,0 +1,46 @@
+{# ==============================================================================
+   NOMI ALTERNATIVI - Modal gestione
+   Versione: 1.0.0
+   Data: 2026-02-12
+   Cartella: templates/dettaglio/nomi_alternativi/
+   Descrizione: Modal per aggiungere/rimuovere nomi alternativi e keyword
+                speciali per la ricerca smart del cliente
+   ============================================================================== #}
+
+<div class="modal fade" id="modalNomiAlternativi" tabindex="-1" aria-labelledby="modalNomiAlternativiLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalNomiAlternativiLabel">
+                    <i class="bi bi-tags"></i> Nomi Alternativi / Keyword
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Chiudi"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Aggiungi nomi alternativi, sigle, abbreviazioni o keyword speciali per trovare questa azienda nella ricerca smart.
+                </p>
+
+                {# --- Form aggiunta --- #}
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="inputNomeAlternativo" 
+                           placeholder="Es: FIAT, Stellantis, ex-FCA..." maxlength="200"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault(); aggiungiNomeAlternativo();}">
+                    <button class="btn btn-success" type="button" onclick="aggiungiNomeAlternativo()">
+                        <i class="bi bi-plus-lg"></i> Aggiungi
+                    </button>
+                </div>
+
+                {# --- Lista nomi esistenti --- #}
+                <div id="listaNomiAlternativi">
+                    <div class="text-center text-muted py-3" id="nomiAlternativiVuoto">
+                        <i class="bi bi-inbox"></i> Nessun nome alternativo
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Chiudi</button>
+            </div>
+        </div>
+    </div>
+</div>
