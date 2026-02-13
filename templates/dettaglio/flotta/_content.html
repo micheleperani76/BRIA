@@ -68,6 +68,13 @@
                        onchange="salvaVeicoliRilevati(this.value)">
             </div>
         </div>
+        {% if cliente.data_import_flotta %}
+        <hr class="my-2">
+        <div class="d-flex justify-content-between">
+            <span class="text-muted small">Ultimo import flotta</span>
+            <span class="small">{{ cliente.data_import_flotta[:10] }}</span>
+        </div>
+        {% endif %}
     </div>
 </div>
 

@@ -213,3 +213,65 @@ def creditsafe_salva():
     except Exception as e:
         logger.error(f"Errore salvataggio credenziali: {e}")
         return jsonify({'ok': False, 'errore': str(e)}), 500
+
+
+# ==============================================================================
+# ROUTE: CONTATORI MONITORING
+# ==============================================================================
+
+@creditsafe_admin_bp.route('/admin/creditsafe/contatori', methods=['GET'])
+@login_required
+@permesso_richiesto('admin_sistema')
+def creditsafe_contatori():
+    """Ritorna contatori monitoring e info polling."""
+    try:
+        from app.creditsafe_api import CreditsafeAPI
+        from datetime import datetime, timedelta
+
+        api = CreditsafeAPI(base_dir=str(BASE_DIR))
+        api.authenticate()
+        info = api.get_access_info()
+
+        # Parsing contatori
+        contatori = {}
+        monitoring = info.get('countryAccess', {}).get('creditsafeConnectMonitoring', [])
+        for s in monitoring:
+            nome = s.get('name', '')
+            contatori[nome] = {
+                'used': s.get('used', 0),
+                'paid': s.get('paid', 0),
+                'expire': s.get('expireDate', '')
+            }
+
+        # Ultimo polling (cerca ultimo log)
+        import glob
+        log_pattern = str(BASE_DIR / 'logs' / 'creditsafe_polling_*.log')
+        logs = sorted(glob.glob(log_pattern))
+        ultimo_polling = None
+        if logs:
+            ultimo_log = Path(logs[-1])
+            # Estrai data dal nome file: creditsafe_polling_YYYYMMDD_HHMMSS.log
+            try:
+                ts_str = ultimo_log.stem.replace('creditsafe_polling_', '')
+                dt = datetime.strptime(ts_str, '%Y%m%d_%H%M%S')
+                ultimo_polling = dt.strftime('%Y-%m-%d %H:%M')
+            except Exception:
+                pass
+
+        # Prossimo polling (prossimo giovedi ore 20:00)
+        now = datetime.now()
+        days_ahead = (3 - now.weekday()) % 7  # 3 = giovedi
+        if days_ahead == 0 and now.hour >= 20:
+            days_ahead = 7
+        prossimo = (now + timedelta(days=days_ahead)).replace(hour=20, minute=0, second=0)
+
+        return jsonify({
+            'ok': True,
+            'contatori': contatori,
+            'ultimo_polling': ultimo_polling,
+            'prossimo_polling': prossimo.strftime('%Y-%m-%d %H:%M')
+        })
+
+    except Exception as e:
+        logger.error(f"Errore lettura contatori: {e}")
+        return jsonify({'ok': False, 'errore': str(e)})

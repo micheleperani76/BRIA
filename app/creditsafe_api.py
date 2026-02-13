@@ -641,7 +641,7 @@ class CreditsafeAPI:
                 status = e.response.status_code if e.response is not None else 0
                 
                 # Errori non recuperabili: non ritentare
-                if status in (400, 401, 403, 404, 422):
+                if status in (400, 401, 403, 404, 409, 422):
                     logger.error(f"Errore {status} su {method} {url}: {e}")
                     try:
                         error_body = e.response.json()

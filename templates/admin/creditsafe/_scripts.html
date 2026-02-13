@@ -11,6 +11,7 @@
 // Carica stato al load pagina
 document.addEventListener('DOMContentLoaded', function() {
     csCaricaStato();
+    csCaricaContatori();
 });
 
 function csCaricaStato() {
@@ -160,6 +161,7 @@ function csSalvaCredenziali() {
                 }
                 csChiudiModifica();
                 csCaricaStato();
+    csCaricaContatori();
             } else {
                 result.className = 'alert alert-danger mb-3';
                 result.innerHTML = '<i class="bi bi-x-circle"></i> <strong>Errore:</strong> ' + (data.errore || 'Errore sconosciuto');
@@ -169,5 +171,32 @@ function csSalvaCredenziali() {
             result.className = 'alert alert-danger mb-3';
             result.innerHTML = '<i class="bi bi-x-circle"></i> Errore di rete: ' + err.message;
         });
+}
+</script>
+
+<script>
+function csCaricaContatori() {
+    fetch('/admin/creditsafe/contatori')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) return;
+            const box = document.getElementById('cs-contatori');
+            box.style.display = 'block';
+
+            const cnt = data.contatori;
+            const mon = cnt['Domestic Monitoring'] || {};
+            const alt = cnt['Domestic Monitoring Alerts'] || {};
+
+            document.getElementById('cs-cnt-monitoring').textContent = (mon.used || 0) + ' / ' + (mon.paid || 0);
+            document.getElementById('cs-cnt-alert').textContent = (alt.used || 0) + ' / ' + (alt.paid || 0);
+            document.getElementById('cs-cnt-ultimo').textContent = data.ultimo_polling || 'Mai eseguito';
+            document.getElementById('cs-cnt-prossimo').textContent = data.prossimo_polling || '-';
+
+            if (mon.expire) {
+                var d = new Date(mon.expire);
+                document.getElementById('cs-cnt-scadenza').textContent = d.toLocaleDateString('it-IT');
+            }
+        })
+        .catch(err => console.log('Contatori non disponibili:', err));
 }
 </script>

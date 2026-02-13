@@ -785,10 +785,14 @@ def processa_pdf(pdf_path, conn, logger):
             # Campo vuoto: aggiorna sempre
             logger.info(f"  -> Aggiornamento (data report mancante nel DB o nel PDF)")
             aggiorna_cliente_da_creditsafe(conn, cliente_esistente['id'], dati, logger)
+            # Reset flag amministratore variato (PDF nuovo = fonte aggiornata)
+            conn.cursor().execute("UPDATE clienti SET amministratore_variato = 0 WHERE id = ?", (cliente_esistente["id"],))
         elif data_report_nuova >= data_report_attuale:
             # Report nuovo e' piu' recente o uguale: aggiorna
             logger.info(f"  -> Aggiornamento (report {data_report_nuova} >= DB {data_report_attuale})")
             aggiorna_cliente_da_creditsafe(conn, cliente_esistente['id'], dati, logger)
+            # Reset flag amministratore variato (PDF nuovo = fonte aggiornata)
+            conn.cursor().execute("UPDATE clienti SET amministratore_variato = 0 WHERE id = ?", (cliente_esistente["id"],))
         else:
             # Report vecchio: NON aggiornare dati, ma archivia comunque il PDF
             logger.info(f"  -> SKIP aggiornamento dati (report {data_report_nuova} < DB {data_report_attuale})")
