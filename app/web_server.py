@@ -560,9 +560,9 @@ def index():
     # Filtro stato cliente (Prospetto, Cliente, N/D, ecc.)
     if stato_cliente:
         if stato_cliente == '__NULL__':
-            query += " AND (c.stato_cliente IS NULL OR c.stato_cliente = '')"
+            query += " AND (c.stato_crm IS NULL OR c.stato_crm = '')"
         else:
-            query += " AND c.stato_cliente = ?"
+            query += " AND c.stato_crm = ?"
             params.append(stato_cliente)
             
     # Filtro lettera iniziale
@@ -734,9 +734,9 @@ def index():
     
     # Lista stati cliente effettivamente usati nel DB (per dropdown)
     cursor.execute('''
-        SELECT DISTINCT stato_cliente FROM clienti 
-        WHERE stato_cliente IS NOT NULL AND stato_cliente != ''
-        ORDER BY stato_cliente
+        SELECT DISTINCT stato_crm FROM clienti 
+        WHERE stato_crm IS NOT NULL AND stato_crm != ''
+        ORDER BY stato_crm
     ''')
     stati_cliente_usati = [row[0] for row in cursor.fetchall()]
     
