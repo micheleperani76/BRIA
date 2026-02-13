@@ -72,6 +72,7 @@ from app.routes_notifiche import notifiche_bp
 from app.routes_ticker import ticker_bp
 from app.routes_installato import installato_bp
 from app.routes_layout import layout_bp
+from app.routes_admin_creditsafe import creditsafe_admin_bp
 from app.layout_config import init_layout, get_layout_quadri
 from app.config_notifiche import POLLING_SECONDI as NOTIFICHE_POLLING
 from app.auth import auth_context_processor, login_required
@@ -166,6 +167,7 @@ app.register_blueprint(ticker_bp)
 app.register_blueprint(revisioni_bp)
 app.register_blueprint(installato_bp)
 app.register_blueprint(layout_bp)
+app.register_blueprint(creditsafe_admin_bp)
 register_note_clienti_legacy_routes(app)
 app.context_processor(auth_context_processor)
 app.context_processor(stati_context_processor)

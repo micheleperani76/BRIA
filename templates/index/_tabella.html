@@ -75,6 +75,7 @@
                     <br><small class="text-muted">{{ c.forma_giuridica }}</small>
                     {% endif %}
                     {% if search and search_matches_per_cliente and search_matches_per_cliente.get(c.id) %}
+                    <script>document.currentScript.closest('tr').dataset.matchTypes = '{{ search_matches_per_cliente[c.id].keys()|join(",") }}';</script>
                     <br>
                     <small>
                     {% for tipo, valori in search_matches_per_cliente[c.id].items() %}

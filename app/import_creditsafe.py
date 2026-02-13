@@ -777,9 +777,22 @@ def processa_pdf(pdf_path, conn, logger):
         cliente_esistente = cerca_cliente_per_piva(conn, dati['p_iva'])
     
     if cliente_esistente:
-        # AGGIORNA cliente esistente
-        logger.info(f"  ->")
-        aggiorna_cliente_da_creditsafe(conn, cliente_esistente['id'], dati, logger)
+        # AGGIORNA cliente esistente - SOLO se il report e' piu' recente o il dato e' vuoto
+        data_report_nuova = dati.get('data_report_creditsafe', '')
+        data_report_attuale = cliente_esistente['data_report_creditsafe'] if 'data_report_creditsafe' in cliente_esistente.keys() else None
+        
+        if not data_report_attuale or not data_report_nuova:
+            # Campo vuoto: aggiorna sempre
+            logger.info(f"  -> Aggiornamento (data report mancante nel DB o nel PDF)")
+            aggiorna_cliente_da_creditsafe(conn, cliente_esistente['id'], dati, logger)
+        elif data_report_nuova >= data_report_attuale:
+            # Report nuovo e' piu' recente o uguale: aggiorna
+            logger.info(f"  -> Aggiornamento (report {data_report_nuova} >= DB {data_report_attuale})")
+            aggiorna_cliente_da_creditsafe(conn, cliente_esistente['id'], dati, logger)
+        else:
+            # Report vecchio: NON aggiornare dati, ma archivia comunque il PDF
+            logger.info(f"  -> SKIP aggiornamento dati (report {data_report_nuova} < DB {data_report_attuale})")
+            logger.info(f"     Il PDF viene comunque archiviato")
     else:
         # INSERISCI nuovo cliente
         logger.info(f"  ->")

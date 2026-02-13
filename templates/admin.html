@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+
 {% block title %}Amministrazione - Gestione Flotta{% endblock %}
 
 {% block content %}
@@ -555,4 +556,14 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #e7f1ff !important;
 }
 </style>
+
+<!-- Riga 3: Creditsafe API -->
+<div class="row g-4 mt-2">
+    <div class="col-md-6">
+        {% include "admin/creditsafe/_card.html" %}
+    </div>
+</div>
+
+<!-- Scripts Creditsafe -->
+{% include "admin/creditsafe/_scripts.html" %}
 {% endblock %}

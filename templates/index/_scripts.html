@@ -508,3 +508,74 @@
         return div.innerHTML;
     }
 </script>
+
+{# ================================================
+   FILTRO BADGE "Trovato in" - cliccabili
+   Versione: 1.0.0 - 2026-02-12
+   ================================================ #}
+<script>
+var filtroAttivoRicerca = null;
+
+function toggleFiltroRicerca(badge) {
+    var tipo = badge.dataset.filtro;
+    
+    if (filtroAttivoRicerca === tipo) {
+        resetFiltroRicerca();
+        return;
+    }
+    
+    filtroAttivoRicerca = tipo;
+    
+    // Stile badge: attivo = pieno, altri = opachi
+    document.querySelectorAll('.badge-filtro').forEach(function(b) {
+        if (b.dataset.filtro === tipo) {
+            b.style.opacity = '1';
+            b.style.outline = '2px solid #000';
+            b.style.outlineOffset = '1px';
+        } else {
+            b.style.opacity = '0.4';
+            b.style.outline = 'none';
+        }
+    });
+    
+    // Mostra pulsante reset
+    var btnReset = document.getElementById('btnResetFiltro');
+    if (btnReset) btnReset.style.display = 'inline-block';
+    
+    // Filtra righe tabella
+    var righe = document.querySelectorAll('table tbody tr');
+    var visibili = 0;
+    righe.forEach(function(tr) {
+        var matchTypes = tr.dataset.matchTypes || '';
+        if (matchTypes.indexOf(tipo) !== -1) {
+            tr.style.display = '';
+            visibili++;
+        } else {
+            tr.style.display = 'none';
+        }
+    });
+    
+    // Aggiorna contatore visuale
+    var counter = document.querySelector('.badge-filtro-reset');
+    if (counter) counter.innerHTML = '<i class="bi bi-x-circle"></i> Tutti (' + visibili + ' filtrati)';
+}
+
+function resetFiltroRicerca() {
+    filtroAttivoRicerca = null;
+    
+    // Reset stile badge
+    document.querySelectorAll('.badge-filtro').forEach(function(b) {
+        b.style.opacity = '1';
+        b.style.outline = 'none';
+    });
+    
+    // Nascondi pulsante reset
+    var btnReset = document.getElementById('btnResetFiltro');
+    if (btnReset) btnReset.style.display = 'none';
+    
+    // Mostra tutte le righe
+    document.querySelectorAll('table tbody tr').forEach(function(tr) {
+        tr.style.display = '';
+    });
+}
+</script>

@@ -1,0 +1,173 @@
+<!-- ==========================================================================
+     SCRIPTS: Creditsafe API - Gestione Credenziali
+     Versione: 1.0.0
+     Data: 2026-02-13
+     Include in: admin.html (prima di </body> o fine block content)
+     ========================================================================== -->
+
+<script>
+// === Creditsafe API - Gestione Credenziali ===
+
+// Carica stato al load pagina
+document.addEventListener('DOMContentLoaded', function() {
+    csCaricaStato();
+});
+
+function csCaricaStato() {
+    fetch('/admin/creditsafe/stato')
+        .then(r => r.json())
+        .then(data => {
+            const badge = document.getElementById('cs-badge');
+            const icona = document.getElementById('cs-icona');
+            const username = document.getElementById('cs-username');
+            const dettaglio = document.getElementById('cs-dettaglio');
+            const btnTest = document.getElementById('cs-btn-test');
+
+            if (data.configurato) {
+                badge.className = 'badge bg-success';
+                badge.textContent = 'Configurato';
+                icona.className = 'bi bi-check-circle-fill text-success me-2';
+                icona.style.fontSize = '1.3rem';
+                username.textContent = data.username;
+                dettaglio.textContent = 'Credenziali presenti';
+                btnTest.disabled = false;
+            } else {
+                badge.className = 'badge bg-danger';
+                badge.textContent = 'Non configurato';
+                icona.className = 'bi bi-x-circle-fill text-danger me-2';
+                icona.style.fontSize = '1.3rem';
+                username.textContent = 'Credenziali mancanti';
+                dettaglio.textContent = data.errore || 'Configurare username e password';
+                btnTest.disabled = true;
+            }
+        })
+        .catch(err => {
+            document.getElementById('cs-badge').className = 'badge bg-warning';
+            document.getElementById('cs-badge').textContent = 'Errore';
+            document.getElementById('cs-username').textContent = 'Errore caricamento';
+        });
+}
+
+function csTestCredenziali() {
+    const btn = document.getElementById('cs-btn-test');
+    const result = document.getElementById('cs-test-result');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Test in corso...';
+    result.style.display = 'none';
+
+    fetch('/admin/creditsafe/test', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            result.style.display = 'block';
+
+            if (data.valid) {
+                result.className = 'alert alert-success mb-3';
+                let html = '<i class="bi bi-check-circle"></i> <strong>Connessione OK</strong>';
+                html += '<br><small>Token JWT ottenuto con successo';
+                if (data.expires) {
+                    html += ' (scade: ' + new Date(data.expires).toLocaleTimeString() + ')';
+                }
+                html += '</small>';
+
+                // Info accesso
+                if (data.accesso && !data.accesso.errore) {
+                    html += '<br><small class="text-muted">Servizi account verificati</small>';
+                }
+
+                result.innerHTML = html;
+            } else {
+                result.className = 'alert alert-danger mb-3';
+                result.innerHTML = '<i class="bi bi-x-circle"></i> <strong>Connessione fallita</strong>' +
+                    '<br><small>' + (data.error || 'Errore sconosciuto') + '</small>';
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plug"></i> Test Connessione';
+        })
+        .catch(err => {
+            result.style.display = 'block';
+            result.className = 'alert alert-danger mb-3';
+            result.innerHTML = '<i class="bi bi-x-circle"></i> Errore di rete: ' + err.message;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-plug"></i> Test Connessione';
+        });
+}
+
+function csApriModifica() {
+    document.getElementById('cs-form').style.display = 'block';
+    // Pre-popola username se disponibile
+    const userText = document.getElementById('cs-username').textContent;
+    if (userText && userText.includes('@')) {
+        document.getElementById('cs-input-user').value = userText;
+    }
+    document.getElementById('cs-input-pwd').value = '';
+}
+
+function csChiudiModifica() {
+    document.getElementById('cs-form').style.display = 'none';
+}
+
+function csTogglePassword() {
+    const input = document.getElementById('cs-input-pwd');
+    const icon = document.getElementById('cs-eye-icon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+}
+
+function csSalvaCredenziali() {
+    const username = document.getElementById('cs-input-user').value.trim();
+    const password = document.getElementById('cs-input-pwd').value;
+    const result = document.getElementById('cs-test-result');
+
+    if (!username) {
+        alert('Inserire username (email)');
+        return;
+    }
+    if (!password) {
+        alert('Inserire password');
+        return;
+    }
+
+    if (!confirm('Salvare le nuove credenziali API Creditsafe?\n\nUsername: ' + username)) {
+        return;
+    }
+
+    result.style.display = 'block';
+    result.className = 'alert alert-info mb-3';
+    result.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio e test in corso...';
+
+    fetch('/admin/creditsafe/salva', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                if (data.test_ok) {
+                    result.className = 'alert alert-success mb-3';
+                    result.innerHTML = '<i class="bi bi-check-circle"></i> <strong>' + data.messaggio + '</strong>';
+                } else {
+                    result.className = 'alert alert-warning mb-3';
+                    result.innerHTML = '<i class="bi bi-exclamation-triangle"></i> <strong>' + data.messaggio + '</strong>' +
+                        (data.test_errore ? '<br><small>' + data.test_errore + '</small>' : '');
+                }
+                csChiudiModifica();
+                csCaricaStato();
+            } else {
+                result.className = 'alert alert-danger mb-3';
+                result.innerHTML = '<i class="bi bi-x-circle"></i> <strong>Errore:</strong> ' + (data.errore || 'Errore sconosciuto');
+            }
+        })
+        .catch(err => {
+            result.className = 'alert alert-danger mb-3';
+            result.innerHTML = '<i class="bi bi-x-circle"></i> Errore di rete: ' + err.message;
+        });
+}
+</script>

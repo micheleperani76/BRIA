@@ -1,35 +1,37 @@
 {# ================================================
    INDEX - RICERCA SMART
    Box informativo con badge "Trovato in: ..."
-   Versione: 1.1.0 - Aggiunto badge Sede, label Contatto
+   Versione: 2.0.0 - Badge cliccabili come filtri
    ================================================ #}
-
-<!-- Box informativo ricerca smart -->
 {% if search and search_matches %}
-<div class="alert alert-info py-2 mb-3 d-flex align-items-center flex-wrap gap-2">
+<div class="alert alert-info py-2 mb-3 d-flex align-items-center flex-wrap gap-2" id="boxTrovatoIn">
     <small class="me-2">
         <i class="bi bi-search"></i> <strong>Trovato in:</strong>
     </small>
     {% if search_matches.get('referente') %}
-        <span class="badge bg-primary">Referente: {{ search_matches.referente|join(', ') }}</span>
+        <span class="badge bg-primary badge-filtro" data-filtro="referente" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Referente: {{ search_matches.referente|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('driver') %}
-        <span class="badge bg-success">Driver: {{ search_matches.driver|join(', ') }}</span>
+        <span class="badge bg-success badge-filtro" data-filtro="driver" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Driver: {{ search_matches.driver|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('targa') %}
-        <span class="badge bg-warning text-dark">Targa: {{ search_matches.targa|join(', ') }}</span>
+        <span class="badge bg-warning text-dark badge-filtro" data-filtro="targa" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Targa: {{ search_matches.targa|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('capogruppo') %}
-        <span class="badge bg-secondary">Capogruppo: {{ search_matches.capogruppo|join(', ') }}</span>
+        <span class="badge bg-secondary badge-filtro" data-filtro="capogruppo" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Capogruppo: {{ search_matches.capogruppo|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('note') %}
-        <span class="badge bg-info">Note: {{ search_matches.note|join(', ') }}</span>
+        <span class="badge bg-info badge-filtro" data-filtro="note" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Note: {{ search_matches.note|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('contatto') %}
-        <span class="badge bg-dark">Contatto: {{ search_matches.contatto|join(', ') }}</span>
+        <span class="badge bg-dark badge-filtro" data-filtro="contatto" onclick="toggleFiltroRicerca(this)" style="cursor:pointer;" title="Clicca per filtrare">Contatto: {{ search_matches.contatto|join(', ') }}</span>
     {% endif %}
     {% if search_matches.get('sede') %}
-        <span class="badge" style="background-color: #6f42c1;">Sede: {{ search_matches.sede|join(', ') }}</span>
+        <span class="badge badge-filtro" style="background-color: #6f42c1; cursor:pointer;" data-filtro="sede" onclick="toggleFiltroRicerca(this)" title="Clicca per filtrare">Sede: {{ search_matches.sede|join(', ') }}</span>
     {% endif %}
+    {% if search_matches.get('alias') %}
+        <span class="badge badge-filtro" style="background-color: #6f42c1; cursor:pointer;" data-filtro="alias" onclick="toggleFiltroRicerca(this)" title="Clicca per filtrare">Alias: {{ search_matches.alias|join(', ') }}</span>
+    {% endif %}
+    <span class="badge bg-light text-dark border badge-filtro-reset" id="btnResetFiltro" style="cursor:pointer; display:none;" onclick="resetFiltroRicerca()" title="Mostra tutti"><i class="bi bi-x-circle"></i> Tutti</span>
 </div>
 {% endif %}
