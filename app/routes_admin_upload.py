@@ -441,6 +441,7 @@ def _importa_fase_creditsafe():
     import_all_status['current'] = 0
 
     completati = 0
+    scartati = 0
     errori = 0
 
     try:
@@ -452,8 +453,18 @@ def _importa_fase_creditsafe():
 
             try:
                 risultato = importa_pdf_singolo(str(pdf_path))
-                if risultato.get('success'):
-                    completati += 1
+                # importa_pdf_singolo ritorna True (scartato/ok) o dict
+                if isinstance(risultato, dict):
+                    if risultato.get('success'):
+                        completati += 1
+                    else:
+                        errori += 1
+                elif risultato is True:
+                    # PDF scartato (azienda non in elenco) o elaborato ok
+                    if not pdf_path.exists():
+                        scartati += 1
+                    else:
+                        completati += 1
                 else:
                     errori += 1
             except Exception as e:
@@ -466,6 +477,7 @@ def _importa_fase_creditsafe():
     import_all_status['risultati']['creditsafe'] = {
         'success': True,
         'completati': completati,
+        'scartati': scartati,
         'errori': errori,
         'totale': len(pdf_files),
     }

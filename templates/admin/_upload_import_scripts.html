@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (risultati.creditsafe) {
                     const r = risultati.creditsafe;
                     html += fasiResultCard('Creditsafe', 'danger', 'bi-file-pdf',
-                        `Totale: ${r.totale} | Completati: ${r.completati} | Errori: ${r.errori}`, r.success);
+                        `Totale: ${r.totale} | Importati: ${r.completati} | Non in elenco: ${r.scartati || 0} | Errori: ${r.errori}`, r.success);
                 }
 
                 html += '</div>';
