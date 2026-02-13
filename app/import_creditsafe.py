@@ -771,10 +771,17 @@ def processa_pdf(pdf_path, conn, logger):
     logger.info(f"  Ragione sociale: {dati.get('ragione_sociale', 'N/D')}")
     logger.info(f"  Score: {dati.get('score', 'N/D')}")
     
-    # Cerca cliente esistente per P.IVA
+    # Cerca cliente esistente per P.IVA o Codice Fiscale
     cliente_esistente = None
     if dati.get('p_iva'):
         cliente_esistente = cerca_cliente_per_piva(conn, dati['p_iva'])
+    if not cliente_esistente and dati.get('cod_fiscale'):
+        # Fallback: cerca per codice fiscale
+        cursor_cf = conn.cursor()
+        cursor_cf.execute('SELECT * FROM clienti WHERE cod_fiscale = ?', (dati['cod_fiscale'],))
+        cliente_esistente = cursor_cf.fetchone()
+        if cliente_esistente:
+            logger.info(f"  -> Trovato per CF: {dati['cod_fiscale']}")
     
     if cliente_esistente:
         # AGGIORNA cliente esistente - SOLO se il report e' piu' recente o il dato e' vuoto
@@ -794,14 +801,16 @@ def processa_pdf(pdf_path, conn, logger):
             # Reset flag amministratore variato (PDF nuovo = fonte aggiornata)
             conn.cursor().execute("UPDATE clienti SET amministratore_variato = 0 WHERE id = ?", (cliente_esistente["id"],))
         else:
-            # Report vecchio: NON aggiornare dati, ma archivia comunque il PDF
-            logger.info(f"  -> SKIP aggiornamento dati (report {data_report_nuova} < DB {data_report_attuale})")
-            logger.info(f"     Il PDF viene comunque archiviato")
+            # Report vecchio: NON aggiornare, ELIMINA PDF
+            logger.info(f"  -> SCARTATO: report PDF ({data_report_nuova}) piu' vecchio del DB ({data_report_attuale})")
+            logger.info(f"     PDF eliminato, dati non aggiornati")
+            return True
     else:
-        # INSERISCI nuovo cliente
-        logger.info(f"  ->")
-        cliente_id = inserisci_cliente(conn, dati, origine='creditsafe')
-        logger.info(f"  ->")
+        # NESSUNA CORRISPONDENZA P.IVA/CF: elimina PDF senza creare cliente
+        logger.info(f"  -> SCARTATO: nessuna corrispondenza P.IVA/CF in database")
+        logger.info(f"     P.IVA: {dati.get('p_iva', 'N/D')} CF: {dati.get('cod_fiscale', 'N/D')}")
+        logger.info(f"     PDF eliminato dalla coda di importazione")
+        return True
     
     
     # NUOVA STRUTTURA: Salva PDF nella cartella creditsafe del cliente
