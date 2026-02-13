@@ -1,0 +1,442 @@
+<!-- ============================================================
+     ADMIN: Scripts Upload Multi-File e Import
+     Versione: 1.0.0 | Data: 2026-02-13
+     ============================================================ -->
+
+<style>
+#drop-zone-multi:hover,
+#drop-zone-multi.drag-over {
+    border-color: #0d6efd !important;
+    background: #e7f1ff !important;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ========================================
+    // COSTANTI CLASSIFICAZIONE FILE
+    // ========================================
+    const FILE_TYPES = {
+        accounts:  { pattern: /^Accounts[_\s]/i,  label: 'Accounts CRM', icona: 'bi-building',          colore: 'primary' },
+        scadenze:  { pattern: /^Scadenze[_\s]/i,  label: 'Scadenze CRM', icona: 'bi-car-front',         colore: 'success' },
+        contacts:  { pattern: /^Contacts[_\s]/i,  label: 'Contacts CRM', icona: 'bi-person-lines-fill', colore: 'info'    },
+        creditsafe:{ pattern: /\.pdf$/i,           label: 'PDF Creditsafe', icona: 'bi-file-pdf',        colore: 'danger'  },
+    };
+
+    function classificaFile(nome) {
+        for (const [tipo, cfg] of Object.entries(FILE_TYPES)) {
+            if (cfg.pattern.test(nome)) return { tipo, ...cfg };
+        }
+        return { tipo: 'sconosciuto', label: 'Non riconosciuto', icona: 'bi-question-circle', colore: 'secondary' };
+    }
+
+    // ========================================
+    // UPLOAD DRAG & DROP MULTI-FILE
+    // ========================================
+    const dropZone = document.getElementById('drop-zone-multi');
+    const fileInput = document.getElementById('file-input-multi');
+    const uploadList = document.getElementById('upload-list-multi');
+    const fileList = document.getElementById('file-list-multi');
+    const uploadBtn = document.getElementById('upload-btn-multi');
+    const uploadResult = document.getElementById('upload-result-multi');
+    const uploadRejected = document.getElementById('upload-rejected-multi');
+
+    let filesToUpload = [];
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        handleFilesMulti(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFilesMulti(e.target.files);
+    });
+
+    function handleFilesMulti(files) {
+        const allFiles = Array.from(files);
+        const accettati = [];
+        const rifiutati = [];
+
+        allFiles.forEach(f => {
+            const info = classificaFile(f.name);
+            if (info.tipo === 'sconosciuto') {
+                rifiutati.push(f.name);
+            } else {
+                accettati.push({ file: f, info: info });
+            }
+        });
+
+        if (accettati.length === 0 && rifiutati.length > 0) {
+            alert('Nessun file riconosciuto. Accettati: PDF Creditsafe, Accounts_*.csv, Contacts_*.csv, Scadenze_*.csv');
+            return;
+        }
+
+        filesToUpload = accettati;
+
+        // Mostra lista classificata
+        fileList.innerHTML = '';
+        accettati.forEach((item) => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center py-1';
+            li.innerHTML = `
+                <span>
+                    <i class="bi ${item.info.icona} text-${item.info.colore}"></i>
+                    ${item.file.name}
+                    <span class="badge bg-${item.info.colore} ms-1">${item.info.label}</span>
+                </span>
+                <span class="badge bg-secondary">${(item.file.size / 1024).toFixed(0)} KB</span>
+            `;
+            fileList.appendChild(li);
+        });
+
+        // File rifiutati
+        if (rifiutati.length > 0) {
+            uploadRejected.style.display = 'block';
+            uploadRejected.innerHTML = `
+                <div class="alert alert-warning py-1 small mb-0">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    File non riconosciuti (ignorati): ${rifiutati.join(', ')}
+                </div>`;
+        } else {
+            uploadRejected.style.display = 'none';
+        }
+
+        uploadList.style.display = 'block';
+        uploadResult.style.display = 'none';
+    }
+
+    // Upload
+    uploadBtn.addEventListener('click', async () => {
+        if (filesToUpload.length === 0) return;
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Caricamento...';
+
+        const formData = new FormData();
+        filesToUpload.forEach(item => formData.append('files[]', item.file));
+
+        try {
+            const response = await fetch('/admin/upload-files', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                let html = `<i class="bi bi-check-circle"></i> Caricati <strong>${data.count}</strong> file`;
+
+                // Dettaglio per tipo
+                if (data.risultati && data.risultati.per_tipo) {
+                    const parti = [];
+                    for (const [tipo, n] of Object.entries(data.risultati.per_tipo)) {
+                        const cfg = FILE_TYPES[tipo];
+                        if (cfg) parti.push(`<span class="badge bg-${cfg.colore}">${n} ${cfg.label}</span>`);
+                    }
+                    if (parti.length > 0) html += '<br>' + parti.join(' ');
+                }
+
+                if (data.rejected_count > 0) {
+                    html += `<br><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> ${data.rejected_count} file rifiutati</small>`;
+                }
+
+                uploadResult.className = 'alert alert-success';
+                uploadResult.innerHTML = html;
+
+                // Reset
+                filesToUpload = [];
+                uploadList.style.display = 'none';
+
+                // Aggiorna info file in attesa
+                caricaInfoAttesa();
+            } else {
+                uploadResult.className = 'alert alert-danger';
+                uploadResult.innerHTML = `<i class="bi bi-exclamation-circle"></i> ${data.error}`;
+            }
+            uploadResult.style.display = 'block';
+        } catch (err) {
+            uploadResult.className = 'alert alert-danger';
+            uploadResult.innerHTML = `<i class="bi bi-exclamation-circle"></i> Errore: ${err.message}`;
+            uploadResult.style.display = 'block';
+        }
+
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Carica File';
+    });
+
+
+    // ========================================
+    // INFO FILE IN ATTESA
+    // ========================================
+    const importAttesa = document.getElementById('import-attesa');
+    const importBtnMulti = document.getElementById('import-btn-multi');
+
+    async function caricaInfoAttesa() {
+        try {
+            const response = await fetch('/admin/upload-info');
+            const data = await response.json();
+
+            if (data.success && data.totale > 0) {
+                let html = '';
+                data.dettaglio.forEach(d => {
+                    html += `
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span><i class="bi ${d.icona} text-${d.colore}"></i> ${d.label}</span>
+                            <span class="badge bg-${d.colore}">${d.conteggio}</span>
+                        </div>`;
+                });
+                importAttesa.innerHTML = html;
+                importBtnMulti.disabled = false;
+
+                // Aggiorna badge totale upload
+                const badge = document.getElementById('upload-total-badge');
+                badge.textContent = data.totale;
+                badge.style.display = 'inline';
+            } else {
+                importAttesa.innerHTML = '<div class="alert alert-secondary py-1 small mb-0"><i class="bi bi-check-circle"></i> Nessun file in attesa</div>';
+                importBtnMulti.disabled = true;
+                document.getElementById('upload-total-badge').style.display = 'none';
+            }
+        } catch (err) {
+            importAttesa.innerHTML = '<div class="text-danger small">Errore caricamento info</div>';
+        }
+    }
+
+    // Carica info all'avvio
+    caricaInfoAttesa();
+
+
+    // ========================================
+    // IMPORT MULTI-FASE CON PROGRESS
+    // ========================================
+    const importIdleMulti = document.getElementById('import-idle-multi');
+    const importProgressMulti = document.getElementById('import-progress-multi');
+    const importResultMulti = document.getElementById('import-result-multi');
+    const progressBarMulti = document.getElementById('progress-bar-multi');
+    const progressFaseBadge = document.getElementById('progress-fase-badge');
+    const progressFaseLabel = document.getElementById('progress-fase-label');
+    const currentFileMulti = document.getElementById('current-file-multi');
+    const fasiCompletateDiv = document.getElementById('fasi-completate');
+
+    let pollIntervalMulti = null;
+
+    importBtnMulti.addEventListener('click', async () => {
+        importBtnMulti.disabled = true;
+
+        try {
+            const response = await fetch('/admin/import-all-async', { method: 'POST' });
+            const data = await response.json();
+
+            if (data.success) {
+                importIdleMulti.style.display = 'none';
+                importAttesa.style.display = 'none';
+                importProgressMulti.style.display = 'block';
+                importResultMulti.style.display = 'none';
+                fasiCompletateDiv.innerHTML = '';
+
+                pollIntervalMulti = setInterval(checkProgressMulti, 500);
+            } else {
+                alert('Errore: ' + data.error);
+                importBtnMulti.disabled = false;
+            }
+        } catch (err) {
+            alert('Errore: ' + err.message);
+            importBtnMulti.disabled = false;
+        }
+    });
+
+    async function checkProgressMulti() {
+        try {
+            const response = await fetch('/admin/import-all-status');
+            const data = await response.json();
+
+            // Aggiorna fase
+            progressFaseBadge.textContent = `Fase ${data.fase_num}/${data.fase_totale}`;
+            progressFaseLabel.textContent = data.fase_corrente_label || '';
+
+            // Aggiorna progress bar
+            if (data.total > 0) {
+                const percent = Math.round((data.current / data.total) * 100);
+                progressBarMulti.style.width = percent + '%';
+                progressBarMulti.textContent = percent + '%';
+            } else if (data.running) {
+                progressBarMulti.style.width = '100%';
+                progressBarMulti.textContent = 'Elaborazione...';
+                progressBarMulti.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+            }
+
+            currentFileMulti.textContent = data.current_file || '-';
+
+            // Fasi completate
+            if (data.fasi_completate_label && data.fasi_completate_label.length > 0) {
+                let fhtml = '';
+                data.fasi_completate_label.forEach(label => {
+                    fhtml += `<span class="badge bg-success me-1"><i class="bi bi-check"></i> ${label}</span>`;
+                });
+                fasiCompletateDiv.innerHTML = fhtml;
+            }
+
+            // Completato
+            if (!data.running && data.fase_totale > 0) {
+                clearInterval(pollIntervalMulti);
+
+                importProgressMulti.style.display = 'none';
+                importResultMulti.style.display = 'block';
+
+                // Costruisci riepilogo
+                let html = '<div class="alert alert-success mb-2"><i class="bi bi-check-circle"></i> <strong>Import completato!</strong></div>';
+
+                // Risultati per fase
+                const risultati = data.risultati || {};
+                html += '<div class="row g-2">';
+
+                if (risultati.accounts) {
+                    const r = risultati.accounts;
+                    html += fasiResultCard('Accounts', 'primary', 'bi-building',
+                        `CSV: ${r.totale_csv} | Aggiornati: ${r.aggiornati} | Creati: ${r.creati} | Errori: ${r.errori}`, r.success);
+                }
+                if (risultati.scadenze) {
+                    const r = risultati.scadenze;
+                    html += fasiResultCard('Scadenze', 'success', 'bi-car-front',
+                        `CSV: ${r.totale_csv} | Creati: ${r.creati || 0} | Aggiornati: ${r.aggiornati_scad || 0} | Storicizzati: ${r.storicizzati} | Errori: ${r.errori}`, r.success);
+                }
+                if (risultati.contacts) {
+                    const r = risultati.contacts;
+                    html += fasiResultCard('Contacts', 'info', 'bi-person-lines-fill',
+                        `CSV: ${r.totale_csv} | Inseriti: ${r.inseriti} | Aggiornati: ${r.aggiornati} | Errori: ${r.errori}`, r.success);
+                }
+                if (risultati.creditsafe) {
+                    const r = risultati.creditsafe;
+                    html += fasiResultCard('Creditsafe', 'danger', 'bi-file-pdf',
+                        `Totale: ${r.totale} | Completati: ${r.completati} | Errori: ${r.errori}`, r.success);
+                }
+
+                html += '</div>';
+
+                // Errori globali
+                if (data.errori_globali && data.errori_globali.length > 0) {
+                    html += '<div class="alert alert-danger mt-2 small">';
+                    data.errori_globali.forEach(e => { html += `<div><i class="bi bi-exclamation-triangle"></i> ${e}</div>`; });
+                    html += '</div>';
+                }
+
+                html += `<button class="btn btn-outline-secondary btn-sm mt-2" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Aggiorna pagina</button>`;
+
+                importResultMulti.innerHTML = html;
+            }
+        } catch (err) {
+            console.error('Errore polling:', err);
+        }
+    }
+
+    function fasiResultCard(label, colore, icona, testo, success) {
+        const bgClass = success ? `border-${colore}` : 'border-danger';
+        return `
+            <div class="col-md-6">
+                <div class="card ${bgClass} mb-1">
+                    <div class="card-body p-2 small">
+                        <i class="bi ${icona} text-${colore}"></i> <strong>${label}</strong>
+                        ${success ? '<i class="bi bi-check-circle text-success float-end"></i>' : '<i class="bi bi-x-circle text-danger float-end"></i>'}
+                        <div class="text-muted mt-1">${testo}</div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+
+    // ========================================
+    // PROMEMORIA CRM - Toggle e Flag Utenti
+    // ========================================
+    const togglePromemoria = document.getElementById('toggle-promemoria-crm');
+    const toggleLabel = document.getElementById('toggle-promemoria-label');
+    const utentiFlagsDiv = document.getElementById('crm-utenti-flags');
+
+    async function caricaPromemoriaCRM() {
+        try {
+            const response = await fetch('/admin/promemoria-crm-info');
+            const data = await response.json();
+
+            if (data.success) {
+                // Toggle globale
+                togglePromemoria.checked = data.attivo_globale;
+                toggleLabel.textContent = data.attivo_globale ? 'Attivo' : 'Disattivato';
+
+                // Lista utenti con checkbox
+                let html = '';
+                data.utenti.forEach(u => {
+                    const checked = u.flag_crm ? 'checked' : '';
+                    const ruoloBadge = u.ruolo === 'admin'
+                        ? '<span class="badge bg-danger ms-1">admin</span>'
+                        : u.ruolo === 'commerciale'
+                            ? '<span class="badge bg-primary ms-1">commerciale</span>'
+                            : '<span class="badge bg-secondary ms-1">' + u.ruolo + '</span>';
+
+                    html += `
+                        <div class="col-md-4 col-lg-3">
+                            <div class="form-check">
+                                <input class="form-check-input crm-flag-check" type="checkbox"
+                                       id="crm-flag-${u.id}" data-uid="${u.id}" ${checked}>
+                                <label class="form-check-label small" for="crm-flag-${u.id}">
+                                    ${u.nome_completo} ${ruoloBadge}
+                                </label>
+                            </div>
+                        </div>`;
+                });
+                utentiFlagsDiv.innerHTML = html;
+
+                // Event listener per ogni checkbox utente
+                document.querySelectorAll('.crm-flag-check').forEach(cb => {
+                    cb.addEventListener('change', async function() {
+                        const uid = this.dataset.uid;
+                        const attivo = this.checked;
+                        try {
+                            await fetch('/admin/flag-notifica-crm', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ utente_id: parseInt(uid), attivo: attivo })
+                            });
+                        } catch (err) {
+                            console.error('Errore flag CRM:', err);
+                            this.checked = !attivo;
+                        }
+                    });
+                });
+            }
+        } catch (err) {
+            utentiFlagsDiv.innerHTML = '<div class="text-danger small">Errore caricamento</div>';
+        }
+    }
+
+    // Toggle globale
+    togglePromemoria.addEventListener('change', async function() {
+        try {
+            const response = await fetch('/admin/toggle-promemoria-crm', { method: 'POST' });
+            const data = await response.json();
+            if (data.success) {
+                toggleLabel.textContent = data.attivo ? 'Attivo' : 'Disattivato';
+            }
+        } catch (err) {
+            console.error('Errore toggle:', err);
+            this.checked = !this.checked;
+        }
+    });
+
+    // Carica info all'avvio
+    caricaPromemoriaCRM();
+
+});
+</script>

@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 
 
-{% block title %}Amministrazione - Gestione Flotta{% endblock %}
+{% block title %}Amministrazione - Gestione Flotta{% include "admin/_upload_import_scripts.html" %}
+{% endblock %}
 
 {% block content %}
 
@@ -99,97 +100,7 @@
     </div>
 </div>
 
-<div class="row g-4">
-    <!-- Upload PDF Drag&Drop -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-cloud-upload"></i> Upload PDF Creditsafe
-            </div>
-            <div class="card-body">
-                <!-- Zona Drag&Drop -->
-                <div id="drop-zone" class="border border-2 border-dashed rounded p-4 text-center mb-3" 
-                     style="border-color: #dee2e6; background: #f8f9fa; cursor: pointer; transition: all 0.3s;">
-                    <i class="bi bi-cloud-arrow-up" style="font-size: 3rem; color: #6c757d;"></i>
-                    <p class="mb-1 mt-2"><strong>Trascina qui i PDF</strong></p>
-                    <p class="text-muted small mb-0">oppure clicca per selezionare</p>
-                    <input type="file" id="file-input" multiple accept=".pdf" style="display: none;">
-                </div>
-                
-                <!-- Lista file caricati -->
-                <div id="upload-list" class="mb-3" style="display: none;">
-                    <h6><i class="bi bi-files"></i> File da caricare:</h6>
-                    <ul id="file-list" class="list-group list-group-flush small"></ul>
-                    <button id="upload-btn" class="btn btn-success mt-2">
-                        <i class="bi bi-upload"></i> Carica PDF
-                    </button>
-                </div>
-                
-                <!-- Risultato upload -->
-                <div id="upload-result" class="alert" style="display: none;"></div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Import PDF con Progress -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <i class="bi bi-play-circle"></i> Import PDF Creditsafe
-            </div>
-            <div class="card-body">
-                <p class="text-muted">
-                    Elabora i PDF e aggiorna i dati aziendali nel database.
-                </p>
-                
-                <div id="import-idle">
-                    <div id="pdf-ready" class="alert alert-info mb-3">
-                        <i class="bi bi-info-circle"></i>
-                        <strong id="pdf-ready-count">{{ pdf_da_elaborare }}</strong> PDF in attesa di elaborazione
-                    </div>
-                    <button id="import-btn" class="btn btn-primary" {% if pdf_da_elaborare == 0 %}disabled{% endif %}>
-                        <i class="bi bi-play-fill"></i> Avvia Import
-                    </button>
-                </div>
-                
-                <!-- Progress bar -->
-                <div id="import-progress" style="display: none;">
-                    <div class="mb-2">
-                        <span id="progress-text">Elaborazione in corso...</span>
-                    </div>
-                    <div class="progress mb-2" style="height: 25px;">
-                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
-                             role="progressbar" style="width: 0%;">0%</div>
-                    </div>
-                    <div class="small text-muted">
-                        <i class="bi bi-file-pdf"></i> <span id="current-file">-</span>
-                    </div>
-                </div>
-                
-                <!-- Risultato import -->
-                <div id="import-result" style="display: none;">
-                    <div class="alert alert-success mb-2">
-                        <i class="bi bi-check-circle"></i> Import completato!
-                    </div>
-                    <div class="row text-center">
-                        <div class="col-6">
-                            <div class="h4 text-success" id="result-ok">0</div>
-                            <div class="small text-muted">Elaborati</div>
-                        </div>
-                        <div class="col-6">
-                            <div class="h4 text-danger" id="result-err">0</div>
-                            <div class="small text-muted">Errori</div>
-                        </div>
-                    </div>
-                    <button class="btn btn-outline-secondary btn-sm mt-2" onclick="location.reload()">
-                        <i class="bi bi-arrow-clockwise"></i> Aggiorna pagina
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% include "admin/_upload_import.html" %}
 <!-- Riga 2: Pulizia log e Crontab -->
 <div class="row g-4 mt-2">
     <!-- Pulizia log -->
@@ -282,193 +193,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ========================================
-    // UPLOAD DRAG & DROP
-    // ========================================
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const uploadList = document.getElementById('upload-list');
-    const fileList = document.getElementById('file-list');
-    const uploadBtn = document.getElementById('upload-btn');
-    const uploadResult = document.getElementById('upload-result');
-    
-    let filesToUpload = [];
-    
-    // Click su zona = apri dialog file
-    dropZone.addEventListener('click', () => fileInput.click());
-    
-    // Drag over
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#0d6efd';
-        dropZone.style.background = '#e7f1ff';
-    });
-    
-    // Drag leave
-    dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#dee2e6';
-        dropZone.style.background = '#f8f9fa';
-    });
-    
-    // Drop
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#dee2e6';
-        dropZone.style.background = '#f8f9fa';
-        handleFiles(e.dataTransfer.files);
-    });
-    
-    // Selezione file da dialog
-    fileInput.addEventListener('change', (e) => {
-        handleFiles(e.target.files);
-    });
-    
-    function handleFiles(files) {
-        filesToUpload = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
-        
-        if (filesToUpload.length === 0) {
-            alert('Seleziona solo file PDF!');
-            return;
-        }
-        
-        // Mostra lista
-        fileList.innerHTML = '';
-        filesToUpload.forEach((f, i) => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item d-flex justify-content-between align-items-center py-1';
-            li.innerHTML = `
-                <span><i class="bi bi-file-pdf text-danger"></i> ${f.name}</span>
-                <span class="badge bg-secondary">${(f.size / 1024).toFixed(0)} KB</span>
-            `;
-            fileList.appendChild(li);
-        });
-        
-        uploadList.style.display = 'block';
-        uploadResult.style.display = 'none';
-    }
-    
-    // Upload
-    uploadBtn.addEventListener('click', async () => {
-        if (filesToUpload.length === 0) return;
-        
-        uploadBtn.disabled = true;
-        uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Caricamento...';
-        
-        const formData = new FormData();
-        filesToUpload.forEach(f => formData.append('files[]', f));
-        
-        try {
-            const response = await fetch('/admin/upload-pdf', {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
-            
-            if (data.success) {
-                uploadResult.className = 'alert alert-success';
-                uploadResult.innerHTML = `<i class="bi bi-check-circle"></i> Caricati <strong>${data.count}</strong> PDF`;
-                if (data.errors && data.errors.length > 0) {
-                    uploadResult.innerHTML += `<br><small class="text-danger">Errori: ${data.errors.join(', ')}</small>`;
-                }
-                
-                // Aggiorna contatore
-                const pdfCount = document.getElementById('pdf-count');
-                const pdfReadyCount = document.getElementById('pdf-ready-count');
-                const importBtn = document.getElementById('import-btn');
-                const newCount = parseInt(pdfCount.textContent) + data.count;
-                pdfCount.textContent = newCount;
-                pdfReadyCount.textContent = newCount;
-                if (newCount > 0) importBtn.disabled = false;
-                
-                // Reset
-                filesToUpload = [];
-                uploadList.style.display = 'none';
-            } else {
-                uploadResult.className = 'alert alert-danger';
-                uploadResult.innerHTML = `<i class="bi bi-exclamation-circle"></i> ${data.error}`;
-            }
-            uploadResult.style.display = 'block';
-        } catch (err) {
-            uploadResult.className = 'alert alert-danger';
-            uploadResult.innerHTML = `<i class="bi bi-exclamation-circle"></i> Errore: ${err.message}`;
-            uploadResult.style.display = 'block';
-        }
-        
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Carica PDF';
-    });
-    
-    // ========================================
-    // IMPORT CON PROGRESS
-    // ========================================
-    const importBtn = document.getElementById('import-btn');
-    const importIdle = document.getElementById('import-idle');
-    const importProgress = document.getElementById('import-progress');
-    const importResult = document.getElementById('import-result');
-    const progressBar = document.getElementById('progress-bar');
-    const progressText = document.getElementById('progress-text');
-    const currentFile = document.getElementById('current-file');
-    
-    let pollInterval = null;
-    
-    importBtn.addEventListener('click', async () => {
-        importBtn.disabled = true;
-        
-        try {
-            const response = await fetch('/admin/import-pdf-async', { method: 'POST' });
-            const data = await response.json();
-            
-            if (data.success) {
-                // Mostra progress
-                importIdle.style.display = 'none';
-                importProgress.style.display = 'block';
-                importResult.style.display = 'none';
-                
-                // Avvia polling
-                pollInterval = setInterval(checkProgress, 500);
-            } else {
-                alert('Errore: ' + data.error);
-                importBtn.disabled = false;
-            }
-        } catch (err) {
-            alert('Errore: ' + err.message);
-            importBtn.disabled = false;
-        }
-    });
-    
-    async function checkProgress() {
-        try {
-            const response = await fetch('/admin/import-status');
-            const data = await response.json();
-            
-            if (data.total > 0) {
-                const percent = Math.round((data.current / data.total) * 100);
-                progressBar.style.width = percent + '%';
-                progressBar.textContent = percent + '%';
-                progressText.textContent = `Elaborazione ${data.current}/${data.total}...`;
-                currentFile.textContent = data.current_file || '-';
-            }
-            
-            // Completato
-            if (!data.running && data.total > 0) {
-                clearInterval(pollInterval);
-                
-                importProgress.style.display = 'none';
-                importResult.style.display = 'block';
-                
-                document.getElementById('result-ok').textContent = data.completed.length;
-                document.getElementById('result-err').textContent = data.errors.length;
-                
-                // Aggiorna contatore
-                document.getElementById('pdf-count').textContent = '0';
-            }
-        } catch (err) {
-            console.error('Errore polling:', err);
-        }
-    }
-    
-    // ========================================
     // CRONTAB
     // ========================================
     const crontabView = document.getElementById('crontab-view');
@@ -550,12 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-#drop-zone:hover {
-    border-color: #0d6efd !important;
-    background: #e7f1ff !important;
-}
-</style>
+
 
 <!-- Riga 3: Creditsafe API -->
 <div class="row g-4 mt-2">
@@ -566,4 +285,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Scripts Creditsafe -->
 {% include "admin/creditsafe/_scripts.html" %}
+{% include "admin/_upload_import_scripts.html" %}
 {% endblock %}
