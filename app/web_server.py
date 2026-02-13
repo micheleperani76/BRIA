@@ -858,7 +858,7 @@ def _render_dettaglio_cliente(cliente_id):
                (SELECT COUNT(*) FROM note_veicoli WHERE veicolo_id = v.id AND eliminato = 0) as num_note
         FROM veicoli v
         LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
-        WHERE v.cliente_id = ?
+        WHERE v.cliente_id = ? AND v.merged_in_veicolo_id IS NULL
         ORDER BY COALESCE(n.nome_display, v.noleggiatore), v.scadenza
     ''', (cliente_id,))
     veicoli = [dict(row) for row in cursor.fetchall()]
@@ -2364,7 +2364,8 @@ def salva_rilevazione_km(veicolo_id):
 
 @app.route('/veicolo/<int:veicolo_id>/salva-targa', methods=['POST'])
 def salva_targa_veicolo(veicolo_id):
-    """Salva la targa di un veicolo (operazione una tantum, non modificabile)."""
+    """Salva la targa di un veicolo. Se la targa esiste gia su un altro
+    veicolo dello stesso o diverso cliente, propone il merge."""
     conn = get_connection()
     cursor = conn.cursor()
     
@@ -2376,31 +2377,186 @@ def salva_targa_veicolo(veicolo_id):
             return jsonify({'success': False, 'error': 'Targa non valida'})
         
         # Verifica che il veicolo esista e non abbia gia una targa
-        cursor.execute('SELECT id, targa FROM veicoli WHERE id = ?', (veicolo_id,))
+        cursor.execute('''
+            SELECT id, targa, cliente_id, tipo_veicolo, noleggiatore, noleggiatore_id,
+                   marca, modello, canone, scadenza, driver
+            FROM veicoli WHERE id = ? AND merged_in_veicolo_id IS NULL
+        ''', (veicolo_id,))
         veicolo = cursor.fetchone()
         
         if not veicolo:
+            conn.close()
             return jsonify({'success': False, 'error': 'Veicolo non trovato'})
         
         if veicolo['targa']:
+            conn.close()
             return jsonify({'success': False, 'error': 'Questo veicolo ha gia una targa assegnata'})
         
-        # Verifica che la targa non sia gia usata da un altro veicolo
-        cursor.execute('SELECT id FROM veicoli WHERE targa = ? AND id != ?', (targa, veicolo_id))
-        if cursor.fetchone():
-            return jsonify({'success': False, 'error': 'Questa targa e gia assegnata a un altro veicolo'})
+        # Cerca se la targa esiste gia su un altro veicolo attivo
+        cursor.execute('''
+            SELECT v.id, v.cliente_id, v.tipo_veicolo, v.noleggiatore, v.noleggiatore_id,
+                   v.marca, v.modello, v.canone, v.scadenza, v.targa, v.driver,
+                   c.ragione_sociale as nome_cliente
+            FROM veicoli v
+            LEFT JOIN clienti c ON c.id = v.cliente_id
+            WHERE v.targa = ? AND v.id != ? AND v.merged_in_veicolo_id IS NULL
+        ''', (targa, veicolo_id))
+        duplicato = cursor.fetchone()
         
-        # Salva la targa
-        cursor.execute('UPDATE veicoli SET targa = ? WHERE id = ?', (targa, veicolo_id))
-        conn.commit()
+        if not duplicato:
+            # Nessun duplicato: salva normalmente
+            cursor.execute('UPDATE veicoli SET targa = ? WHERE id = ?', (targa, veicolo_id))
+            conn.commit()
+            conn.close()
+            logger.info(f"Targa {targa} salvata per veicolo ID {veicolo_id}")
+            return jsonify({'success': True})
+        
+        # Duplicato trovato: prepara info per il modal di conferma merge
+        dup = dict(duplicato)
+        tipo_dup = dup.get('tipo_veicolo') or 'Extra'
+        tipo_corrente = dict(veicolo).get('tipo_veicolo') or 'Extra'
+        
+        # Determina chi sopravvive (Installato vince sempre)
+        if tipo_dup == 'Installato':
+            sopravvive_id = dup['id']
+            assorbito_id = veicolo['id']
+            scenario = 'extra_in_installato'
+        elif tipo_corrente == 'Installato':
+            sopravvive_id = veicolo['id']
+            assorbito_id = dup['id']
+            scenario = 'installato_assorbe'
+        else:
+            sopravvive_id = dup['id']
+            assorbito_id = veicolo['id']
+            scenario = 'extra_in_extra'
+        
         conn.close()
         
-        logger.info(f"Targa {targa} salvata per veicolo ID {veicolo_id}")
-        return jsonify({'success': True})
+        return jsonify({
+            'success': False,
+            'merge_needed': True,
+            'scenario': scenario,
+            'sopravvive_id': sopravvive_id,
+            'assorbito_id': assorbito_id,
+            'duplicato': {
+                'id': dup['id'],
+                'targa': dup['targa'],
+                'tipo_veicolo': tipo_dup,
+                'noleggiatore': dup.get('noleggiatore') or '-',
+                'marca': dup.get('marca') or '-',
+                'modello': dup.get('modello') or '-',
+                'canone': dup.get('canone'),
+                'scadenza': dup.get('scadenza') or '-',
+                'driver': dup.get('driver') or '-',
+                'nome_cliente': dup.get('nome_cliente') or '-',
+                'cliente_id': dup.get('cliente_id'),
+            }
+        })
         
     except Exception as e:
         conn.close()
         logger.error(f"Errore salvataggio targa: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/veicolo/merge', methods=['POST'])
+def merge_veicoli():
+    """Esegue il merge tra due veicoli: l assorbito viene soft-deleted,
+    i suoi dati nostri vengono copiati nel sopravvissuto se mancanti,
+    le tabelle satellite (note, km) vengono spostate."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    try:
+        data = request.get_json()
+        sopravvive_id = data.get('sopravvive_id')
+        assorbito_id = data.get('assorbito_id')
+        
+        if not sopravvive_id or not assorbito_id:
+            conn.close()
+            return jsonify({'success': False, 'error': 'ID mancanti'})
+        
+        # Carica entrambi i veicoli
+        cursor.execute('SELECT * FROM veicoli WHERE id = ? AND merged_in_veicolo_id IS NULL', (sopravvive_id,))
+        sopravvive = cursor.fetchone()
+        cursor.execute('SELECT * FROM veicoli WHERE id = ? AND merged_in_veicolo_id IS NULL', (assorbito_id,))
+        assorbito = cursor.fetchone()
+        
+        if not sopravvive or not assorbito:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Veicolo non trovato o gia merged'})
+        
+        sopravvive = dict(sopravvive)
+        assorbito = dict(assorbito)
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # STEP 1: Copia campi nostri (solo se sopravvissuto ha NULL/vuoto)
+        campi_nostri = [
+            'driver', 'km_attuali', 'data_rilevazione_km', 'km_franchigia',
+            'data_immatricolazione', 'revisione_gestita', 'data_revisione',
+            'note_revisione', 'costo_km_extra_1', 'costo_km_extra_2'
+        ]
+        
+        campi_copiati = []
+        for campo in campi_nostri:
+            val_sopravvive = sopravvive.get(campo)
+            val_assorbito = assorbito.get(campo)
+            if (val_sopravvive is None or val_sopravvive == '') and val_assorbito:
+                cursor.execute(
+                    f'UPDATE veicoli SET {campo} = ? WHERE id = ?',
+                    (val_assorbito, sopravvive_id))
+                campi_copiati.append(campo)
+        
+        # STEP 2: Sposta tabelle satellite
+        cursor.execute(
+            'UPDATE note_veicoli SET veicolo_id = ? WHERE veicolo_id = ?',
+            (sopravvive_id, assorbito_id))
+        note_spostate = cursor.rowcount
+        
+        cursor.execute(
+            'UPDATE storico_km SET veicolo_id = ? WHERE veicolo_id = ?',
+            (sopravvive_id, assorbito_id))
+        km_spostati = cursor.rowcount
+        
+        # STEP 3: Soft-delete assorbito
+        cursor.execute('''
+            UPDATE veicoli 
+            SET merged_in_veicolo_id = ?, data_merge = ?
+            WHERE id = ?
+        ''', (sopravvive_id, now, assorbito_id))
+        
+        # STEP 4: Log in storico_modifiche
+        username = session.get('cognome', session.get('username', 'Sistema'))
+        dettaglio = (
+            f"Merge veicolo ID {assorbito_id} ({assorbito.get('tipo_veicolo','Extra')}) "
+            f"-> ID {sopravvive_id} ({sopravvive.get('tipo_veicolo','Installato')}). "
+            f"Campi copiati: {', '.join(campi_copiati) if campi_copiati else 'nessuno'}. "
+            f"Note spostate: {note_spostate}. Storico km spostati: {km_spostati}."
+        )
+        cursor.execute('''
+            INSERT INTO storico_modifiche 
+            (tabella, record_id, campo_modificato, valore_precedente, valore_nuovo, 
+             data_modifica, origine)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('veicoli', sopravvive_id, 'merge_veicoli',
+              f'assorbito_id={assorbito_id}', dettaglio, now, username))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"MERGE: veicolo {assorbito_id} assorbito da {sopravvive_id}. {dettaglio}")
+        
+        return jsonify({
+            'success': True,
+            'sopravvive_id': sopravvive_id,
+            'campi_copiati': campi_copiati,
+            'note_spostate': note_spostate,
+            'km_spostati': km_spostati
+        })
+        
+    except Exception as e:
+        conn.close()
+        logger.error(f"Errore merge veicoli: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 
@@ -2996,10 +3152,10 @@ def api_cliente(identificativo):
     cliente['_identificativo'] = get_identificativo_cliente(cliente)
     cliente['_url'] = url_cliente(cliente)
     
-    cursor.execute('SELECT COUNT(*) FROM veicoli WHERE cliente_id = ?', (cliente['id'],))
+    cursor.execute('SELECT COUNT(*) FROM veicoli WHERE cliente_id = ? AND merged_in_veicolo_id IS NULL', (cliente['id'],))
     cliente['_num_veicoli'] = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli WHERE cliente_id = ?', (cliente['id'],))
+    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli WHERE cliente_id = ? AND merged_in_veicolo_id IS NULL', (cliente['id'],))
     cliente['_canone_totale'] = cursor.fetchone()[0]
     
     cursor.execute('SELECT COUNT(*) FROM note_clienti WHERE cliente_id = ? AND eliminato = 0', (cliente['id'],))

@@ -724,6 +724,82 @@
     </div>
 </div>
 
+<!-- Modal Merge Veicolo -->
+<div class="modal fade" id="modalMergeVeicolo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Targa gi&agrave; presente - Merge richiesto
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    <span id="mergeScenario"></span>
+                </div>
+                
+                <input type="hidden" id="mergeSopravviveId">
+                <input type="hidden" id="mergeAssorbitoId">
+                
+                <h6 class="mb-2"><i class="bi bi-car-front"></i> Veicolo esistente con questa targa:</h6>
+                <table class="table table-sm table-bordered mb-3">
+                    <tbody>
+                        <tr>
+                            <th style="width:140px">Targa</th>
+                            <td><code id="mergeDupTarga"></code></td>
+                            <th style="width:140px">Tipo</th>
+                            <td><span id="mergeDupTipo"></span></td>
+                        </tr>
+                        <tr>
+                            <th>Veicolo</th>
+                            <td id="mergeDupVeicolo"></td>
+                            <th>Noleggiatore</th>
+                            <td id="mergeDupNoleggiatore"></td>
+                        </tr>
+                        <tr>
+                            <th>Canone</th>
+                            <td id="mergeDupCanone"></td>
+                            <th>Scadenza</th>
+                            <td id="mergeDupScadenza"></td>
+                        </tr>
+                        <tr>
+                            <th>Driver</th>
+                            <td id="mergeDupDriver"></td>
+                            <th>Cliente</th>
+                            <td id="mergeDupCliente"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="alert alert-secondary mb-3">
+                    <strong><i class="bi bi-arrow-right-circle"></i> Cosa succeder&agrave;:</strong>
+                    <ul class="mb-0 mt-1">
+                        <li>Il veicolo sopravvissuto sar&agrave;: <a id="mergeLinkSopravvive" href="#" target="_blank"></a></li>
+                        <li>I dati inseriti da noi (driver, km, revisione) vengono copiati se mancanti</li>
+                        <li>Note e storico km vengono spostati</li>
+                        <li>Il veicolo corrente verr&agrave; marcato come &quot;merged&quot;</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-shield-exclamation"></i>
+                    <strong>Operazione irreversibile.</strong> Confermi il merge?
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center gap-3">
+                <button type="button" class="btn btn-lg btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Annulla
+                </button>
+                <button type="button" class="btn btn-lg btn-warning" id="btnEseguiMerge" onclick="eseguiMerge()">
+                    <i class="bi bi-check-lg"></i> Conferma Merge
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Modifica Franchigia Km (solo LEASYS) -->
 <div class="modal fade" id="modalFranchigiaKm" tabindex="-1">
     <div class="modal-dialog modal-sm">
@@ -813,12 +889,83 @@ function salvaTarga() {
     .then(data => {
         if (data.success) {
             location.reload();
+        } else if (data.merge_needed) {
+            bootstrap.Modal.getInstance(document.getElementById('modalConfermaTarga')).hide();
+            mostraMerge(data);
         } else {
             alert('Errore: ' + data.error);
         }
     })
     .catch(error => {
         alert('Errore di comunicazione: ' + error);
+    });
+}
+
+function mostraMerge(data) {
+    const dup = data.duplicato;
+    const scenario = data.scenario;
+    
+    let titoloScenario = '';
+    if (scenario === 'extra_in_installato') {
+        titoloScenario = 'Questo veicolo Extra verr&agrave; assorbito dall\'Installato (fonte CRM)';
+    } else if (scenario === 'installato_assorbe') {
+        titoloScenario = 'L\'Installato (questo veicolo) assorbe l\'Extra esistente';
+    } else {
+        titoloScenario = 'I due Extra verranno unificati';
+    }
+    
+    document.getElementById('mergeScenario').innerHTML = titoloScenario;
+    document.getElementById('mergeSopravviveId').value = data.sopravvive_id;
+    document.getElementById('mergeAssorbitoId').value = data.assorbito_id;
+    
+    document.getElementById('mergeDupTarga').textContent = dup.targa;
+    document.getElementById('mergeDupTipo').textContent = dup.tipo_veicolo;
+    document.getElementById('mergeDupTipo').className = 'badge ' + 
+        (dup.tipo_veicolo === 'Installato' ? 'bg-success' : 'bg-warning text-dark');
+    document.getElementById('mergeDupNoleggiatore').textContent = dup.noleggiatore;
+    document.getElementById('mergeDupVeicolo').textContent = dup.marca + ' ' + dup.modello;
+    document.getElementById('mergeDupCanone').textContent = dup.canone ? 
+        '\u20ac ' + parseFloat(dup.canone).toLocaleString('it-IT') : '-';
+    document.getElementById('mergeDupScadenza').textContent = dup.scadenza || '-';
+    document.getElementById('mergeDupDriver').textContent = dup.driver;
+    document.getElementById('mergeDupCliente').textContent = dup.nome_cliente;
+    
+    document.getElementById('mergeLinkSopravvive').href = '/veicolo/' + data.sopravvive_id;
+    document.getElementById('mergeLinkSopravvive').textContent = 'Veicolo #' + data.sopravvive_id;
+    
+    new bootstrap.Modal(document.getElementById('modalMergeVeicolo')).show();
+}
+
+function eseguiMerge() {
+    const sopravviveId = document.getElementById('mergeSopravviveId').value;
+    const assorbitoId = document.getElementById('mergeAssorbitoId').value;
+    const btn = document.getElementById('btnEseguiMerge');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Merge in corso...';
+    
+    fetch('/veicolo/merge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            sopravvive_id: parseInt(sopravviveId), 
+            assorbito_id: parseInt(assorbitoId) 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/veicolo/' + data.sopravvive_id;
+        } else {
+            alert('Errore merge: ' + data.error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Conferma Merge';
+        }
+    })
+    .catch(error => {
+        alert('Errore di comunicazione: ' + error);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Conferma Merge';
     });
 }
 
