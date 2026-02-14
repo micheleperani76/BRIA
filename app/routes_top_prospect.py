@@ -1359,7 +1359,7 @@ def api_cerca_clienti():
             SELECT c.id, 
                    COALESCE(c.ragione_sociale, c.nome_cliente) as nome,
                    c.p_iva, c.provincia, c.dipendenti, c.veicoli_rilevati,
-                   (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as veicoli_db,
+                   (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as veicoli_db,
                    COALESCE(u.cognome, '') as commerciale,
                    (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'confermato') as tp_confermato,
                    (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'candidato') as tp_candidato
@@ -1469,7 +1469,7 @@ def api_clienti_disponibili():
                 SELECT c.id, 
                        COALESCE(c.ragione_sociale, c.nome_cliente) as nome,
                        c.p_iva, c.provincia, c.dipendenti, c.veicoli_rilevati,
-                       (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as veicoli_db,
+                       (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as veicoli_db,
                        COALESCE(u.cognome, '') as commerciale,
                        (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'confermato') as tp_confermato,
                        (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'candidato') as tp_candidato
@@ -1488,7 +1488,7 @@ def api_clienti_disponibili():
                 SELECT c.id, 
                        COALESCE(c.ragione_sociale, c.nome_cliente) as nome,
                        c.p_iva, c.provincia, c.dipendenti, c.veicoli_rilevati,
-                       (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as veicoli_db,
+                       (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as veicoli_db,
                        COALESCE(u.cognome, '') as commerciale,
                        (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'confermato') as tp_confermato,
                        (SELECT id FROM top_prospect tp WHERE tp.cliente_id = c.id AND tp.stato = 'candidato') as tp_candidato

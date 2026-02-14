@@ -335,7 +335,7 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
         # Driver
         cursor.execute(f"""
             SELECT v.cliente_id, COALESCE(v.driver, v.driver_telefono, v.driver_email) as driver
-            FROM veicoli v
+            FROM veicoli_attivi v
             WHERE v.cliente_id IN ({placeholders})
             AND (v.driver LIKE ? OR v.driver_telefono LIKE ? OR v.driver_email LIKE ?)
         """, ids_list + [search_param]*3)
@@ -353,7 +353,7 @@ def get_search_matches_per_cliente(conn, search_term, cliente_ids):
         # Targhe
         cursor.execute(f"""
             SELECT v.cliente_id, UPPER(v.targa)
-            FROM veicoli v
+            FROM veicoli_attivi v
             WHERE v.cliente_id IN ({placeholders})
             AND v.targa LIKE ?
         """, ids_list + [search_param])
@@ -505,8 +505,8 @@ def index():
     
     # Query base con subquery per num_veicoli e provincia_veicolo (per ordinamento server-side)
     query = """SELECT c.*, 
-               (SELECT COUNT(*) FROM veicoli WHERE cliente_id = c.id) as num_veicoli,
-               (SELECT province_code FROM veicoli WHERE cliente_id = c.id AND province_code IS NOT NULL AND province_code != '' LIMIT 1) as provincia_veicolo
+               (SELECT COUNT(*) FROM veicoli_attivi WHERE cliente_id = c.id) as num_veicoli,
+               (SELECT province_code FROM veicoli_attivi WHERE cliente_id = c.id AND province_code IS NOT NULL AND province_code != '' LIMIT 1) as provincia_veicolo
                FROM clienti c WHERE 1=1"""
     params = []
     
@@ -535,7 +535,7 @@ def index():
                             OR (r.nome || ' ' || r.cognome) LIKE ?
                             OR (r.cognome || ' ' || r.nome) LIKE ?
                             OR r.note LIKE ?))
-            OR EXISTS (SELECT 1 FROM veicoli v WHERE v.cliente_id = c.id 
+            OR EXISTS (SELECT 1 FROM veicoli_attivi v WHERE v.cliente_id = c.id 
                        AND (v.targa LIKE ? OR v.driver LIKE ?
                             OR v.driver_telefono LIKE ? OR v.driver_email LIKE ?))
             OR EXISTS (SELECT 1 FROM note_clienti n WHERE n.cliente_id = c.id 
@@ -614,7 +614,7 @@ def index():
     
     # Filtro provincia veicoli
     if prov_veicolo:
-        query += " AND c.id IN (SELECT DISTINCT cliente_id FROM veicoli WHERE province_code = ?)"
+        query += " AND c.id IN (SELECT DISTINCT cliente_id FROM veicoli_attivi WHERE province_code = ?)"
         params.append(prov_veicolo)
     
     # Ordinamento (server-side per tutte le colonne)
@@ -856,9 +856,9 @@ def _render_dettaglio_cliente(cliente_id):
                COALESCE(n.nome_display, v.noleggiatore) as noleggiatore_display,
                n.colore as noleggiatore_colore,
                (SELECT COUNT(*) FROM note_veicoli WHERE veicolo_id = v.id AND eliminato = 0) as num_note
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
-        WHERE v.cliente_id = ? AND v.merged_in_veicolo_id IS NULL
+        WHERE v.cliente_id = ?
         ORDER BY COALESCE(n.nome_display, v.noleggiatore), v.scadenza
     ''', (cliente_id,))
     veicoli = [dict(row) for row in cursor.fetchall()]
@@ -1053,7 +1053,7 @@ def export_evernote(cliente_id):
     # Recupera veicoli
     cursor.execute('''
         SELECT v.*, COALESCE(n.nome_display, v.noleggiatore) as noleggiatore_display
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
         WHERE v.cliente_id = ? 
         ORDER BY COALESCE(n.nome_display, v.noleggiatore), v.targa
@@ -1222,19 +1222,19 @@ def flotta():
         commerciali_visibili = get_subordinati(conn, user_id)  # Propri + subordinati
     
     # Statistiche generali
-    cursor.execute('SELECT COUNT(*) FROM veicoli')
+    cursor.execute('SELECT COUNT(*) FROM veicoli_attivi')
     totale_veicoli = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli')
+    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli_attivi')
     canone_totale = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COUNT(DISTINCT p_iva) FROM veicoli')
+    cursor.execute('SELECT COUNT(DISTINCT p_iva) FROM veicoli_attivi')
     totale_clienti = cursor.fetchone()[0]
     
     # Per noleggiatore
     cursor.execute('''
         SELECT noleggiatore, COUNT(*) as veicoli, COALESCE(SUM(canone), 0) as canone
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE noleggiatore IS NOT NULL AND noleggiatore != ''
         GROUP BY noleggiatore
         ORDER BY veicoli DESC
@@ -1246,7 +1246,7 @@ def flotta():
         SELECT COALESCE(commerciale, 'Non assegnato') as commerciale, 
                COUNT(*) as veicoli, 
                COALESCE(SUM(canone), 0) as canone
-        FROM veicoli
+        FROM veicoli_attivi
         GROUP BY commerciale
         ORDER BY CASE WHEN commerciale IS NULL OR commerciale = '' THEN 1 ELSE 0 END, commerciale
     ''')
@@ -1272,7 +1272,7 @@ def flotta():
         SELECT v.*, 
                c.id as cliente_id_link,
                CAST(julianday(v.scadenza) - julianday('now') AS INTEGER) as giorni_rimasti
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN clienti c ON v.cliente_id = c.id
         WHERE v.scadenza IS NOT NULL 
           AND julianday(v.scadenza) - julianday('now') BETWEEN ? AND ?
@@ -1324,7 +1324,7 @@ def flotta():
         SELECT v.*, 
                c.id as cliente_id_link,
                CAST(julianday(v.scadenza) - julianday('now') AS INTEGER) as giorni_rimasti
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN clienti c ON v.cliente_id = c.id
         WHERE v.scadenza IS NOT NULL 
           AND julianday(v.scadenza) - julianday('now') BETWEEN ? AND ?
@@ -1387,7 +1387,7 @@ def flotta_cerca():
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT * FROM veicoli 
+        SELECT * FROM veicoli_attivi 
         WHERE targa LIKE ? OR marca LIKE ? OR modello LIKE ? 
               OR driver LIKE ? OR p_iva LIKE ?
         ORDER BY targa
@@ -1409,7 +1409,7 @@ def flotta_cliente(nome_cliente):
     cursor.execute('''
         SELECT v.*, 
                (SELECT COUNT(*) FROM note_veicoli WHERE veicolo_id = v.id AND eliminato = 0) as num_note
-        FROM veicoli v
+        FROM veicoli_attivi v
         WHERE v.nome_cliente = ? 
         ORDER BY v.scadenza
     ''', (nome_cliente,))
@@ -1487,7 +1487,7 @@ def flotta_per_noleggiatore():
                COUNT(*) as veicoli,
                COUNT(DISTINCT p_iva) as clienti,
                COALESCE(SUM(canone), 0) as canone
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE noleggiatore IS NOT NULL AND noleggiatore != ''
         GROUP BY noleggiatore
         ORDER BY veicoli DESC
@@ -1519,7 +1519,7 @@ def flotta_per_noleggiatore():
                    COUNT(*) as veicoli,
                    COALESCE(SUM(canone), 0) as canone,
                    commerciale_id
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE noleggiatore = ?
         '''
         params_det = [nol]
@@ -1613,7 +1613,7 @@ def flotta_gestione_commerciali_OLD():  # DISATTIVATO - usa blueprint  # DISATTI
                COALESCE(SUM(canone), 0) as canone,
                commerciale,
                GROUP_CONCAT(DISTINCT noleggiatore) as noleggiatori
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE {where_clause}
         GROUP BY NOME_CLIENTE, p_iva
         ORDER BY NOME_CLIENTE
@@ -1671,7 +1671,7 @@ def flotta_assegna_commerciali():
     for cliente in clienti_selezionati:
         # Recupera commerciale precedente e P.IVA
         cursor.execute('''
-            SELECT DISTINCT commerciale, PIVA FROM veicoli 
+            SELECT DISTINCT commerciale, PIVA FROM veicoli_attivi 
             WHERE NOME_CLIENTE = ? LIMIT 1
         ''', (cliente,))
         row = cursor.fetchone()
@@ -1718,7 +1718,7 @@ def statistiche():
     # Province con veicoli
     cursor.execute('''
         SELECT province_code, COUNT(*) as n 
-        FROM veicoli 
+        FROM veicoli_attivi 
         WHERE province_code IS NOT NULL AND province_code != ''
         GROUP BY province_code 
         ORDER BY n DESC
@@ -1728,7 +1728,7 @@ def statistiche():
     # Aziende per provincia (clienti con P.IVA = aziende, esclusi privati con solo CF)
     cursor.execute('''
         SELECT v.province_code, COUNT(DISTINCT v.cliente_id) as n
-        FROM veicoli v
+        FROM veicoli_attivi v
         JOIN clienti c ON v.cliente_id = c.id
         WHERE v.province_code IS NOT NULL AND v.province_code != ''
           AND c.p_iva IS NOT NULL AND c.p_iva != ''
@@ -2380,7 +2380,7 @@ def salva_targa_veicolo(veicolo_id):
         cursor.execute('''
             SELECT id, targa, cliente_id, tipo_veicolo, noleggiatore, noleggiatore_id,
                    marca, modello, canone, scadenza, driver
-            FROM veicoli WHERE id = ? AND merged_in_veicolo_id IS NULL
+            FROM veicoli_attivi WHERE id = ?
         ''', (veicolo_id,))
         veicolo = cursor.fetchone()
         
@@ -2397,9 +2397,9 @@ def salva_targa_veicolo(veicolo_id):
             SELECT v.id, v.cliente_id, v.tipo_veicolo, v.noleggiatore, v.noleggiatore_id,
                    v.marca, v.modello, v.canone, v.scadenza, v.targa, v.driver,
                    c.ragione_sociale as nome_cliente
-            FROM veicoli v
+            FROM veicoli_attivi v
             LEFT JOIN clienti c ON c.id = v.cliente_id
-            WHERE v.targa = ? AND v.id != ? AND v.merged_in_veicolo_id IS NULL
+            WHERE v.targa = ? AND v.id != ?
         ''', (targa, veicolo_id))
         duplicato = cursor.fetchone()
         
@@ -3152,10 +3152,10 @@ def api_cliente(identificativo):
     cliente['_identificativo'] = get_identificativo_cliente(cliente)
     cliente['_url'] = url_cliente(cliente)
     
-    cursor.execute('SELECT COUNT(*) FROM veicoli WHERE cliente_id = ? AND merged_in_veicolo_id IS NULL', (cliente['id'],))
+    cursor.execute('SELECT COUNT(*) FROM veicoli_attivi WHERE cliente_id = ?', (cliente['id'],))
     cliente['_num_veicoli'] = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli WHERE cliente_id = ? AND merged_in_veicolo_id IS NULL', (cliente['id'],))
+    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli_attivi WHERE cliente_id = ?', (cliente['id'],))
     cliente['_canone_totale'] = cursor.fetchone()[0]
     
     cursor.execute('SELECT COUNT(*) FROM note_clienti WHERE cliente_id = ? AND eliminato = 0', (cliente['id'],))

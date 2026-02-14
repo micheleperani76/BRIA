@@ -384,7 +384,7 @@ def aggiorna_commerciale_cliente(conn, nome_cliente, nuovo_commerciale):
     # Aggiorna veicoli
     cursor.execute('''
         UPDATE veicoli SET commerciale = ? WHERE p_iva IN (
-            SELECT p_iva FROM veicoli WHERE NOME_CLIENTE = ?
+            SELECT p_iva FROM veicoli_attivi WHERE NOME_CLIENTE = ?
         )
     ''', (nuovo_commerciale, nome_cliente))
     
@@ -416,10 +416,10 @@ def get_statistiche_generali(conn):
     stats['clienti_con_creditsafe'] = cursor.fetchone()[0]
     
     # Veicoli
-    cursor.execute('SELECT COUNT(*) FROM veicoli')
+    cursor.execute('SELECT COUNT(*) FROM veicoli_attivi')
     stats['totale_veicoli'] = cursor.fetchone()[0]
     
-    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli')
+    cursor.execute('SELECT COALESCE(SUM(canone), 0) FROM veicoli_attivi')
     stats['canone_totale'] = cursor.fetchone()[0]
     
     # Score distribution
@@ -432,7 +432,7 @@ def get_statistiche_generali(conn):
     # Commerciali
     cursor.execute('''
         SELECT COALESCE(commerciale, 'Non assegnato') as comm, COUNT(DISTINCT p_iva) as clienti
-        FROM veicoli GROUP BY commerciale ORDER BY commerciale
+        FROM veicoli_attivi GROUP BY commerciale ORDER BY commerciale
     ''')
     stats['per_commerciale'] = [dict(row) for row in cursor.fetchall()]
     

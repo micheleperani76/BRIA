@@ -90,7 +90,7 @@ def conta_veicoli_cliente(conn, cliente_id, veicoli_rilevati=None):
     
     # Conteggio veicoli nel database
     cursor.execute('''
-        SELECT COUNT(*) FROM veicoli WHERE cliente_id = ?
+        SELECT COUNT(*) FROM veicoli_attivi WHERE cliente_id = ?
     ''', (cliente_id,))
     result = cursor.fetchone()
     veicoli_db = result[0] if result else 0
@@ -318,7 +318,7 @@ def esegui_analisi_candidati(conn, utente_id: int = None) -> Dict:
     # Recupera tutti i clienti con dati bilancio
     cursor.execute('''
         SELECT c.*, 
-               (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as num_veicoli
+               (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as num_veicoli
         FROM clienti c
         WHERE c.dipendenti IS NOT NULL
           AND c.valore_produzione IS NOT NULL
@@ -668,7 +668,7 @@ def get_candidati(conn) -> List[Dict]:
                c.valore_produzione, c.valore_produzione_prec,
                c.patrimonio_netto, c.patrimonio_netto_prec,
                c.p_iva, c.cod_fiscale, c.veicoli_rilevati,
-               (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as num_veicoli
+               (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as num_veicoli
         FROM top_prospect tp
         JOIN clienti c ON tp.cliente_id = c.id
         WHERE tp.stato = 'candidato'
@@ -689,7 +689,7 @@ def get_top_prospect_confermati(conn, filtro_priorita: int = None) -> List[Dict]
         SELECT tp.*, 
                c.nome_cliente, c.ragione_sociale, c.provincia, c.dipendenti,
                c.p_iva, c.cod_fiscale, c.veicoli_rilevati,
-               (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as num_veicoli,
+               (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as num_veicoli,
                (SELECT data_appuntamento FROM top_prospect_appuntamenti 
                 WHERE top_prospect_id = tp.id AND completato = 1 
                 ORDER BY data_appuntamento DESC LIMIT 1) as ultimo_appuntamento,

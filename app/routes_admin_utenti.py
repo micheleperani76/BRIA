@@ -226,7 +226,7 @@ def dettaglio_utente(utente_id):
         # Lista commerciali dalla flotta (per campo nome_commerciale_flotta)
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT DISTINCT commerciale FROM veicoli 
+            SELECT DISTINCT commerciale FROM veicoli_attivi 
             WHERE commerciale IS NOT NULL AND commerciale != ''
             ORDER BY commerciale
         ''')

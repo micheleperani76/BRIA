@@ -33,12 +33,12 @@ def pagina_installato():
     # ==========================================
 
     # Totale installato
-    cursor.execute("SELECT COUNT(*) FROM veicoli WHERE tipo_veicolo = 'Installato'")
+    cursor.execute("SELECT COUNT(*) FROM veicoli_attivi WHERE tipo_veicolo = 'Installato'")
     totale = cursor.fetchone()[0]
 
     # Attivi (scadenza >= oggi)
     cursor.execute("""
-        SELECT COUNT(*) FROM veicoli
+        SELECT COUNT(*) FROM veicoli_attivi
         WHERE tipo_veicolo = 'Installato' AND scadenza >= date('now')
     """)
     attivi = cursor.fetchone()[0]
@@ -48,7 +48,7 @@ def pagina_installato():
 
     # Canone totale
     cursor.execute("""
-        SELECT COALESCE(SUM(canone), 0) FROM veicoli
+        SELECT COALESCE(SUM(canone), 0) FROM veicoli_attivi
         WHERE tipo_veicolo = 'Installato'
     """)
     canone_totale = cursor.fetchone()[0]
@@ -58,7 +58,7 @@ def pagina_installato():
         SELECT COALESCE(noleggiatore, 'Non specificato') as nol,
                COUNT(*) as num,
                COALESCE(SUM(canone), 0) as canone_sum
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE tipo_veicolo = 'Installato'
         GROUP BY noleggiatore
         ORDER BY num DESC
@@ -71,7 +71,7 @@ def pagina_installato():
                v.commerciale_id,
                COUNT(*) as num,
                COALESCE(SUM(v.canone), 0) as canone_sum
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN utenti u ON v.commerciale_id = u.id
         WHERE v.tipo_veicolo = 'Installato'
         GROUP BY v.commerciale_id
@@ -82,7 +82,7 @@ def pagina_installato():
     # Lista noleggiatori per filtro
     cursor.execute("""
         SELECT DISTINCT COALESCE(n.nome_display, v.noleggiatore) as nome_noleggiatore
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN noleggiatori n ON n.id = v.noleggiatore_id
         WHERE v.tipo_veicolo = 'Installato' AND v.noleggiatore IS NOT NULL
         ORDER BY nome_noleggiatore
@@ -92,7 +92,7 @@ def pagina_installato():
     # Lista commerciali per filtro
     cursor.execute("""
         SELECT DISTINCT u.id, u.cognome
-        FROM veicoli v
+        FROM veicoli_attivi v
         JOIN utenti u ON v.commerciale_id = u.id
         WHERE v.tipo_veicolo = 'Installato'
         ORDER BY u.cognome
@@ -108,7 +108,7 @@ def pagina_installato():
                c.ragione_sociale,
                COALESCE(u.cognome, '') as commerciale_nome,
                (SELECT COUNT(*) FROM note_veicoli WHERE veicolo_id = v.id AND eliminato = 0) as num_note
-        FROM veicoli v
+        FROM veicoli_attivi v
         LEFT JOIN clienti c ON v.cliente_id = c.id
         LEFT JOIN utenti u ON v.commerciale_id = u.id
         WHERE v.tipo_veicolo = 'Installato'

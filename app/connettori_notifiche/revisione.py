@@ -107,7 +107,7 @@ def check_revisioni(conn):
         SELECT v.id, v.targa, v.marca, v.modello, v.tipo,
                v.data_immatricolazione, v.revisione_gestita,
                v.commerciale_id, v.nome_cliente
-        FROM veicoli v
+        FROM veicoli_attivi v
         WHERE v.data_immatricolazione IS NOT NULL
           AND v.data_immatricolazione != ''
           AND v.commerciale_id IS NOT NULL

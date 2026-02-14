@@ -99,7 +99,7 @@ def index():
                    v.commerciale_id, v.cliente_id, v.nome_cliente, v.p_iva, v.cod_fiscale,
                    v.driver, v.driver_telefono, v.driver_email,
                    v.noleggiatore, v.scadenza
-            FROM veicoli v
+            FROM veicoli_attivi v
             WHERE v.data_immatricolazione IS NOT NULL
               AND v.data_immatricolazione != ''
             ORDER BY v.data_immatricolazione ASC
@@ -110,7 +110,7 @@ def index():
         utenti_visibili = get_subordinati(conn, session['user_id'])
         
         # Se l'utente non ha veicoli assegnati (operatore), mostra tutto
-        cursor.execute("SELECT COUNT(*) as n FROM veicoli WHERE commerciale_id IN ({})".format(
+        cursor.execute("SELECT COUNT(*) as n FROM veicoli_attivi WHERE commerciale_id IN ({})".format(
             ','.join(['?' for _ in utenti_visibili])), utenti_visibili)
         count = dict(cursor.fetchone()).get('n', 0)
         
@@ -123,7 +123,7 @@ def index():
                        v.commerciale_id, v.cliente_id, v.nome_cliente, v.p_iva, v.cod_fiscale,
                        v.driver, v.driver_telefono, v.driver_email,
                        v.noleggiatore, v.scadenza
-                FROM veicoli v
+                FROM veicoli_attivi v
                 WHERE v.data_immatricolazione IS NOT NULL
                   AND v.data_immatricolazione != ''
                 ORDER BY v.data_immatricolazione ASC
@@ -139,7 +139,7 @@ def index():
                        v.commerciale_id, v.cliente_id, v.nome_cliente, v.p_iva, v.cod_fiscale,
                        v.driver, v.driver_telefono, v.driver_email,
                        v.noleggiatore, v.scadenza
-                FROM veicoli v
+                FROM veicoli_attivi v
                 WHERE v.data_immatricolazione IS NOT NULL
                   AND v.data_immatricolazione != ''
                   AND v.commerciale_id IN ({placeholders})
@@ -305,7 +305,7 @@ def api_contatore():
     cursor = conn.cursor()
     cursor.execute(f"""
         SELECT id, data_immatricolazione, revisione_gestita
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE data_immatricolazione IS NOT NULL
           AND data_immatricolazione != ''
           AND commerciale_id IN ({placeholders})

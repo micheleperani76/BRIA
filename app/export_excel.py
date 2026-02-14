@@ -165,7 +165,7 @@ def get_dati_export(db_path, campi_selezionati, ordinamento=None):
         cursor.execute("""
             SELECT c.id, COUNT(v.id) as num_veicoli, COALESCE(SUM(v.canone), 0) as canone_totale
             FROM clienti c
-            LEFT JOIN veicoli v ON v.cliente_id = c.id
+            LEFT JOIN veicoli_attivi v ON v.cliente_id = c.id
             GROUP BY c.id
         """)
         for row in cursor.fetchall():
@@ -496,7 +496,7 @@ def get_dati_top_prospect(db_path, user_id=None):
                c.nome_cliente, c.ragione_sociale, c.provincia, c.dipendenti,
                c.p_iva, c.cod_fiscale, c.veicoli_rilevati,
                c.commerciale_id,
-               (SELECT COUNT(*) FROM veicoli v WHERE v.cliente_id = c.id) as num_veicoli,
+               (SELECT COUNT(*) FROM veicoli_attivi v WHERE v.cliente_id = c.id) as num_veicoli,
                (SELECT data_appuntamento FROM top_prospect_appuntamenti 
                 WHERE top_prospect_id = tp.id AND completato = 1 
                 ORDER BY data_appuntamento DESC LIMIT 1) as ultimo_appuntamento,

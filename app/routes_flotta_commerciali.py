@@ -108,7 +108,7 @@ def flotta_per_commerciale():
                COUNT(*) as veicoli,
                COUNT(DISTINCT p_iva) as clienti,
                COALESCE(SUM(canone), 0) as canone
-        FROM veicoli
+        FROM veicoli_attivi
         GROUP BY commerciale_id
         ORDER BY CASE WHEN commerciale_id IS NULL OR commerciale_id = 0 THEN 1 ELSE 0 END, commerciale_id
     ''')
@@ -147,7 +147,7 @@ def flotta_per_commerciale():
                    COUNT(*) as veicoli,
                    COUNT(DISTINCT p_iva) as clienti,
                    COALESCE(SUM(canone), 0) as canone
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE commerciale_id IN ({placeholders})
             GROUP BY commerciale_id
         ''', commerciali_visibili)
@@ -157,7 +157,7 @@ def flotta_per_commerciale():
                    COUNT(*) as veicoli,
                    COUNT(DISTINCT p_iva) as clienti,
                    COALESCE(SUM(canone), 0) as canone
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE commerciale_id IS NOT NULL AND commerciale_id != 0
             GROUP BY commerciale_id
         ''')
@@ -225,7 +225,7 @@ def flotta_per_commerciale():
                    COUNT(*) as veicoli,
                    COALESCE(SUM(canone), 0) as canone,
                    GROUP_CONCAT(DISTINCT noleggiatore) as noleggiatori
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE commerciale_id = ?
             GROUP BY p_iva
             ORDER BY nome
@@ -241,7 +241,7 @@ def flotta_per_commerciale():
         
         cursor.execute('''
             SELECT noleggiatore, COUNT(*) as num
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE commerciale_id = ?
             GROUP BY noleggiatore
             ORDER BY num DESC
@@ -264,7 +264,7 @@ def flotta_per_commerciale():
             SELECT COUNT(*) as veicoli,
                    COUNT(DISTINCT p_iva) as clienti,
                    COALESCE(SUM(canone), 0) as canone
-            FROM veicoli
+            FROM veicoli_attivi
             WHERE commerciale_id IS NULL OR commerciale_id = 0
         ''')
         row = cursor.fetchone()
@@ -294,7 +294,7 @@ def flotta_per_commerciale():
                        COUNT(*) as veicoli,
                        COALESCE(SUM(canone), 0) as canone,
                        GROUP_CONCAT(DISTINCT noleggiatore) as noleggiatori
-                FROM veicoli
+                FROM veicoli_attivi
                 WHERE commerciale_id IS NULL OR commerciale_id = 0
                 GROUP BY p_iva
                 ORDER BY nome
@@ -310,7 +310,7 @@ def flotta_per_commerciale():
             
             cursor.execute('''
                 SELECT noleggiatore, COUNT(*) as num
-                FROM veicoli
+                FROM veicoli_attivi
                 WHERE commerciale_id IS NULL OR commerciale_id = 0
                 GROUP BY noleggiatore
                 ORDER BY num DESC
@@ -389,7 +389,7 @@ def gestione_commerciali():
             COALESCE(SUM(canone), 0) as canone,
             commerciale_id,
             GROUP_CONCAT(DISTINCT noleggiatore) as noleggiatori
-        FROM veicoli
+        FROM veicoli_attivi
         WHERE p_iva IS NOT NULL AND {where_clause}
         GROUP BY p_iva
         ORDER BY NOME_CLIENTE

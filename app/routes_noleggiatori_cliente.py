@@ -84,7 +84,7 @@ def get_noleggiatori_cliente(cliente_id):
             COALESCE(COUNT(v.id), 0) as veicoli_totale
         FROM clienti_noleggiatori cn
         JOIN noleggiatori n ON n.id = cn.noleggiatore_id
-        LEFT JOIN veicoli v ON v.cliente_id = cn.cliente_id AND v.noleggiatore_id = cn.noleggiatore_id
+        LEFT JOIN veicoli_attivi v ON v.cliente_id = cn.cliente_id AND v.noleggiatore_id = cn.noleggiatore_id
         WHERE cn.cliente_id = ?
         GROUP BY cn.id, cn.noleggiatore_id, cn.stato_relazione, cn.stato_crm, 
                  cn.note, cn.data_inserimento, cn.ordine,
@@ -116,7 +116,7 @@ def get_noleggiatori_da_veicoli(cliente_id):
             SUM(CASE WHEN v.tipo_veicolo = 'Installato' THEN 1 ELSE 0 END) as installato,
             SUM(CASE WHEN v.tipo_veicolo = 'Extra' OR v.tipo_veicolo IS NULL THEN 1 ELSE 0 END) as extra,
             COUNT(*) as totale
-        FROM veicoli v
+        FROM veicoli_attivi v
         JOIN noleggiatori n ON n.id = v.noleggiatore_id
         WHERE v.cliente_id = ? 
             AND v.noleggiatore_id IS NOT NULL
@@ -382,7 +382,7 @@ def api_riordina_noleggiatore(cliente_id):
         # === MATERIALIZZA: porta tutti i noleggiatori da veicoli in clienti_noleggiatori ===
         cursor.execute("""
             SELECT DISTINCT v.noleggiatore_id
-            FROM veicoli v
+            FROM veicoli_attivi v
             WHERE v.cliente_id = ? AND v.noleggiatore_id IS NOT NULL
             AND v.noleggiatore_id NOT IN (
                 SELECT cn.noleggiatore_id FROM clienti_noleggiatori cn 
@@ -400,7 +400,7 @@ def api_riordina_noleggiatore(cliente_id):
                 # Determina stato da veicoli
                 cursor.execute("""
                     SELECT SUM(CASE WHEN tipo_veicolo = 'Installato' THEN 1 ELSE 0 END) as inst
-                    FROM veicoli WHERE cliente_id = ? AND noleggiatore_id = ?
+                    FROM veicoli_attivi WHERE cliente_id = ? AND noleggiatore_id = ?
                 """, (cliente_id, nol_id))
                 vrow = cursor.fetchone()
                 stato = 'NOSTRI' if vrow and vrow['inst'] > 0 else 'ALTRO_BROKER'
