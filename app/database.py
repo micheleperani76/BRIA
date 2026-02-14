@@ -350,6 +350,50 @@ def aggiorna_cliente_da_creditsafe(conn, cliente_id, dati_creditsafe, logger=Non
         if logger:
             logger.info(f"  Aggiornati {len(set_parts)-2} campi per cliente ID {cliente_id}")
     
+    # --- SYNC CAPOGRUPPO verso tabella capogruppo_clienti ---
+    cg_nome = dati_creditsafe.get('capogruppo_nome')
+    cg_cf = dati_creditsafe.get('capogruppo_cf')
+    if cg_nome and cg_nome.strip():
+        try:
+            # Cerca record esistente (match per CF se presente, altrimenti per nome)
+            if cg_cf and cg_cf.strip():
+                cursor.execute('''
+                    SELECT id, protetto FROM capogruppo_clienti
+                    WHERE cliente_id = ? AND UPPER(TRIM(codice_fiscale)) = UPPER(TRIM(?))
+                ''', (cliente_id, cg_cf))
+            else:
+                cursor.execute('''
+                    SELECT id, protetto FROM capogruppo_clienti
+                    WHERE cliente_id = ? AND UPPER(TRIM(nome)) = UPPER(TRIM(?))
+                ''', (cliente_id, cg_nome))
+            
+            esistente = cursor.fetchone()
+            
+            if esistente:
+                if not esistente['protetto']:
+                    cursor.execute('''
+                        UPDATE capogruppo_clienti 
+                        SET nome = ?, codice_fiscale = ?, data_modifica = ?
+                        WHERE id = ?
+                    ''', (cg_nome.strip(), (cg_cf or '').strip(), now, esistente['id']))
+                    if logger:
+                        logger.info(f"  Capogruppo aggiornato in capogruppo_clienti: {cg_nome}")
+                else:
+                    if logger:
+                        logger.info(f"  Capogruppo protetto in capogruppo_clienti, skip")
+            else:
+                cursor.execute('''
+                    INSERT INTO capogruppo_clienti (cliente_id, nome, codice_fiscale, protetto)
+                    VALUES (?, ?, ?, 0)
+                ''', (cliente_id, cg_nome.strip(), (cg_cf or '').strip()))
+                if logger:
+                    logger.info(f"  Capogruppo inserito in capogruppo_clienti: {cg_nome}")
+            
+            conn.commit()
+        except Exception as e:
+            if logger:
+                logger.warning(f"  Errore sync capogruppo_clienti: {e}")
+    
     return True
 
 
